@@ -21,3 +21,71 @@ The `dronecode` will run on your drone, and contains an example on how to write 
 drone. `runner` is responsible for uploading the program to your drone, and can then also start any
 code that needs to run on the PC to communicate with the drone.
 
+## Our Time Schedule & Checklist
+
+### Lab 1, 21 Feb
+#### Before
+- [ ] Draft design protocol
+- [ ] Farmiliarize with HW
+
+#### After
+- [ ] Test designed protocol
+- [ ] Implement manual mode
+
+### Lab 2, 28 Feb
+#### Before
+- [ ] Implement data logging
+- [ ] Test data logging
+
+#### After
+- [ ] Demonstrate protocol
+- [ ] Test manual mode
+
+### Lab 3, 7 Mar
+#### Before
+- [ ] Implement calibration
+- [ ] Implement yaw control (DMP)
+
+#### After
+- [ ] Demonstrate manual mode
+- [ ] Test calibration
+- [ ] Test yaw control (DMP)
+
+### Lab 4, 14 Mar
+#### Before
+- [ ] Implement roll and pitch control (DMP)
+- [ ] Start on filters (Butterworth 1st order, Kalman)
+- [ ] Profile your code!
+
+#### After
+- [ ] Test and demonstrate yaw mode
+- [ ] Test roll and pitch control (DMP)
+
+### Lab 5, 21 Mar
+#### Before
+- [ ] Continue work on filters (Butterworth 1st order, Kalman)
+- [ ] Implement height control
+- [ ] Implement wireless
+
+#### After
+- [ ] Test and demonstrate full control using DMP
+- [ ] Test Kalman filter
+- [ ] Test wireless
+- [ ] Test height control
+
+### Lab 6, 28 Mar
+#### Before
+- [ ] Profile your code some more
+- [ ] Finalize full control using Kalman
+
+#### After
+- [ ] Test and demonstrate full control using Kalman
+- [ ] Preliminary demonstration + free advice
+- [ ] Fine tuning
+
+### Lab 7, 4 April
+#### Before
+- [ ] Finalize everything
+
+#### After
+- [ ] Formal demonstration and grading
