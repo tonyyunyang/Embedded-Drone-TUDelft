@@ -26,6 +26,10 @@ pub struct protocol_drone {     // this is the data format for the data sent fro
     start_flag: u8,             // by default, this would be set to 0b01111011 = 0x7b, in ASCII, it is "{"
 
     // payload
+    
+    // the current mode of the drone is left out, might be added later
+
+    // the size of the following parameters are too large, we might want to sacrifies resoltuion for a much smaller size
     motor: [u16; 4],            // this is the data of the 4 motors on the drone, each motor has 2 bytes
     ypr: [f32; 3],              // this is the data of the yaw, pitch and roll of the drone, each has 4 bytes
     acc: [i16; 3],              // this is the data of the acceleration of the drone (x, y and z), each has 2 bytes

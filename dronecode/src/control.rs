@@ -7,6 +7,7 @@ use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::send_bytes;
+use protocol::data_format::protocol_drone;
 
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
@@ -25,6 +26,7 @@ pub fn control_loop() -> ! {
         let bat = read_battery();
         let pres = read_pressure();
 
+        // the code below is the original code from the dronecode
         if i % 100 == 0 {
             send_bytes(format!("DTT: {:?}ms\n", dt.as_millis()).as_bytes());
             send_bytes(
@@ -39,6 +41,20 @@ pub fn control_loop() -> ! {
             send_bytes(format!("BAT {bat}\n").as_bytes());
             send_bytes(format!("BAR {pres} \n").as_bytes());
             send_bytes("\n".as_bytes());
+        }
+
+        // the code below is for debugging purpose
+        if i % 100 == 0 {
+            let message_to_pc = protocol::protocol_drone {
+                start_flag: 0x7b,
+                motor: motors,
+                ypr: [ypr.yaw, ypr.pitch, ypr.roll],
+                acc: [accel.x, accel.y, accel.z],
+                bat: bat,
+                pres: pres,
+                crc: 0,
+                end_flag: 0x7d,
+            };
         }
 
         // wait until the timer interrupt goes off again
