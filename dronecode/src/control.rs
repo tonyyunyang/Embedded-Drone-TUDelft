@@ -25,36 +25,10 @@ pub fn control_loop() -> ! {
         let bat = read_battery();
         let pres = read_pressure();
 
-        // the code below is the original code from the dronecode
+        // the code below is for debugging purpose
         if i % 100 == 0 {
-            send_bytes(format!("DTT: {:?}ms\n", dt.as_millis()).as_bytes());
-            send_bytes(
-                format!(
-                    "MTR: {} {} {} {}\n",
-                    motors[0], motors[1], motors[2], motors[3]
-                )
-                .as_bytes(),
-            );
-            send_bytes(format!("YPR {} {} {}\n", ypr.yaw, ypr.pitch, ypr.roll).as_bytes());
-            send_bytes(format!("ACC {} {} {}\n", accel.x, accel.y, accel.z).as_bytes());
-            send_bytes(format!("BAT {bat}\n").as_bytes());
-            send_bytes(format!("BAR {pres} \n").as_bytes());
-            send_bytes("\n".as_bytes());
+            // Create an instance of the Drone Protocol struct
         }
-
-        // // the code below is for debugging purpose
-        // if i % 100 == 0 {
-        //     let message_to_pc = protocol::protocol_drone {
-        //         start_flag: 0x7b,
-        //         motor: motors,
-        //         ypr: [ypr.yaw, ypr.pitch, ypr.roll],
-        //         acc: [accel.x, accel.y, accel.z],
-        //         bat: bat,
-        //         pres: pres,
-        //         crc: 0,
-        //         end_flag: 0x7d,
-        //     };
-        // }
 
         // wait until the timer interrupt goes off again
         // based on the frequency set above
@@ -62,3 +36,24 @@ pub fn control_loop() -> ! {
     }
     unreachable!();
 }
+
+// // Optimized version
+//         if i % 100 == 0 {
+//             let output_string = format!(
+//                 "DTT: {:?}ms\nMTR: {} {} {} {}\nYPR {} {} {}\nACC {} {} {}\nBAT {}\nBAR {} \n",
+//                 dt.as_millis(),
+//                 motors[0],
+//                 motors[1],
+//                 motors[2],
+//                 motors[3],
+//                 ypr.yaw,
+//                 ypr.pitch,
+//                 ypr.roll,
+//                 accel.x,
+//                 accel.y,
+//                 accel.z,
+//                 bat,
+//                 pres
+//             );
+//             send_bytes(output_string.as_bytes());
+//         }

@@ -9,13 +9,13 @@ use alloc::format;
 use core::alloc::Layout;
 use core::mem::MaybeUninit;
 use core::panic::PanicInfo;
+use protocol;
+
 use tudelft_quadrupel::initialize::initialize;
 use tudelft_quadrupel::led::Led::{Green, Red};
 use tudelft_quadrupel::time::assembly_delay;
 use tudelft_quadrupel::uart::send_bytes;
 use tudelft_quadrupel::{entry, uart};
-
-use protocol;
 
 mod control;
 mod yaw_pitch_roll;
@@ -41,6 +41,7 @@ fn main() -> ! {
         initialize(unsafe { &mut HEAP_MEMORY }, true);
     }
 
+    // Start the control loop
     control_loop()
 }
 
@@ -51,6 +52,8 @@ fn panic(info: &PanicInfo) -> ! {
     // On panic:
     // * try and write the panic message on UART
     // * blink the red light
+
+    use tudelft_quadrupel::uart;
 
     if uart::is_initialized() {
         let msg = format!("{info}\n");
