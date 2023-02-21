@@ -459,6 +459,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "protocol"
+version = "0.1.0"
+
+[[package]]
 name = "quote"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -492,6 +496,7 @@ checksum = "1973f95452ec56a4b2c683f5eabc15617e38f4faf2776ed4a0011d5070ecb37e"
 name = "runner"
 version = "0.1.0"
 dependencies = [
+ "protocol",
  "serial2",
  "tudelft-serial-upload",
 ]
@@ -620,6 +625,7 @@ name = "template-project"
 version = "0.1.0"
 dependencies = [
  "micromath",
+ "protocol",
  "tudelft-quadrupel",
 ]
 
