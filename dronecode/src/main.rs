@@ -14,6 +14,7 @@ use tudelft_quadrupel::led::Led::{Green, Red};
 use tudelft_quadrupel::time::assembly_delay;
 use tudelft_quadrupel::uart::send_bytes;
 use tudelft_quadrupel::{entry, uart};
+
 use protocol;
 
 mod control;
