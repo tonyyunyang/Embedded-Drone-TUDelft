@@ -1,3 +1,4 @@
+use protocol::format::DeviceProtocol;
 use serial2::SerialPort;
 use std::env::args;
 use std::path::PathBuf;
@@ -32,11 +33,38 @@ fn main() {
 
     // infinitely print whatever the drone sends us
     let mut buf = [0u8; 255];
+
+    // below is the original code
     loop {
         if let Ok(num) = serial.read(&mut buf) {
             print!("{}", String::from_utf8_lossy(&buf[0..num]));
         }
     }
+
+    // below is the code for debug purposes
+    // loop {
+    //     if let Ok(num) = serial.read(&mut buf) {
+    //         let message_from_drone = DeviceProtocol::deserialize(&buf[0..num]);
+    //         if let Ok(message) = message_from_drone {
+    //             let verification_crc = DeviceProtocol::calculate_crc8(&message);
+    //             if verification_crc != message.get_crc() {
+    //                 print!("\nCRC verification failed: {} != {}\n", verification_crc, message.get_crc());
+    //                 print!("\n");
+    //             } else {
+    //                 print!("DTT: {:?}ms\n", message.get_duration());
+    //                 print!("MODE: {:?}\n", message.get_mode());
+    //                 print!("MTR: {} {} {} {}\n", message.get_motor()[0], message.get_motor()[1], message.get_motor()[2], message.get_motor()[3]);
+    //                 print!("YPR {} {} {}\n", f32::from_bits(message.get_ypr()[0]), f32::from_bits(message.get_ypr()[1]), f32::from_bits(message.get_ypr()[2]));
+    //                 print!("ACC {} {} {}\n", message.get_acc()[0], message.get_acc()[1], message.get_acc()[2]);
+    //                 print!("BAT {bat}\n", bat = message.get_bat());
+    //                 print!("BAR {pres} \n", pres = message.get_pres());
+    //                 print!("CRC {crc}\n", crc = message.get_crc());
+    //                 print!("\n");
+    //             }
+    //         }
+    //     }
+    // }
+
 }
 
 #[allow(unused)]

@@ -1,4 +1,6 @@
-use fixed::types::I16F16;
+use fixed::{types::I0F32, FixedI32};
+use crc16::{State, XMODEM};
+use crc_any::CRCu8;
 use heapless::Vec;
 use postcard::{from_bytes, to_vec};
 use serde::{Deserialize, Serialize};
@@ -12,7 +14,7 @@ pub struct HostProtocol {
     joystick_yaw: u8,   // Yaw left/right control
     joystick_pitch: u8, // Pitch up/down control
     joystick_roll: u8,  // Roll left/right control
-    crc: u16,           // Cyclic redundancy check
+    crc: u8,           // Cyclic redundancy check
     end_flag: u8,       // End of frame indicator
 }
 
@@ -25,14 +27,15 @@ pub struct DeviceProtocol {
 
     // Payload
     mode: u8,         // Two bytes to represent 9 modes
+    duration: u128,   // This is the duration of the tramision, 16 bytes
     motor: [u16; 4],  // This is the data of the 4 motors on the drone, each motor has 2 bytes
-    ypr: [I16F16; 3], // This is the data of the yaw, pitch and roll
-    acc: [I16F16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
+    ypr: [u32; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
+    acc: [i16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
     bat: u16,         // This is the data of the battery of the drone, 2 bytes
     pres: u32,        // This is the data of the pressure of the drone, 4 bytes
 
     // Footer
-    crc: u16,     // We are using the crc-16 method to verify the message
+    crc: u8,     // Cyclic redundancy check
     end_flag: u8, // By default, this would be set to 0b01111101 = 0x7d, in ASCII, it is "}"
 }
 
@@ -70,35 +73,55 @@ impl HostProtocol {
     }
 
     // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
-    pub fn calculate_crc(host_protocol: &mut HostProtocol) {
-        let mut crc: u16 = 0xFFFF; // initial value of the CRC
+    // pub fn calculate_crc(host_protocol: &mut HostProtocol) {
+    //     let mut crc: u16 = 0xFFFF; // initial value of the CRC
     
-        // iterate over the bytes of the payload and update the CRC
-        let payload_bytes = unsafe {
-            core::slice::from_raw_parts(
-                &host_protocol.mode as *const _ as *const u8,
-                core::mem::size_of_val(&host_protocol)
-                    - core::mem::size_of_val(&host_protocol.start_flag)
-                    - core::mem::size_of_val(&host_protocol.end_flag)
-                    - core::mem::size_of_val(&host_protocol.crc)
-            )
-        };
+    //     // iterate over the bytes of the payload and update the CRC
+    //     let payload_bytes = unsafe {
+    //         core::slice::from_raw_parts(
+    //             &host_protocol.mode as *const _ as *const u8,
+    //             core::mem::size_of_val(&host_protocol)
+    //                 - core::mem::size_of_val(&host_protocol.start_flag)
+    //                 - core::mem::size_of_val(&host_protocol.end_flag)
+    //                 - core::mem::size_of_val(&host_protocol.crc)
+    //         )
+    //     };
     
-        for &byte in payload_bytes {
-            crc ^= u16::from(byte);
+    //     for &byte in payload_bytes {
+    //         crc ^= u16::from(byte);
     
-            for _ in 0..8 {
-                if (crc & 0x0001) != 0 {
-                    crc >>= 1;
-                    crc ^= 0xA001;
-                } else {
-                    crc >>= 1;
-                }
-            }
-        }
-    
-        host_protocol.crc = crc;
+    //         for _ in 0..8 {
+    //             if (crc & 0x0001) != 0 {
+    //                 crc >>= 1;
+    //                 crc ^= 0xA001;
+    //             } else {
+    //                 crc >>= 1;
+    //             }
+    //         }
+    //     }
+    //     host_protocol.crc = crc;
+    // }
+
+    pub fn calculate_crc16(&self) -> u16 {
+        let mut state = State::<XMODEM>::new();
+        state.update(&[self.mode]);
+        state.update(&[self.joystick_lift]);
+        state.update(&[self.joystick_yaw]);
+        state.update(&[self.joystick_pitch]);
+        state.update(&[self.joystick_roll]);
+        state.get()
     }
+
+    pub fn calculate_crc8(&self) -> u8 {
+        let mut crc = CRCu8::create_crc(0x07, 8, 0, 0, false); // specify the CRC-8 polynomial
+        crc.digest(&[self.mode]);
+        crc.digest(&[self.joystick_lift]);
+        crc.digest(&[self.joystick_yaw]);
+        crc.digest(&[self.joystick_pitch]);
+        crc.digest(&[self.joystick_roll]);
+        crc.get_crc()
+    }
+
 
     pub fn set_mode(&mut self, mode: u8) {
         self.mode = mode;
@@ -120,7 +143,7 @@ impl HostProtocol {
         self.joystick_roll = joystick_roll;
     }
 
-    pub fn set_crc(&mut self, crc: u16) {
+    pub fn set_crc(&mut self, crc: u8) {
         self.crc = crc;
     }
 
@@ -144,7 +167,7 @@ impl HostProtocol {
         self.joystick_roll
     }
 
-    pub fn get_crc(&self) -> u16 {
+    pub fn get_crc(&self) -> u8 {
         self.crc
     }
 }
@@ -153,14 +176,16 @@ impl DeviceProtocol {
     // Construct a new DroneProtocol from its fields
     pub fn new(
         mode: u8,
+        duration: u128,
         motor: [u16; 4],
-        ypr: [I16F16; 3],
-        acc: [I16F16; 3],
+        ypr: [u32; 3],
+        acc: [i16; 3],
         bat: u16,
         pres: u32,
     ) -> Self {
         Self {
             start_flag: 0x7b,
+            duration,
             mode,
             motor,
             ypr,
@@ -173,7 +198,7 @@ impl DeviceProtocol {
     }
 
     // Serializes this protocol and creates a Vec of bytes
-    pub fn serialize(&self) -> Result<Vec<u8, 32>, postcard::Error> {
+    pub fn serialize(&self) -> Result<Vec<u8, 52>, postcard::Error> { // the struct we created is 53 bytes long when crc-16, and 52 bytes long when crc-8
         let payload = to_vec(self)?;
         Ok(payload)
     }
@@ -185,49 +210,89 @@ impl DeviceProtocol {
     }
 
     // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
-    pub fn calculate_crc(device_protocol: &mut DeviceProtocol) {
-        let mut crc: u16 = 0xFFFF; // initial value of the CRC
+    // pub fn calculate_crc(device_protocol: &mut DeviceProtocol) {
+    //     let mut crc: u16 = 0xFFFF; // initial value of the CRC
     
-        // iterate over the bytes of the payload and update the CRC
-        let payload_bytes = unsafe {
-            core::slice::from_raw_parts(
-                &device_protocol.mode as *const _ as *const u8,
-                core::mem::size_of_val(&device_protocol)
-                    - core::mem::size_of_val(&device_protocol.start_flag)
-                    - core::mem::size_of_val(&device_protocol.end_flag)
-                    - core::mem::size_of_val(&device_protocol.crc)
-            )
-        };
+    //     // iterate over the bytes of the payload and update the CRC
+    //     let payload_bytes = unsafe {
+    //         core::slice::from_raw_parts(
+    //             &device_protocol.mode as *const _ as *const u8,
+    //             core::mem::size_of_val(&device_protocol)
+    //                 - core::mem::size_of_val(&device_protocol.start_flag)
+    //                 - core::mem::size_of_val(&device_protocol.end_flag)
+    //                 - core::mem::size_of_val(&device_protocol.crc)
+    //         )
+    //     };
     
-        for &byte in payload_bytes {
-            crc ^= u16::from(byte);
+    //     for &byte in payload_bytes {
+    //         crc ^= u16::from(byte);
     
-            for _ in 0..8 {
-                if (crc & 0x0001) != 0 {
-                    crc >>= 1;
-                    crc ^= 0xA001;
-                } else {
-                    crc >>= 1;
-                }
-            }
+    //         for _ in 0..8 {
+    //             if (crc & 0x0001) != 0 {
+    //                 crc >>= 1;
+    //                 crc ^= 0xA001;
+    //             } else {
+    //                 crc >>= 1;
+    //             }
+    //         }
+    //     }
+    
+    //     device_protocol.crc = crc;
+    // }
+    
+    pub fn calculate_crc16(&self) -> u16 {
+        let mut state = State::<XMODEM>::new();
+        state.update(&[self.mode]);
+        state.update(&self.duration.to_be_bytes());
+        for motor in self.motor.iter() {
+            state.update(&motor.to_be_bytes());
         }
-    
-        device_protocol.crc = crc;
+        for ypr in self.ypr.iter() {
+            state.update(&ypr.to_be_bytes());
+        }
+        for acc in self.acc.iter() {
+            state.update(&acc.to_be_bytes());
+        }
+        state.update(&self.bat.to_be_bytes());
+        state.update(&self.pres.to_be_bytes());
+        state.get()
     }
-    
+
+    pub fn calculate_crc8(&self) -> u8 {
+        let mut crc = CRCu8::create_crc(0x07, 8, 0, 0, false); // specify the CRC-8 polynomial
+        crc.digest(&[self.mode]);
+        crc.digest(&self.duration.to_be_bytes());
+        for motor in self.motor.iter() {
+            crc.digest(&motor.to_be_bytes());
+        }
+        for ypr in self.ypr.iter() {
+            crc.digest(&ypr.to_be_bytes());
+        }
+        for acc in self.acc.iter() {
+            crc.digest(&acc.to_be_bytes());
+        }
+        crc.digest(&self.bat.to_be_bytes());
+        crc.digest(&self.pres.to_be_bytes());
+        crc.get_crc()
+    }
+
     pub fn set_mode(&mut self, mode: u8) {
         self.mode = mode;
+    }
+
+    pub fn set_duration(&mut self, duration: u128) {
+        self.duration = duration;
     }
 
     pub fn set_motor(&mut self, motor: [u16; 4]) {
         self.motor = motor;
     }
 
-    pub fn set_ypr(&mut self, ypr: [I16F16; 3]) {
+    pub fn set_ypr(&mut self, ypr: [u32; 3]) {
         self.ypr = ypr;
     }
 
-    pub fn set_acc(&mut self, acc: [I16F16; 3]) {
+    pub fn set_acc(&mut self, acc: [i16; 3]) {
         self.acc = acc;
     }
 
@@ -239,7 +304,7 @@ impl DeviceProtocol {
         self.pres = pres;
     }
 
-    pub fn set_crc(&mut self, crc: u16) {
+    pub fn set_crc(&mut self, crc: u8) {
         self.crc = crc;
     }
 
@@ -247,15 +312,19 @@ impl DeviceProtocol {
         self.mode
     }
 
+    pub fn get_duration(&self) -> u128 {
+        self.duration
+    }
+
     pub fn get_motor(&self) -> [u16; 4] {
         self.motor
     }
 
-    pub fn get_ypr(&self) -> [I16F16; 3] {
+    pub fn get_ypr(&self) -> [u32; 3] {
         self.ypr
     }
 
-    pub fn get_acc(&self) -> [I16F16; 3] {
+    pub fn get_acc(&self) -> [i16; 3] {
         self.acc
     }
 
@@ -267,7 +336,7 @@ impl DeviceProtocol {
         self.pres
     }
 
-    pub fn get_crc(&self) -> u16 {
+    pub fn get_crc(&self) -> u8 {
         self.crc
     }
 

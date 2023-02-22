@@ -2,14 +2,14 @@ use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::format;
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
-use tudelft_quadrupel::fixed::FixedI16;
-use tudelft_quadrupel::fixed::types::I16F16;
+use fixed::{types::I0F32};
+use tudelft_quadrupel::fixed::{self, FixedI32};
 use tudelft_quadrupel::led::Led::Blue;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::send_bytes;
-use protocol::format::DeviceProtocol;
+use protocol::format::{DeviceProtocol, HostProtocol};
 
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
@@ -28,12 +28,48 @@ pub fn control_loop() -> ! {
         let bat = read_battery();
         let pres = read_pressure();
 
-        // the code below is for debugging purpose
+        // the code below is the original version
         if i % 100 == 0 {
-            // Create an instance of the Drone Protocol struct
-            let current_mode:u8 = 0b00000000;
-            let mut message_to_pc = DeviceProtocol::new(current_mode, motors, [I16F16::from_bits(ypr.yaw.to_bits().try_into().unwrap()), I16F16::from_bits(ypr.pitch.to_bits().try_into().unwrap()),I16F16::from_bits(ypr.roll.to_bits().try_into().unwrap())], [I16F16::from_bits(accel.x as i32), I16F16::from_bits(accel.y as i32), I16F16::from_bits(accel.z as i32)], bat, pres);
+            send_bytes(format!("The current i is {}\n", i).as_bytes());
+            send_bytes(format!("DTT: {:?}ms\n", dt.as_millis()).as_bytes());
+            send_bytes(
+                format!(
+                    "MTR: {} {} {} {}\n",
+                    motors[0], motors[1], motors[2], motors[3]
+                )
+                .as_bytes(),
+            );
+            send_bytes(format!("YPR {} {} {}\n", ypr.yaw, ypr.pitch, ypr.roll).as_bytes());
+            send_bytes(format!("ACC {} {} {}\n", accel.x, accel.y, accel.z).as_bytes());
+            send_bytes(format!("BAT {bat}\n").as_bytes());
+            send_bytes(format!("BAR {pres} \n").as_bytes());
+            send_bytes("\n".as_bytes());
         }
+
+        // the code below is for debugging purpose
+        // if i % 100 == 0 {
+        //     // Create an instance of the Drone Protocol struct
+        //     let mut message_to_pc = DeviceProtocol::new(
+        //         i
+        //         ,dt.as_millis()
+        //         ,motors
+        //         ,[ypr.yaw.to_bits(), ypr.pitch.to_bits(), ypr.roll.to_bits()]
+        //         ,[accel.x, accel.y, accel.z]
+        //         ,bat
+        //         ,pres);
+
+        //     // Calculate the CRC and serialize the message
+        //     message_to_pc.set_crc(DeviceProtocol::calculate_crc8(&message_to_pc));
+
+        //     // Serialize the message
+        //     let serialized_message_to_pc = DeviceProtocol::serialize(&message_to_pc);
+
+        //     // Send the message to the PC, if the message is not serialized correctly, send an error message
+        //     if let Ok(message) = serialized_message_to_pc {
+        //         // The & character in &serialized_message_to_pc creates a reference to the vector that can be passed to send_bytes().
+        //         send_bytes(&message);
+        //     }
+        // }
 
         // wait until the timer interrupt goes off again
         // based on the frequency set above

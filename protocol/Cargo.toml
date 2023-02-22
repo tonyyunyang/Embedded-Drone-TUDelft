@@ -12,6 +12,8 @@ forced-target = "x86_64-unknown-linux-gnu"
 serde = {version="1.0.152", default-features = false, features = ["alloc"]}
 postcard = "1.0.4"
 heapless = "0.7.16"
+crc16 = "0.4.0"
+crc-any = "2.4.3"
 
 [dependencies.fixed]
 version = "1.23"
