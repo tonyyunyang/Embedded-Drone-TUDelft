@@ -21,9 +21,9 @@ fn main() {
     // you like (for example, python isn't a bad choice), you can also call that here. The
     // commented function below gives an example of how to do that with python, but again
     // you don't need to choose python.
-
+    //eprint!("I am trying to get joystick data");
+   // get_joystick_data();
     // start_interface(&port);
-
     // open the serial port we got back from `upload_file_or_stop`. This is the same port
     // as the upload occurred on, so we know that we can communicate with the drone over
     // this port.
@@ -36,6 +36,7 @@ fn main() {
         if let Ok(num) = serial.read(&mut buf) {
             print!("{}", String::from_utf8_lossy(&buf[0..num]));
         }
+        get_joystick_data();
     }
 }
 
@@ -56,4 +57,26 @@ fn start_interface(port: &PathBuf) {
         Ok(i) if !i.status.success() => exit(i.status.code().unwrap_or(1)),
         Ok(_) => {}
     }
+}
+#[allow(unused)]
+fn get_joystick_data() {
+    let mut cmd = Command::new("python");
+    cmd
+        // there must be a `my_interface.py` file of course
+        .arg("my_interface.py");
+        // pass the serial port as a command line parameter to the python program
+        eprint!("I am in the fn to get joystick data");
+    match cmd.output() {
+        Err(e) => {
+            eprintln!("{}", e);
+            exit(1);
+        }
+        Ok(i) if !i.status.success() =>
+        {
+            exit(i.status.code().unwrap_or(1));
+            print!("{:?}", );
+        }
+        Ok(_) => {}
+    }
+    
 }
