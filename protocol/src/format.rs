@@ -17,7 +17,7 @@ pub struct HostProtocol {
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-pub struct DroneProtocol {
+pub struct DeviceProtocol {
     // This is the data format for the data sent from the drone to the PC
 
     // Header
@@ -44,7 +44,6 @@ impl HostProtocol {
         joystick_yaw: u8,
         joystick_pitch: u8,
         joystick_roll: u8,
-        crc: u16,
     ) -> Self {
         Self {
             start_flag: 0x7b,
@@ -53,7 +52,7 @@ impl HostProtocol {
             joystick_yaw,
             joystick_pitch,
             joystick_roll,
-            crc,
+            crc: 0x0000,    // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
     }
@@ -68,6 +67,37 @@ impl HostProtocol {
     pub fn deserialize(payload: &[u8]) -> Result<Self, postcard::Error> {
         let prot = from_bytes::<HostProtocol>(payload)?;
         Ok(prot)
+    }
+
+    // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
+    pub fn calculate_crc(host_protocol: &mut HostProtocol) {
+        let mut crc: u16 = 0xFFFF; // initial value of the CRC
+    
+        // iterate over the bytes of the payload and update the CRC
+        let payload_bytes = unsafe {
+            core::slice::from_raw_parts(
+                &host_protocol.mode as *const _ as *const u8,
+                core::mem::size_of_val(&host_protocol)
+                    - core::mem::size_of_val(&host_protocol.start_flag)
+                    - core::mem::size_of_val(&host_protocol.end_flag)
+                    - core::mem::size_of_val(&host_protocol.crc)
+            )
+        };
+    
+        for &byte in payload_bytes {
+            crc ^= u16::from(byte);
+    
+            for _ in 0..8 {
+                if (crc & 0x0001) != 0 {
+                    crc >>= 1;
+                    crc ^= 0xA001;
+                } else {
+                    crc >>= 1;
+                }
+            }
+        }
+    
+        host_protocol.crc = crc;
     }
 
     pub fn set_mode(&mut self, mode: u8) {
@@ -93,9 +123,33 @@ impl HostProtocol {
     pub fn set_crc(&mut self, crc: u16) {
         self.crc = crc;
     }
+
+    pub fn get_mode(&self) -> u8 {
+        self.mode
+    }
+
+    pub fn get_joystick_lift(&self) -> u8 {
+        self.joystick_lift
+    }
+
+    pub fn get_joystick_yaw(&self) -> u8 {
+        self.joystick_yaw
+    }
+
+    pub fn get_joystick_pitch(&self) -> u8 {
+        self.joystick_pitch
+    }
+
+    pub fn get_joystick_roll(&self) -> u8 {
+        self.joystick_roll
+    }
+
+    pub fn get_crc(&self) -> u16 {
+        self.crc
+    }
 }
 
-impl DroneProtocol {
+impl DeviceProtocol {
     // Construct a new DroneProtocol from its fields
     pub fn new(
         mode: u8,
@@ -104,7 +158,6 @@ impl DroneProtocol {
         acc: [I16F16; 3],
         bat: u16,
         pres: u32,
-        crc: u16,
     ) -> Self {
         Self {
             start_flag: 0x7b,
@@ -114,7 +167,7 @@ impl DroneProtocol {
             acc,
             bat,
             pres,
-            crc,
+            crc: 0x0000,    // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
     }
@@ -127,10 +180,41 @@ impl DroneProtocol {
 
     // Deserializes a byte vector into this protocol
     pub fn deserialize(payload: &[u8]) -> Result<Self, postcard::Error> {
-        let prot = from_bytes::<DroneProtocol>(payload)?;
+        let prot = from_bytes::<DeviceProtocol>(payload)?;
         Ok(prot)
     }
 
+    // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
+    pub fn calculate_crc(device_protocol: &mut DeviceProtocol) {
+        let mut crc: u16 = 0xFFFF; // initial value of the CRC
+    
+        // iterate over the bytes of the payload and update the CRC
+        let payload_bytes = unsafe {
+            core::slice::from_raw_parts(
+                &device_protocol.mode as *const _ as *const u8,
+                core::mem::size_of_val(&device_protocol)
+                    - core::mem::size_of_val(&device_protocol.start_flag)
+                    - core::mem::size_of_val(&device_protocol.end_flag)
+                    - core::mem::size_of_val(&device_protocol.crc)
+            )
+        };
+    
+        for &byte in payload_bytes {
+            crc ^= u16::from(byte);
+    
+            for _ in 0..8 {
+                if (crc & 0x0001) != 0 {
+                    crc >>= 1;
+                    crc ^= 0xA001;
+                } else {
+                    crc >>= 1;
+                }
+            }
+        }
+    
+        device_protocol.crc = crc;
+    }
+    
     pub fn set_mode(&mut self, mode: u8) {
         self.mode = mode;
     }
@@ -158,4 +242,33 @@ impl DroneProtocol {
     pub fn set_crc(&mut self, crc: u16) {
         self.crc = crc;
     }
+
+    pub fn get_mode(&self) -> u8 {
+        self.mode
+    }
+
+    pub fn get_motor(&self) -> [u16; 4] {
+        self.motor
+    }
+
+    pub fn get_ypr(&self) -> [I16F16; 3] {
+        self.ypr
+    }
+
+    pub fn get_acc(&self) -> [I16F16; 3] {
+        self.acc
+    }
+
+    pub fn get_bat(&self) -> u16 {
+        self.bat
+    }
+
+    pub fn get_pres(&self) -> u32 {
+        self.pres
+    }
+
+    pub fn get_crc(&self) -> u16 {
+        self.crc
+    }
+
 }

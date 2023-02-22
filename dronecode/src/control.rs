@@ -2,11 +2,14 @@ use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::format;
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
+use tudelft_quadrupel::fixed::FixedI16;
+use tudelft_quadrupel::fixed::types::I16F16;
 use tudelft_quadrupel::led::Led::Blue;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::send_bytes;
+use protocol::format::DeviceProtocol;
 
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
@@ -28,6 +31,8 @@ pub fn control_loop() -> ! {
         // the code below is for debugging purpose
         if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
+            let current_mode:u8 = 0b00000000;
+            let mut message_to_pc = DeviceProtocol::new(current_mode, motors, [I16F16::from_bits(ypr.yaw.to_bits().try_into().unwrap()), I16F16::from_bits(ypr.pitch.to_bits().try_into().unwrap()),I16F16::from_bits(ypr.roll.to_bits().try_into().unwrap())], [I16F16::from_bits(accel.x as i32), I16F16::from_bits(accel.y as i32), I16F16::from_bits(accel.z as i32)], bat, pres);
         }
 
         // wait until the timer interrupt goes off again
