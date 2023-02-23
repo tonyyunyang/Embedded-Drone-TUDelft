@@ -2,7 +2,7 @@ use fixed::{types::I0F32, FixedI32};
 use crc16::{State, XMODEM};
 use crc_any::CRCu8;
 use heapless::Vec;
-use postcard::{from_bytes, to_vec};
+use postcard::{from_bytes, to_vec, Error};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -198,7 +198,7 @@ impl DeviceProtocol {
     }
 
     // Serializes this protocol and creates a Vec of bytes
-    pub fn serialize(&self) -> Result<Vec<u8, 52>, postcard::Error> { // the struct we created is 53 bytes long when crc-16, and 52 bytes long when crc-8
+    pub fn serialize(&self) -> Result<Vec<u8, 60>, postcard::Error> { // the struct we created is 53 bytes long when crc-16, and 52 bytes long when crc-8
         let payload = to_vec(self)?;
         Ok(payload)
     }
