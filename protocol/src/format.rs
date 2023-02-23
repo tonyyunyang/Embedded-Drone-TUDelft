@@ -308,6 +308,10 @@ impl DeviceProtocol {
         self.crc = crc;
     }
 
+    pub fn get_start_flag(&self) -> u8 {
+        self.start_flag
+    }
+
     pub fn get_mode(&self) -> u8 {
         self.mode
     }
@@ -338,6 +342,10 @@ impl DeviceProtocol {
 
     pub fn get_crc(&self) -> u8 {
         self.crc
+    }
+
+    pub fn get_end_flag(&self) -> u8 {
+        self.end_flag
     }
 
 }

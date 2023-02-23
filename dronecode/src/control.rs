@@ -14,6 +14,7 @@ use protocol::format::{DeviceProtocol, HostProtocol};
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
     let mut last = Instant::now();
+    let mut test:u8 = 0;
 
     for i in 0.. {
         let _ = Blue.toggle();
@@ -56,8 +57,9 @@ pub fn control_loop() -> ! {
         // the code below is for sending the message to the PC
         if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
+            test += 1;
             let mut message_to_pc = DeviceProtocol::new(
-                0b10010000
+                test
                 ,dt.as_millis()
                 ,motors
                 ,[ypr.yaw.to_bits(), ypr.pitch.to_bits(), ypr.roll.to_bits()]

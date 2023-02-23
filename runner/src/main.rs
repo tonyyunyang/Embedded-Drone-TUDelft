@@ -63,10 +63,16 @@ fn main() {
     loop {
         // read the serial port
         if let Ok(num) = serial.read(&mut buf) {
+            // when the program starts, the pc will read garbage data, so we need to ignore them
+            if buf[0] != 123 {
+                continue;
+            }
+            // deserialize the message
             let message_from_drone = DeviceProtocol::deserialize(&buf[0..num]);
             // capture whether the message is complete
             match message_from_drone {
                 Ok(message) => {
+                    // verfiy the message
                     verify_message(&message);
                 },
                 Err(error) => {
@@ -80,6 +86,7 @@ fn main() {
                             let message_from_drone = DeviceProtocol::deserialize(&full_message);
                             match message_from_drone {
                                 Ok(message) => {
+                                    // verfiy the full message
                                     verify_message(&message);
                                 },
                                 Err(error) => {
@@ -97,10 +104,16 @@ fn main() {
 }
 
 fn verify_message(message: &DeviceProtocol) {
-    if verify_crc(&message) {
-        print_verified_message(&message);
+    // we check the start bit and the end bit first
+    if message.get_start_flag() != 0x7b || message.get_end_flag() != 0x7d {
+        print!("Start or End flag is wrong\n");
+        return;
     }else {
-        print!("CRC verification failed\n");
+        if verify_crc(&message) {
+            print_verified_message(&message);
+        }else {
+            print!("CRC verification failed\n");
+        }
     }
 }
 
