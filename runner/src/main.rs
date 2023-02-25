@@ -1,3 +1,4 @@
+use postcard::Error;
 use protocol::format::DeviceProtocol;
 use serial2::SerialPort;
 use std::env::args;
@@ -5,7 +6,6 @@ use std::path::PathBuf;
 use std::process::{exit, Command};
 use std::time::Duration;
 use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
-use postcard::Error;
 
 fn main() {
     // get a filename from the command line. This filename will be uploaded to the drone
@@ -55,7 +55,6 @@ fn main() {
 
     //         print!("\n");
 
-
     //     }
     // }
 
@@ -74,7 +73,7 @@ fn main() {
                 Ok(message) => {
                     // verfiy the message
                     verify_message(&message);
-                },
+                }
                 Err(error) => {
                     // if the message seems to be incomplete, read once more from the buffer
                     if error == Error::DeserializeUnexpectedEnd {
@@ -88,13 +87,13 @@ fn main() {
                                 Ok(message) => {
                                     // verfiy the full message
                                     verify_message(&message);
-                                },
+                                }
                                 Err(error) => {
                                     print!("Deserialize Error: {:?}\n", error);
                                 }
                             }
                         }
-                    }else {
+                    } else {
                         print!("Deserialize Error: {:?}\n", error);
                     }
                 }
@@ -108,10 +107,10 @@ fn verify_message(message: &DeviceProtocol) {
     if message.get_start_flag() != 0x7b || message.get_end_flag() != 0x7d {
         print!("Start or End flag is wrong\n");
         return;
-    }else {
+    } else {
         if verify_crc(&message) {
             print_verified_message(&message);
-        }else {
+        } else {
             print!("CRC verification failed\n");
         }
     }
@@ -125,9 +124,25 @@ fn verify_crc(message: &DeviceProtocol) -> bool {
 fn print_verified_message(message: &DeviceProtocol) {
     print!("DTT: {:?}ms\n", message.get_duration());
     print!("MODE: {:?}\n", message.get_mode());
-    print!("MTR: {} {} {} {}\n", message.get_motor()[0], message.get_motor()[1], message.get_motor()[2], message.get_motor()[3]);
-    print!("YPR {} {} {}\n", f32::from_bits(message.get_ypr()[0]), f32::from_bits(message.get_ypr()[1]), f32::from_bits(message.get_ypr()[2]));
-    print!("ACC {} {} {}\n", message.get_acc()[0], message.get_acc()[1], message.get_acc()[2]);
+    print!(
+        "MTR: {} {} {} {}\n",
+        message.get_motor()[0],
+        message.get_motor()[1],
+        message.get_motor()[2],
+        message.get_motor()[3]
+    );
+    print!(
+        "YPR {} {} {}\n",
+        f32::from_bits(message.get_ypr()[0]),
+        f32::from_bits(message.get_ypr()[1]),
+        f32::from_bits(message.get_ypr()[2])
+    );
+    print!(
+        "ACC {} {} {}\n",
+        message.get_acc()[0],
+        message.get_acc()[1],
+        message.get_acc()[2]
+    );
     print!("BAT {bat}\n", bat = message.get_bat());
     print!("BAR {pres} \n", pres = message.get_pres());
     print!("CRC {crc}\n", crc = message.get_crc());

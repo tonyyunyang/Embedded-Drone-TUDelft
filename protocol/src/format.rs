@@ -177,7 +177,7 @@ impl DeviceProtocol {
         mode: u8,
         duration: u128,
         motor: [u16; 4],
-        ypr: [u32; 3],
+        ypr: [i32; 3],
         acc: [i16; 3],
         bat: u16,
         pres: u32,
@@ -288,7 +288,7 @@ impl DeviceProtocol {
         self.motor = motor;
     }
 
-    pub fn set_ypr(&mut self, ypr: [u32; 3]) {
+    pub fn set_ypr(&mut self, ypr: [i32; 3]) {
         self.ypr = ypr;
     }
 
@@ -324,7 +324,7 @@ impl DeviceProtocol {
         self.motor
     }
 
-    pub fn get_ypr(&self) -> [u32; 3] {
+    pub fn get_ypr(&self) -> [i32; 3] {
         self.ypr
     }
 
