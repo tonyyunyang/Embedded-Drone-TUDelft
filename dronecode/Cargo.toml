@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 tudelft-quadrupel = {version="1"}
 micromath = "2.0.0"
+cordic = "0.1.5"
 protocol = {path = "../protocol"}

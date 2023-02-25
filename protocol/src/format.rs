@@ -1,6 +1,6 @@
-use fixed::{types::I0F32, FixedI32};
 use crc16::{State, XMODEM};
 use crc_any::CRCu8;
+use fixed::{types::I0F32, FixedI32};
 use heapless::Vec;
 use postcard::{from_bytes, to_vec, Error};
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ pub struct HostProtocol {
     joystick_yaw: u8,   // Yaw left/right control
     joystick_pitch: u8, // Pitch up/down control
     joystick_roll: u8,  // Roll left/right control
-    crc: u8,           // Cyclic redundancy check
+    crc: u8,            // Cyclic redundancy check
     end_flag: u8,       // End of frame indicator
 }
 
@@ -26,16 +26,16 @@ pub struct DeviceProtocol {
     start_flag: u8, // By default, this would be set to 0b01111011 = 0x7b, in ASCII, it is "{"
 
     // Payload
-    mode: u8,         // Two bytes to represent 9 modes
-    duration: u128,   // This is the duration of the tramision, 16 bytes
-    motor: [u16; 4],  // This is the data of the 4 motors on the drone, each motor has 2 bytes
-    ypr: [u32; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
+    mode: u8,        // Two bytes to represent 9 modes
+    duration: u128,  // This is the duration of the tramision, 16 bytes
+    motor: [u16; 4], // This is the data of the 4 motors on the drone, each motor has 2 bytes
+    ypr: [i32; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
     acc: [i16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
-    bat: u16,         // This is the data of the battery of the drone, 2 bytes
-    pres: u32,        // This is the data of the pressure of the drone, 4 bytes
+    bat: u16,      // This is the data of the battery of the drone, 2 bytes
+    pres: u32,     // This is the data of the pressure of the drone, 4 bytes
 
     // Footer
-    crc: u8,     // Cyclic redundancy check
+    crc: u8,      // Cyclic redundancy check
     end_flag: u8, // By default, this would be set to 0b01111101 = 0x7d, in ASCII, it is "}"
 }
 
@@ -55,7 +55,7 @@ impl HostProtocol {
             joystick_yaw,
             joystick_pitch,
             joystick_roll,
-            crc: 0x0000,    // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
+            crc: 0x0000, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
     }
@@ -75,7 +75,7 @@ impl HostProtocol {
     // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
     // pub fn calculate_crc(host_protocol: &mut HostProtocol) {
     //     let mut crc: u16 = 0xFFFF; // initial value of the CRC
-    
+
     //     // iterate over the bytes of the payload and update the CRC
     //     let payload_bytes = unsafe {
     //         core::slice::from_raw_parts(
@@ -86,10 +86,10 @@ impl HostProtocol {
     //                 - core::mem::size_of_val(&host_protocol.crc)
     //         )
     //     };
-    
+
     //     for &byte in payload_bytes {
     //         crc ^= u16::from(byte);
-    
+
     //         for _ in 0..8 {
     //             if (crc & 0x0001) != 0 {
     //                 crc >>= 1;
@@ -121,7 +121,6 @@ impl HostProtocol {
         crc.digest(&[self.joystick_roll]);
         crc.get_crc()
     }
-
 
     pub fn set_mode(&mut self, mode: u8) {
         self.mode = mode;
@@ -192,13 +191,14 @@ impl DeviceProtocol {
             acc,
             bat,
             pres,
-            crc: 0x0000,    // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
+            crc: 0x0000, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
     }
 
     // Serializes this protocol and creates a Vec of bytes
-    pub fn serialize(&self) -> Result<Vec<u8, 60>, postcard::Error> { // the struct we created is 53 bytes long when crc-16, and 52 bytes long when crc-8
+    pub fn serialize(&self) -> Result<Vec<u8, 60>, postcard::Error> {
+        // the struct we created is 53 bytes long when crc-16, and 52 bytes long when crc-8
         let payload = to_vec(self)?;
         Ok(payload)
     }
@@ -212,7 +212,7 @@ impl DeviceProtocol {
     // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
     // pub fn calculate_crc(device_protocol: &mut DeviceProtocol) {
     //     let mut crc: u16 = 0xFFFF; // initial value of the CRC
-    
+
     //     // iterate over the bytes of the payload and update the CRC
     //     let payload_bytes = unsafe {
     //         core::slice::from_raw_parts(
@@ -223,10 +223,10 @@ impl DeviceProtocol {
     //                 - core::mem::size_of_val(&device_protocol.crc)
     //         )
     //     };
-    
+
     //     for &byte in payload_bytes {
     //         crc ^= u16::from(byte);
-    
+
     //         for _ in 0..8 {
     //             if (crc & 0x0001) != 0 {
     //                 crc >>= 1;
@@ -236,10 +236,10 @@ impl DeviceProtocol {
     //             }
     //         }
     //     }
-    
+
     //     device_protocol.crc = crc;
     // }
-    
+
     pub fn calculate_crc16(&self) -> u16 {
         let mut state = State::<XMODEM>::new();
         state.update(&[self.mode]);
@@ -347,5 +347,4 @@ impl DeviceProtocol {
     pub fn get_end_flag(&self) -> u8 {
         self.end_flag
     }
-
 }

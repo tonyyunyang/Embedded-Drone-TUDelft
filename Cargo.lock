@@ -148,6 +148,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cordic"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ed0a176c0b8c5c95fa0523177530364c5b68a8895d9745730dbfa692a7412d0"
+dependencies = [
+ "fixed",
+]
+
+[[package]]
 name = "cortex-m"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -241,6 +250,7 @@ checksum = "f578e8e2c440e7297e008bb5486a3a8a194775224bbc23729b0dbdfaeebf162e"
 name = "drone-goes-brrr"
 version = "0.1.0"
 dependencies = [
+ "cordic",
  "micromath",
  "protocol",
  "tudelft-quadrupel",

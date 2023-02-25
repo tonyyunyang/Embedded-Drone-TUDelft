@@ -1,20 +1,21 @@
 use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::format;
+use fixed::types::I0F32;
+use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
-use fixed::{types::I0F32};
+use tudelft_quadrupel::fixed::traits::Fixed;
 use tudelft_quadrupel::fixed::{self, FixedI32};
 use tudelft_quadrupel::led::Led::Blue;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::send_bytes;
-use protocol::format::{DeviceProtocol, HostProtocol};
 
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
     let mut last = Instant::now();
-    let mut test:u8 = 0;
+    let mut test: u8 = 0;
 
     for i in 0.. {
         let _ = Blue.toggle();
@@ -59,13 +60,14 @@ pub fn control_loop() -> ! {
             // Create an instance of the Drone Protocol struct
             test += 1;
             let mut message_to_pc = DeviceProtocol::new(
-                test
-                ,dt.as_millis()
-                ,motors
-                ,[ypr.yaw.to_bits(), ypr.pitch.to_bits(), ypr.roll.to_bits()]
-                ,[accel.x, accel.y, accel.z]
-                ,bat
-                ,pres);
+                test,
+                dt.as_millis(),
+                motors,
+                [ypr.yaw.to_bits(), ypr.pitch.to_bits(), ypr.roll.to_bits()],
+                [accel.x, accel.y, accel.z],
+                bat,
+                pres,
+            );
 
             // Calculate the CRC and serialize the message
             message_to_pc.set_crc(DeviceProtocol::calculate_crc8(&message_to_pc));
@@ -77,8 +79,8 @@ pub fn control_loop() -> ! {
             if let Ok(message) = serialized_message_to_pc {
                 // The & character in &serialized_message_to_pc creates a reference to the vector that can be passed to send_bytes().
                 send_bytes(&message);
-            }else {
-                let error_bytes:[u8; 60] = [0;60];
+            } else {
+                let error_bytes: [u8; 60] = [0; 60];
                 send_bytes(&error_bytes);
             }
         }
