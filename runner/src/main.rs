@@ -2,7 +2,7 @@ use postcard::Error;
 use protocol::format::DeviceProtocol;
 use serial2::SerialPort;
 use std::env::args;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::{exit, Command};
 use std::time::Duration;
 use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
@@ -150,7 +150,7 @@ fn print_verified_message(message: &DeviceProtocol) {
 }
 
 #[allow(unused)]
-fn start_interface(port: &PathBuf) {
+fn start_interface(port: &Path) {
     let mut cmd = Command::new("python");
     cmd
         // there must be a `my_interface.py` file of course
