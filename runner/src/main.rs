@@ -89,12 +89,12 @@ fn main() {
                                     verify_message(&message);
                                 }
                                 Err(error) => {
-                                    print!("Deserialize Error: {:?}\n", error);
+                                    println!("Deserialize Error: {:?}", error);
                                 }
                             }
                         }
                     } else {
-                        print!("Deserialize Error: {:?}\n", error);
+                        println!("Deserialize Error: {:?}", error);
                     }
                 }
             }
@@ -105,48 +105,45 @@ fn main() {
 fn verify_message(message: &DeviceProtocol) {
     // we check the start bit and the end bit first
     if message.get_start_flag() != 0x7b || message.get_end_flag() != 0x7d {
-        print!("Start or End flag is wrong\n");
-        return;
+        println!("Start or End flag is wrong");
+    } else if verify_crc(message) {
+        print_verified_message(message);
     } else {
-        if verify_crc(&message) {
-            print_verified_message(&message);
-        } else {
-            print!("CRC verification failed\n");
-        }
+        println!("CRC verification failed");
     }
 }
 
 fn verify_crc(message: &DeviceProtocol) -> bool {
-    let verification_crc = DeviceProtocol::calculate_crc8(&message);
+    let verification_crc = DeviceProtocol::calculate_crc8(message);
     verification_crc == message.get_crc()
 }
 
 fn print_verified_message(message: &DeviceProtocol) {
-    print!("DTT: {:?}ms\n", message.get_duration());
-    print!("MODE: {:?}\n", message.get_mode());
-    print!(
-        "MTR: {} {} {} {}\n",
+    println!("DTT: {:?}ms", message.get_duration());
+    println!("MODE: {:?}", message.get_mode());
+    println!(
+        "MTR: {} {} {} {}",
         message.get_motor()[0],
         message.get_motor()[1],
         message.get_motor()[2],
         message.get_motor()[3]
     );
-    print!(
-        "YPR {} {} {}\n",
+    println!(
+        "YPR {} {} {}",
         f32::from_bits(message.get_ypr()[0].try_into().unwrap()),
         f32::from_bits(message.get_ypr()[1].try_into().unwrap()),
         f32::from_bits(message.get_ypr()[2].try_into().unwrap())
     );
-    print!(
-        "ACC {} {} {}\n",
+    println!(
+        "ACC {} {} {}",
         message.get_acc()[0],
         message.get_acc()[1],
         message.get_acc()[2]
     );
-    print!("BAT {bat}\n", bat = message.get_bat());
-    print!("BAR {pres} \n", pres = message.get_pres());
-    print!("CRC {crc}\n", crc = message.get_crc());
-    print!("\n");
+    println!("BAT {bat}", bat = message.get_bat());
+    println!("BAR {pres} ", pres = message.get_pres());
+    println!("CRC {crc}", crc = message.get_crc());
+    println!();
 }
 
 #[allow(unused)]
