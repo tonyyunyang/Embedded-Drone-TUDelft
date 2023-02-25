@@ -3,7 +3,6 @@ use crate::yaw_pitch_roll::YawPitchRoll;
 use protocol::format::DeviceProtocol;
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
-use tudelft_quadrupel::fixed::traits::Fixed;
 
 use tudelft_quadrupel::led::Led::Blue;
 use tudelft_quadrupel::motor::get_motors;
