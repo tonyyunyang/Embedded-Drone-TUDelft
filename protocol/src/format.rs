@@ -1,8 +1,8 @@
 use crc16::{State, XMODEM};
 use crc_any::CRCu8;
-use fixed::{types::I0F32, FixedI32};
+
 use heapless::Vec;
-use postcard::{from_bytes, to_vec, Error};
+use postcard::{from_bytes, to_vec};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
