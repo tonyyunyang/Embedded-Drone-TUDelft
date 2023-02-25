@@ -1,0 +1,39 @@
+# Use Rust latest version as the base image for the runner
+image: 'rust:latest'
+
+# Prepare the environment before running the tests and linting
+before_script:
+  # Update Rust to the latest version
+  - rustup update
+  # Add the required target for ARM Cortex-M0 and M0+ devices
+  - rustup target add thumbv6m-none-eabi
+  # Install rustfmt and Clippy for code formatting and linting
+  - rustup component add rustfmt clippy
+
+# Define cache settings to improve build performance
+cache:
+  # Specify the directory to cache (target folder containing build artifacts)
+  paths:
+    - target/
+
+# Define the 'test' stage to build and run the tests
+test:
+  stage: test
+  script:
+    # Print Rust and Cargo versions for debugging purposes
+    - rustc --version && cargo --version
+    # Build and run tests using Cargo
+    - cargo test --workspace --verbose
+
+# Define the 'lint' stage to run the code formatting and linting
+lint:
+  stage: test
+  script:
+    # Print Rust and Cargo versions for debugging purposes
+    - rustc --version && cargo --version
+    # Format the code using rustfmt and check for formatting errors
+    - cargo fmt --all -- --check
+    # Run Clippy and report warnings and errors
+    - cargo clippy --all --all-targets --all-features -- -D warnings
+    # Check the code using Cargo for any errors or warnings
+    - cargo check --workspace --verbose
