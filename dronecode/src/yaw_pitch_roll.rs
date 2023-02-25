@@ -3,7 +3,7 @@ use tudelft_quadrupel::{
     mpu::structs::Quaternion,
 };
 
-use cordic;
+
 
 // A struct to hold yaw, pitch, and roll values
 #[derive(Debug, Copy, Clone)]
