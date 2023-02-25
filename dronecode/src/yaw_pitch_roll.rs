@@ -3,8 +3,6 @@ use tudelft_quadrupel::{
     mpu::structs::Quaternion,
 };
 
-
-
 // A struct to hold yaw, pitch, and roll values
 #[derive(Debug, Copy, Clone)]
 pub struct YawPitchRoll {
@@ -22,16 +20,10 @@ impl From<Quaternion> for YawPitchRoll {
         // Calculate the values for yaw, pitch, and roll using the quaternion components
         let two = 2i32;
 
-        let (gx, gy, gz) = (
-            two * x * z - w * y,
-            two * w * x + y * z,
-            w * w - x * x - y * y + z * z,
-        );
-
-        // Convert the gx, gy, and gz values to FixedI32<types::extra::U29> format
-        let gx = FixedI32::<types::extra::U29>::from_num(gx);
-        let gy = FixedI32::<types::extra::U29>::from_num(gy);
-        let gz = FixedI32::<types::extra::U29>::from_num(gz);
+        // calculate values and format to FixedI32<types::extra::U29> format
+        let gx = FixedI32::<types::extra::U29>::from_num(two * x * z - w * y);
+        let gy = FixedI32::<types::extra::U29>::from_num(two * w * x + y * z);
+        let gz = FixedI32::<types::extra::U29>::from_num(w * w - x * x - y * y + z * z);
 
         // Calculate the values for yaw, pitch, and roll using the Cordic library
         let yaw = cordic::atan2::<FixedI32<types::extra::U29>>(gx, gz);

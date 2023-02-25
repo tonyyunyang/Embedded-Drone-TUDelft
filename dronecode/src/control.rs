@@ -1,7 +1,6 @@
 use crate::yaw_pitch_roll::YawPitchRoll;
 
-
-use protocol::format::{DeviceProtocol};
+use protocol::format::DeviceProtocol;
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::fixed::traits::Fixed;
@@ -29,31 +28,6 @@ pub fn control_loop() -> ! {
         let (accel, _) = read_raw().unwrap();
         let bat = read_battery();
         let pres = read_pressure();
-
-        // the code below is the original version
-        // if i % 100 == 0 {
-        //     send_bytes(format!("The current i is {}\n", i).as_bytes());
-        //     send_bytes(format!("DTT: {:?}ms\n", dt.as_millis()).as_bytes());
-        //     send_bytes(
-        //         format!(
-        //             "MTR: {} {} {} {}\n",
-        //             motors[0], motors[1], motors[2], motors[3]
-        //         )
-        //         .as_bytes(),
-        //     );
-        //     send_bytes(format!("YPR {} {} {}\n", ypr.yaw, ypr.pitch, ypr.roll).as_bytes());
-        //     send_bytes(format!("ACC {} {} {}\n", accel.x, accel.y, accel.z).as_bytes());
-        //     send_bytes(format!("BAT {bat}\n").as_bytes());
-        //     send_bytes(format!("BAR {pres} \n").as_bytes());
-        //     send_bytes("\n".as_bytes());
-        // }
-
-        // the code below is for debugging purpose
-        // this proves that a 60 bytes of message is not too large to be sent
-        // if i % 100 == 0{
-        //     let bytes: [u8;60] = [45; 60];
-        //     send_bytes(&bytes);
-        // }
 
         // the code below is for sending the message to the PC
         if i % 100 == 0 {
@@ -91,24 +65,3 @@ pub fn control_loop() -> ! {
     }
     unreachable!();
 }
-
-// // Optimized version
-//         if i % 100 == 0 {
-//             let output_string = format!(
-//                 "DTT: {:?}ms\nMTR: {} {} {} {}\nYPR {} {} {}\nACC {} {} {}\nBAT {}\nBAR {} \n",
-//                 dt.as_millis(),
-//                 motors[0],
-//                 motors[1],
-//                 motors[2],
-//                 motors[3],
-//                 ypr.yaw,
-//                 ypr.pitch,
-//                 ypr.roll,
-//                 accel.x,
-//                 accel.y,
-//                 accel.z,
-//                 bat,
-//                 pres
-//             );
-//             send_bytes(output_string.as_bytes());
-//         }
