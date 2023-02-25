@@ -45,14 +45,14 @@ fn main() -> ! {
 }
 
 #[inline(never)]
-#[cfg(not(test))]
+// #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     // On panic:
     // * try and write the panic message on UART
     // * blink the red light
 
-    use tudelft_quadrupel::uart;
+    // use tudelft_quadrupel::uart;
 
     if uart::is_initialized() {
         let msg = format!("{info}\n");
