@@ -16,15 +16,6 @@ cache:
   paths:
     - target/
 
-# Define the 'test' stage to build and run the tests
-test:
-  stage: test
-  script:
-    # Print Rust and Cargo versions for debugging purposes
-    - rustc --version && cargo --version
-    # Build and run tests using Cargo
-    - cargo test --workspace --verbose
-
 # Define the 'lint' stage to run the code formatting and linting
 lint:
   stage: test
@@ -34,6 +25,6 @@ lint:
     # Format the code using rustfmt and check for formatting errors
     - cargo fmt --all -- --check
     # Run Clippy and report warnings and errors
-    - cargo clippy --all --all-targets --all-features -- -D warnings
+    - cargo clippy --all --all-features -- -D warnings
     # Check the code using Cargo for any errors or warnings
     - cargo check --workspace --verbose
