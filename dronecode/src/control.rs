@@ -82,7 +82,7 @@ pub fn control_loop() -> ! {
                 gyro: todo!(),
             };
 
-            logger.log_data::<DroneLogData>(&data_log_form);
+            logger.log_data(&data_log_form);
         }
 
         // Stop the logger
