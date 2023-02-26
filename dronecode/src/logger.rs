@@ -122,7 +122,7 @@ impl BlackBoxLogger {
     }
 
     // Define a function to log data
-    pub fn log_data<T: Serialize>(&mut self, data: &DroneLogData) {
+    pub fn log_data(&mut self, data: &DroneLogData) {
         let mut buffer = [0u8; 256];
         match self.state {
             LoggerState::Idle => {
