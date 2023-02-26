@@ -68,19 +68,19 @@ pub fn control_loop() -> ! {
 
             // First fill in the data log form
             // Then do logger.log_data(&data_log_form);
-            let data_log_form = DroneLogData::new(
-                todo!(),
-                todo!(),
-                todo!(),
-                todo!(),
-                todo!(),
-                todo!(),
-                todo!(),
-                todo!(),
-                todo!(),
-                todo!(),
-                todo!(),
-            );
+            let data_log_form = DroneLogData {
+                timestamp: todo!(),
+                accel: todo!(),
+                motor: todo!(),
+                ypr: todo!(),
+                bat,
+                pres,
+                cpu_usage: todo!(),
+                ram_usage: todo!(),
+                flash_usage: todo!(),
+                mode: todo!(),
+                gyro: todo!(),
+            };
 
             logger.log_data::<DroneLogData>(&data_log_form);
         }

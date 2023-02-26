@@ -153,45 +153,15 @@ impl BlackBoxLogger {
 // Define the struct that represents the drone data to be logged
 #[derive(Serialize, Deserialize)]
 pub struct DroneLogData {
-    timestamp: u64,
-    accel: [i16; 3],
-    motor: [u16; 4],
-    ypr: [i32; 3],
-    bat: u16,
-    pres: u32,
-    cpu_usage: u8,
-    ram_usage: u8,
-    flash_usage: u8,
-    mode: u8,
-    gyro: [i16; 3],
-}
-
-impl DroneLogData {
-    pub fn new(
-        timestamp: u64,
-        accel: [i16; 3],
-        motor: [u16; 4],
-        ypr: [i32; 3],
-        bat: u16,
-        pres: u32,
-        cpu_usage: u8,
-        ram_usage: u8,
-        flash_usage: u8,
-        mode: u8,
-        gyro: [i16; 3],
-    ) -> Self {
-        DroneLogData {
-            timestamp,
-            accel,
-            motor,
-            ypr,
-            bat,
-            pres,
-            cpu_usage,
-            ram_usage,
-            flash_usage,
-            mode,
-            gyro,
-        }
-    }
+    pub timestamp: u64,
+    pub accel: [i16; 3],
+    pub motor: [u16; 4],
+    pub ypr: [i32; 3],
+    pub bat: u16,
+    pub pres: u32,
+    pub cpu_usage: u8,
+    pub ram_usage: u8,
+    pub flash_usage: u8,
+    pub mode: u8,
+    pub gyro: [i16; 3],
 }
