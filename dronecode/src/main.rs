@@ -19,6 +19,7 @@ use tudelft_quadrupel::{entry, uart};
 mod control;
 mod logger;
 mod yaw_pitch_roll;
+
 /// The heap size of your drone code in bytes.
 /// Note: there are 8192 bytes of RAM available.
 const HEAP_SIZE: usize = 4096;

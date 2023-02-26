@@ -1,4 +1,4 @@
-use crate::logger;
+use crate::logger::{self, DroneLogData};
 use crate::yaw_pitch_roll::YawPitchRoll;
 
 use protocol::format::DeviceProtocol;
@@ -68,6 +68,21 @@ pub fn control_loop() -> ! {
 
             // First fill in the data log form
             // Then do logger.log_data(&data_log_form);
+            let data_log_form = DroneLogData::new(
+                todo!(),
+                todo!(),
+                todo!(),
+                todo!(),
+                todo!(),
+                todo!(),
+                todo!(),
+                todo!(),
+                todo!(),
+                todo!(),
+                todo!(),
+            );
+
+            logger.log_data::<DroneLogData>(&data_log_form);
         }
 
         // Stop the logger

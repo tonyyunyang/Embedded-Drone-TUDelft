@@ -32,8 +32,15 @@
 // The data will be stored as a postcard encoded byte array.
 
 // Import necessary crates
+use logger_storage::PageBasedLogger;
 use postcard::to_slice_cobs;
 use serde::{Deserialize, Serialize};
+
+mod logger_storage;
+
+const PAGE_SIZE: usize = 256;
+const FLASH_START: u32 = 0x000000;
+const FLASH_END: u32 = 0x01FFFE;
 
 // Define the states of the logger
 #[derive(Clone, Copy)]
@@ -43,18 +50,10 @@ enum LoggerState {
     Error,
 }
 
-// Define the possible transitions of the logger
-enum LoggerTransition {
-    Start,
-    Stop,
-    Error,
-    Reset,
-}
-
 // Define the struct that represents the logger
 pub(crate) struct BlackBoxLogger {
     state: LoggerState,
-    transition: LoggerTransition,
+    storer: PageBasedLogger,
     // Add any additional necessary fields
 }
 
@@ -63,7 +62,7 @@ impl BlackBoxLogger {
     pub fn new() -> Self {
         BlackBoxLogger {
             state: LoggerState::Idle,
-            transition: LoggerTransition::Stop,
+            storer: PageBasedLogger::new(FLASH_START, FLASH_END, PAGE_SIZE),
             // Initialize any additional fields here
         }
     }
@@ -72,7 +71,6 @@ impl BlackBoxLogger {
     pub fn start_logging(&mut self) {
         match self.state {
             LoggerState::Idle => {
-                self.transition = LoggerTransition::Start;
                 self.state = LoggerState::Logging;
             }
             LoggerState::Logging => {
@@ -91,7 +89,6 @@ impl BlackBoxLogger {
                 // Do nothing, already idle
             }
             LoggerState::Logging => {
-                self.transition = LoggerTransition::Stop;
                 self.state = LoggerState::Idle;
             }
             LoggerState::Error => {
@@ -107,7 +104,6 @@ impl BlackBoxLogger {
                 // Do nothing, logger is already idle
             }
             LoggerState::Logging => {
-                self.transition = LoggerTransition::Error;
                 self.state = LoggerState::Error;
             }
             LoggerState::Error => {
@@ -118,12 +114,12 @@ impl BlackBoxLogger {
 
     // Define a function to reset the logger
     pub fn reset(&mut self) {
-        self.transition = LoggerTransition::Reset;
+        self.storer.reset();
         self.state = LoggerState::Idle;
     }
 
     // Define a function to log data
-    pub fn log_data<T: Serialize>(&self, data: &DroneLogData) {
+    pub fn log_data<T: Serialize>(&mut self, data: &DroneLogData) {
         let mut buffer = [0u8; 256];
         match self.state {
             LoggerState::Idle => {
@@ -133,9 +129,9 @@ impl BlackBoxLogger {
                 // Encode the data
                 let result = to_slice_cobs(&data, &mut buffer);
                 match result {
-                    Ok(len) => {
-                        todo!("Implement a circular buffer to store the data")
-                        // encoded_buffer_len = len;
+                    Ok(encoded_data) => {
+                        // Write the data to the flash
+                        self.storer.write(encoded_data);
                     }
                     Err(_) => {
                         // Do nothing, error encoding data

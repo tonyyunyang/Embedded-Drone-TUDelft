@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tudelft-quadrupel = {version="1"}
+tudelft-quadrupel = {version="2"}
 micromath = "2.0.0"
 cordic = "0.1.5"
 postcard = "1.0.4"
