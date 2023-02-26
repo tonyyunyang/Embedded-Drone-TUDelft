@@ -148,7 +148,7 @@ impl BlackBoxLogger {
         }
     }
 
-    // Optional when we find to have too much data in a circular buffer
+    // Optional when we find to have too much data on the flash and we have enough computational power/time to compress the data
     fn compress_data(&self, data: &[u8]) -> &[u8] {
         todo!()
     }
