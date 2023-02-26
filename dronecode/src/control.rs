@@ -1,3 +1,4 @@
+use crate::logger;
 use crate::yaw_pitch_roll::YawPitchRoll;
 
 use protocol::format::DeviceProtocol;
@@ -28,6 +29,10 @@ pub fn control_loop() -> ! {
         let bat = read_battery();
         let pres = read_pressure();
 
+        let mut logger = logger::BlackBoxLogger::new();
+
+        logger.start_logging();
+
         // the code below is for sending the message to the PC
         if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
@@ -56,7 +61,17 @@ pub fn control_loop() -> ! {
                 let error_bytes: [u8; 60] = [0; 60];
                 send_bytes(&error_bytes);
             }
+
+            /**********************
+             **** Data logging ****
+             **********************/
+
+            // First fill in the data log form
+            // Then do logger.log_data(&data_log_form);
         }
+
+        // Stop the logger
+        logger.stop_logging();
 
         // wait until the timer interrupt goes off again
         // based on the frequency set above
