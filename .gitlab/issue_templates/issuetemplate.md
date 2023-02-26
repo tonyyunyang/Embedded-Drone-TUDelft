@@ -4,7 +4,7 @@
 - [ ] [Put the things that need to be done in checklist format]
 - [ ] [Example: Make a list of requirements]
 
-**Methodoly/Hypotheses**
+**Methodology/Hypotheses**
 - [List any potential methods of operation or hypotheses to the solution here]
 - [Example: The MoSCoW method is used to create a list of requirements]
 
