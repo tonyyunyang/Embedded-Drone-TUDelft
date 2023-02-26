@@ -29,6 +29,7 @@ impl PageBasedLogger {
                 // This temporarily I am not sure if I want to keep this function here
             }
             Err(_) => {
+                todo!("Handle error");
                 // Handle error
             }
         }
@@ -110,6 +111,7 @@ impl PageBasedLogger {
                 self.buffer.clear();
             }
             Err(_) => {
+                todo!("Handle error");
                 // TODO: handle error
             }
         }
