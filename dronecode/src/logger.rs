@@ -78,6 +78,7 @@ impl BlackBoxLogger {
             }
             LoggerState::Error => {
                 // Do nothing, logger is in error state
+                todo!("Handle error in error state")
             }
         }
     }
@@ -93,6 +94,7 @@ impl BlackBoxLogger {
             }
             LoggerState::Error => {
                 // Do nothing, logger is in error state
+                todo!("Handle error in error state")
             }
         }
     }
@@ -108,6 +110,7 @@ impl BlackBoxLogger {
             }
             LoggerState::Error => {
                 // Do nothing, already in error state
+                todo!("Handle error in error state")
             }
         }
     }
@@ -135,6 +138,7 @@ impl BlackBoxLogger {
                     }
                     Err(_) => {
                         // Do nothing, error encoding data
+                        todo!("Handle error encoding data")
                     }
                 }
             }
