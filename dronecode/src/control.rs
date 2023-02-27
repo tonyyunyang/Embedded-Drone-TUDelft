@@ -43,7 +43,6 @@ pub fn control_loop() -> ! {
                 dt.as_millis(),
                 motors,
                 [ypr.yaw, ypr.pitch, ypr.roll],
-                // [I6F26::from_num(0), I6F26::from_num(0), I6F26::from_num(0)],
                 [accel.x, accel.y, accel.z],
                 bat,
                 pres,

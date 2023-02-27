@@ -6,6 +6,7 @@ use std::path::Path;
 use std::process::{exit, Command};
 use std::time::Duration;
 use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
+use std::thread;
 
 fn main() {
     // get a filename from the command line. This filename will be uploaded to the drone
@@ -58,10 +59,28 @@ fn main() {
     //     }
     // }
 
+    let receive_device_message = thread::spawn(move || {
+        loop_receive_device_message(&mut serial, &mut buf);
+    });
+
+    let read_user_input = thread::spawn(move || {
+        loop_read_user_input();
+    });
+
+    let send_host_command = thread::spawn(move || {
+        loop_send_host_command();
+    });
+
+    send_host_command.join().unwrap();
+    receive_device_message.join().unwrap();
+    read_user_input.join().unwrap();
+}
+
+fn loop_receive_device_message(serial: &mut SerialPort, buf: &mut [u8; 255]) {
     // below is the code receiving data from the drone via protocol and printing them out
     loop {
         // read the serial port
-        if let Ok(num) = serial.read(&mut buf) {
+        if let Ok(num) = serial.read(buf) {
             // when the program starts, the pc will read garbage data, so we need to ignore them
             if buf[0] != 123 {
                 continue;
@@ -80,7 +99,7 @@ fn main() {
                         let mut full_message = Vec::new();
                         full_message.extend_from_slice(&buf[0..num]);
                         // we read once again from the buffer here
-                        if let Ok(num) = serial.read(&mut buf) {
+                        if let Ok(num) = serial.read(buf) {
                             full_message.extend_from_slice(&buf[0..num]);
                             let message_from_drone = DeviceProtocol::deserialize(&full_message);
                             match message_from_drone {
@@ -100,6 +119,14 @@ fn main() {
             }
         }
     }
+}
+
+fn loop_read_user_input(){
+
+}
+
+fn loop_send_host_command(){
+
 }
 
 fn verify_message(message: &DeviceProtocol) {
