@@ -1,9 +1,7 @@
 use core::mem;
 
 use tudelft_quadrupel::flash::{flash_chip_erase, flash_write_bytes};
-use tudelft_quadrupel::ringbuffer::{
-    AllocRingBuffer, RingBuffer, RingBufferExt, RingBufferRead,
-};
+use tudelft_quadrupel::ringbuffer::{AllocRingBuffer, RingBuffer, RingBufferExt, RingBufferRead};
 
 const MAX_PAGE_SIZE: usize = 256;
 const PAGE_MASK: usize = MAX_PAGE_SIZE - 1;
