@@ -130,9 +130,9 @@ fn print_verified_message(message: &DeviceProtocol) {
     );
     println!(
         "YPR {} {} {}",
-        f32::from_bits(message.get_ypr()[0].try_into().unwrap()),
-        f32::from_bits(message.get_ypr()[1].try_into().unwrap()),
-        f32::from_bits(message.get_ypr()[2].try_into().unwrap())
+        message.get_ypr()[0],
+        message.get_ypr()[1],
+        message.get_ypr()[2]
     );
     println!(
         "ACC {} {} {}",

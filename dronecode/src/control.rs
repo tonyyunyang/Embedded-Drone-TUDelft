@@ -5,6 +5,8 @@ use protocol::format::DeviceProtocol;
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 
+use tudelft_quadrupel::block;
+use tudelft_quadrupel::fixed::types::I6F26;
 use tudelft_quadrupel::led::Led::Blue;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
@@ -16,6 +18,9 @@ pub fn control_loop() -> ! {
     let mut last = Instant::now();
     let mut test: u8 = 0;
 
+    // let mut logger = logger::BlackBoxLogger::new();
+    // logger.start_logging();
+
     for i in 0.. {
         let _ = Blue.toggle();
         let now = Instant::now();
@@ -23,15 +28,11 @@ pub fn control_loop() -> ! {
         last = now;
 
         let motors = get_motors();
-        let quaternion = read_dmp_bytes().unwrap();
+        let quaternion = block!(read_dmp_bytes()).unwrap();
         let ypr = YawPitchRoll::from(quaternion);
         let (accel, _) = read_raw().unwrap();
         let bat = read_battery();
         let pres = read_pressure();
-
-        let mut logger = logger::BlackBoxLogger::new();
-
-        logger.start_logging();
 
         // the code below is for sending the message to the PC
         if i % 100 == 0 {
@@ -41,7 +42,8 @@ pub fn control_loop() -> ! {
                 test,
                 dt.as_millis(),
                 motors,
-                [ypr.yaw.to_bits(), ypr.pitch.to_bits(), ypr.roll.to_bits()],
+                [ypr.yaw, ypr.pitch, ypr.roll],
+                // [I6F26::from_num(0), I6F26::from_num(0), I6F26::from_num(0)],
                 [accel.x, accel.y, accel.z],
                 bat,
                 pres,
@@ -68,25 +70,25 @@ pub fn control_loop() -> ! {
 
             // First fill in the data log form
             // Then do logger.log_data(&data_log_form);
-            let data_log_form = DroneLogData {
-                timestamp: now.ns_since_start(),
-                accel: [accel.x, accel.y, accel.z],
-                motor: motors,
-                ypr: [ypr.yaw.to_bits(), ypr.pitch.to_bits(), ypr.roll.to_bits()],
-                bat,
-                pres,
-                cpu_usage: 0,
-                ram_usage: 0,
-                flash_usage: 0,
-                mode: test,
-            };
+            // let data_log_form = DroneLogData {
+            //     timestamp: now.ns_since_start(),
+            //     accel: [accel.x, accel.y, accel.z],
+            //     motor: motors,
+            //     ypr: [ypr.yaw.to_bits(), ypr.pitch.to_bits(), ypr.roll.to_bits()],
+            //     bat,
+            //     pres,
+            //     cpu_usage: 0,
+            //     ram_usage: 0,
+            //     flash_usage: 0,
+            //     mode: test,
+            // };
 
-            logger.log(&data_log_form);
+            // logger.log(&data_log_form);
 
-            if (i % 1000) == 0 {
-                // Stop logging every 10 seconds
-                logger.stop_logging();
-            }
+            // if (i % 1000) == 0 {
+            //     // Stop logging every 10 seconds
+            //     logger.stop_logging();
+            // }
         }
 
         // Stop the logger

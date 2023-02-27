@@ -1,6 +1,10 @@
 use crc16::{State, XMODEM};
 use crc_any::CRCu8;
 
+use fixed::{
+    types::{self, extra, I16F16, I4F28, I5F27, I6F26},
+    FixedI32,
+};
 use heapless::Vec;
 use postcard::{from_bytes, to_vec};
 use serde::{Deserialize, Serialize};
@@ -29,7 +33,7 @@ pub struct DeviceProtocol {
     mode: u8,        // Two bytes to represent 9 modes
     duration: u128,  // This is the duration of the tramision, 16 bytes
     motor: [u16; 4], // This is the data of the 4 motors on the drone, each motor has 2 bytes
-    ypr: [i32; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
+    ypr: [I6F26; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
     acc: [i16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
     bat: u16,      // This is the data of the battery of the drone, 2 bytes
     pres: u32,     // This is the data of the pressure of the drone, 4 bytes
@@ -177,7 +181,7 @@ impl DeviceProtocol {
         mode: u8,
         duration: u128,
         motor: [u16; 4],
-        ypr: [i32; 3],
+        ypr: [I6F26; 3],
         acc: [i16; 3],
         bat: u16,
         pres: u32,
@@ -288,7 +292,7 @@ impl DeviceProtocol {
         self.motor = motor;
     }
 
-    pub fn set_ypr(&mut self, ypr: [i32; 3]) {
+    pub fn set_ypr(&mut self, ypr: [I6F26; 3]) {
         self.ypr = ypr;
     }
 
@@ -324,7 +328,7 @@ impl DeviceProtocol {
         self.motor
     }
 
-    pub fn get_ypr(&self) -> [i32; 3] {
+    pub fn get_ypr(&self) -> [I6F26; 3] {
         self.ypr
     }
 

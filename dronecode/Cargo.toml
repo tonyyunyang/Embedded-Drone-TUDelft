@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 tudelft-quadrupel = {version="2"}
 micromath = "2.0.0"
-cordic = "0.1.5"
+fixed_trigonometry = "0.4.3"
 postcard = "1.0.4"
 serde = {version="1.0.152", default-features = false, features = ["alloc"]}
 protocol = {path = "../protocol"}
