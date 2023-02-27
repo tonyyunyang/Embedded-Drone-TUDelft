@@ -69,24 +69,29 @@ pub fn control_loop() -> ! {
             // First fill in the data log form
             // Then do logger.log_data(&data_log_form);
             let data_log_form = DroneLogData {
-                timestamp: todo!(),
-                accel: todo!(),
-                motor: todo!(),
-                ypr: todo!(),
+                timestamp: now.ns_since_start(),
+                accel: [accel.x, accel.y, accel.z],
+                motor: motors,
+                ypr: [ypr.yaw.to_bits(), ypr.pitch.to_bits(), ypr.roll.to_bits()],
                 bat,
                 pres,
-                cpu_usage: todo!(),
-                ram_usage: todo!(),
-                flash_usage: todo!(),
-                mode: todo!(),
-                gyro: todo!(),
+                cpu_usage: 0,
+                ram_usage: 0,
+                flash_usage: 0,
+                mode: test,
             };
 
-            logger.log_data(&data_log_form);
+            logger.log(&data_log_form);
+
+            if (i % 1000) == 0 {
+                // Stop logging every 10 seconds
+                logger.stop_logging();
+            }
         }
 
         // Stop the logger
-        logger.stop_logging();
+
+        // Read from the flash memory
 
         // wait until the timer interrupt goes off again
         // based on the frequency set above

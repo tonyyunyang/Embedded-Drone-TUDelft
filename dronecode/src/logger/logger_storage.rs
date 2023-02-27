@@ -1,3 +1,5 @@
+use core::mem;
+
 use tudelft_quadrupel::flash::{flash_chip_erase, flash_write_bytes};
 use tudelft_quadrupel::ringbuffer::{
     AllocRingBuffer, RingBuffer, RingBufferExt, RingBufferRead, RingBufferWrite,
@@ -129,16 +131,21 @@ impl PageBasedLogger {
     }
 
     fn enqueue_slice(&mut self, data: &[u8]) {
-        data.iter().for_each(|byte| {
-            self.buffer.enqueue(*byte);
-        });
+        self.buffer.extend(data.to_vec());
     }
 
     fn dequeue_slice(&mut self, size: usize, output: &mut [u8]) -> usize {
         let mut i = 0;
-        while i < size {
-            if let Some(byte) = self.buffer.dequeue() {
-                output[i] = byte;
+
+        // Check if size is 0
+        if size == 0 {
+            return i;
+        }
+
+        // Use a for loop instead of while
+        for _ in 0..size {
+            if let Some(mut byte) = self.buffer.dequeue() {
+                mem::swap(&mut output[i], &mut byte);
                 i += 1;
             } else {
                 break;

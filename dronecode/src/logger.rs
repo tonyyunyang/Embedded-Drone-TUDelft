@@ -100,7 +100,7 @@ impl BlackBoxLogger {
     }
 
     // Define a function to handle errors in logging
-    pub fn handle_error(&mut self) {
+    fn handle_error(&mut self) {
         match self.state {
             LoggerState::Idle => {
                 // Do nothing, logger is already idle
@@ -116,13 +116,13 @@ impl BlackBoxLogger {
     }
 
     // Define a function to reset the logger
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         self.storer.reset();
         self.state = LoggerState::Idle;
     }
 
     // Define a function to log data
-    pub fn log_data(&mut self, data: &DroneLogData) {
+    pub fn log(&mut self, data: &DroneLogData) {
         let mut buffer = [0u8; 256];
         match self.state {
             LoggerState::Idle => {
@@ -167,5 +167,4 @@ pub struct DroneLogData {
     pub ram_usage: u8,
     pub flash_usage: u8,
     pub mode: u8,
-    pub gyro: [i16; 3],
 }
