@@ -2,8 +2,7 @@ use crc16::{State, XMODEM};
 use crc_any::CRCu8;
 
 use fixed::{
-    types::{self, extra, I16F16, I4F28, I5F27, I6F26},
-    FixedI32,
+    types::{I6F26},
 };
 use heapless::Vec;
 use postcard::{from_bytes, to_vec};

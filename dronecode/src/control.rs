@@ -1,4 +1,4 @@
-use crate::logger::{self, DroneLogData};
+
 use crate::yaw_pitch_roll::YawPitchRoll;
 
 use protocol::format::DeviceProtocol;
@@ -6,7 +6,7 @@ use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 
 use tudelft_quadrupel::block;
-use tudelft_quadrupel::fixed::types::I6F26;
+
 use tudelft_quadrupel::led::Led::Blue;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
