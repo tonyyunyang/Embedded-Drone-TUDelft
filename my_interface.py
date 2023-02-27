@@ -2,16 +2,17 @@
 from curses.ascii import isalpha
 from multiprocessing.connection import Listener
 import struct
-import this
+# import this
 import pygame
 import time
 import sys
 import os
 import subprocess
 from pynput import keyboard
+from tomlkit import key
 # Initialize the joysticks
 pygame.init()
-pygame.joystick.init()
+pygame.joystick.init() 
 
 # Get ready to print
 joysticks= pygame.joystick.get_count()
@@ -76,30 +77,44 @@ def get_keyboard_data():
                  break
                 if  event.key == keyboard.Key.up or event.key== keyboard.Key.down or event.key== keyboard.Key.left or event.key== keyboard.Key.right:
                     if event.key == keyboard.Key.up and type(event) == keyboard.Events.Press:
-                        pitch = pitch + 0.1
+                        if pitch <= 0.9:
+                         pitch = pitch + 0.1
                         print("Pitch: ", pitch)
                     elif event.key == keyboard.Key.down and type(event) == keyboard.Events.Press:
-                        pitch = pitch - 0.1
+                        if pitch >= -0.9:
+                         pitch = pitch - 0.1
                         print("Pitch: ", pitch)
                     elif event.key == keyboard.Key.left and type(event) == keyboard.Events.Press:
-                        roll = roll + 0.1
+                        if roll <= 0.9:
+                         roll = roll + 0.1
                         print("Roll: ", roll)
                     elif event.key == keyboard.Key.right and type(event) == keyboard.Events.Press:
-                        roll = roll - 0.1
+                        if roll >=-0.9:
+                         roll = roll - 0.1
                         print("Roll: ", roll) 
                 else:
                      if event.key == keyboard.KeyCode(char="a") and type(event) == keyboard.Events.Press:
-                            lift = lift + 0.1
+                            if lift <= 0.9:
+                             lift = lift + 0.1
                             print("Thrust: ", lift)  
                      elif event.key == keyboard.KeyCode(char="z") and type(event) == keyboard.Events.Press:
-                            lift = lift - 0.1
+                            if lift >= -0.9:
+                             lift = lift - 0.1
                             print("Thrust: ", lift)     
                      elif event.key == keyboard.KeyCode(char="q") and type(event) == keyboard.Events.Press:
-                            yaw = yaw + 0.1
+                            if yaw <= 0.9:
+                             yaw = yaw + 0.1
                             print("Yaw: ", yaw)
                      elif event.key == keyboard.KeyCode(char="w") and type(event) == keyboard.Events.Press:
-                            yaw = yaw - 0.1
+                            if yaw >= -0.9:
+                             yaw = yaw - 0.1 
                             print("Yaw: ", yaw)
+                     elif event.key == keyboard.KeyCode(char ='1') and type(event) == keyboard.Events.Press:
+                         print( "Mode1")
+                     elif event.key == keyboard.KeyCode(char ='0') and type(event) == keyboard.Events.Press:
+                         print( "Mode0")
+                     else:
+                         break
         return done
         #need to add for yaw control and pitch control ??aaa
 #function to get the data from the joystick or keyboard
@@ -109,7 +124,7 @@ def get_data():
 
 # -------- Main Program Loop -----------
 while done==False:
-        print("in python code")
+        # print("in python code")
         if(joysticks > 0):
             done=get_joystick_data()
             print(get_data())
