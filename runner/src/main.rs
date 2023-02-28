@@ -75,7 +75,7 @@ fn main() {
     });
     
     let send_host_command = thread::spawn(move || {
-        // loop_send_host_command(port_ref2);
+        loop_send_host_command(port_ref2);
     });
 
     send_host_command.join().unwrap();
@@ -84,48 +84,47 @@ fn main() {
 
 }
 
-fn loop_receive_device_message(port: PathBuf, buf: &mut [u8; 255]) {
-    // below is the code receiving data from the drone via protocol and printing them out
+fn loop_receive_device_message(port: PathBuf, buf: &mut [u8;255]) {
     let mut serial = SerialPort::open(port, 115200).unwrap();
     serial.set_read_timeout(Duration::from_secs(1)).unwrap();
-
-    loop {
+    let mut messsage_buffer: Vec<u8> = Vec::new();
+    let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
+    let mut start_receiving = false;
+    'outer: loop {
         // read the serial port
         if let Ok(num) = serial.read(buf) {
-            // when the program starts, the pc will read garbage data, so we need to ignore them
-            if buf[0] != 123 {
-                continue;
-            }
-            // deserialize the message
-            let message_from_drone = DeviceProtocol::deserialize(&mut buf[0..num]);
-            // capture whether the message is complete
-            match message_from_drone {
-                Ok(message) => {
-                    // verfiy the message
-                    verify_message(&message);
+            'inner: for i in 0..num {
+                let received_byte = buf[i];
+                if received_byte == 0x7b && start_receiving == false {
+                    messsage_buffer.clear();
+                    start_receiving = true;
                 }
-                Err(error) => {
-                    // if the message seems to be incomplete, read once more from the buffer
-                    if error == Error::DeserializeUnexpectedEnd {
-                        let mut full_message = Vec::new();
-                        full_message.extend_from_slice(&buf[0..num]);
-                        // we read once again from the buffer here
-                        if let Ok(num) = serial.read(buf) {
-                            full_message.extend_from_slice(&buf[0..num]);
-                            let message_from_drone = DeviceProtocol::deserialize(&full_message);
-                            match message_from_drone {
-                                Ok(message) => {
-                                    // verfiy the full message
-                                    verify_message(&message);
-                                }
-                                Err(error) => {
-                                    println!("Deserialize Error: {:?}", error);
-                                }
-                            }
-                        }
-                    } else {
-                        println!("Deserialize Error: {:?}", error);
+                if start_receiving == true {
+                    messsage_buffer.push(received_byte);
+                    received_bytes_count += 1;
+                }
+                if received_bytes_count < 40 {
+                    continue 'inner;
+                }
+                // when it reaches here, the bytes recieved is already >= 40
+                if received_byte == 0x7d && start_receiving == true {
+                    if received_bytes_count > 40 {
+                        messsage_buffer.clear();
+                        received_bytes_count = 0;
+                        start_receiving = false;
+                        continue 'outer;
+                    } else if received_bytes_count == 40 {
+                        // format the message
+                        let nice_received_message = DeviceProtocol::format_message(&mut messsage_buffer);
+                        // verify the message, and print out the message
+                        verify_message(&nice_received_message);
+                        // clean everything, initialize everything and start receiving again
+                        messsage_buffer.clear();
+                        received_bytes_count = 0;
+                        start_receiving = false;
+                        continue 'outer;
                     }
+                        
                 }
             }
         }
@@ -139,39 +138,14 @@ fn loop_read_user_input(){
 fn loop_send_host_command(port: PathBuf){
     let mut serial = SerialPort::open(port, 115200).unwrap();
     serial.set_write_timeout(Duration::from_secs(1)).unwrap();
-
     loop {
         // send a message to the drone
-        let mut message_to_device = HostProtocol::new(1, 1, 1, 1,  1, 1, 1, 1);
-        message_to_device.set_crc(HostProtocol::calculate_crc8(&message_to_device));
-        let serialized_message_to_pc = HostProtocol::serialize(&message_to_device);
-        match serialized_message_to_pc {
-            Ok(message) => {
-                // send the message to the drone
-                let message_size = serial.write(&message);
-
-                // below is for debugging purpose
-                // match message_size {
-                //     Ok(size) => {
-                //         println!("Message sent, size: {}", size);
-                //         print!("The Message is:\n");
-
-                //         for i in 0..=size-1 {
-                //             print!("{} ", message[i]);
-                //         }
-
-                //         print!("\n");
-                //     }
-                //     Err(error) => {
-                //         println!("Write Error: {:?}", error);
-                //     }
-                // }
-            }
-            Err(error) => {
-                println!("Serialize Error: {:?}", error);
-            }
-        }
-        sleep(time::Duration::from_millis(100));
+        let message_to_device = HostProtocol::new(1, 1, 1, 1,  1, 1, 1, 1);
+        let mut message = Vec::new();
+        message_to_device.form_message(&mut message);
+        let _size = serial.write(&message).unwrap();
+        // println!("---------------------------------\nSent {} bytes\n----------------------", size);
+        sleep(time::Duration::from_millis(200));
     }
 }
 
@@ -187,7 +161,7 @@ fn verify_message(message: &DeviceProtocol) {
 }
 
 fn verify_crc(message: &DeviceProtocol) -> bool {
-    let verification_crc = DeviceProtocol::calculate_crc8(message);
+    let verification_crc = DeviceProtocol::calculate_crc16(message);
     verification_crc == message.get_crc()
 }
 

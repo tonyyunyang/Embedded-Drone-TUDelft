@@ -88,24 +88,36 @@ impl HostProtocol {
     }
 
     // Form the message to be sent to the drone in bytes, namely form an array of bytes
-    pub fn form_message(&self) -> [u8; 11] {
-        let mut message: [u8; 11] = [0; 11];
-        message[0] = self.start_flag;
-        message[1] = self.mode;
-        message[2] = self.joystick_lift;
-        message[3] = self.joystick_yaw;
-        message[4] = self.keyboard_yaw;
-        message[5] = self.joystick_pitch;
-        message[6] = self.keyboard_pitch_roll_1;
-        message[7] = self.keyboard_pitch_roll_2;
-        message[8] = self.joystick_roll;
-        // let crc = self.calculate_crc8().to_be_bytes();
-        // message[9..10].copy_from_slice(&crc);
-        // message[11] = self.end_flag;
-        let crc = self.calculate_crc8();
-        message[9] = crc;
-        message[10] = self.end_flag;
-        message
+    // the size of the message formed now is 12 bytes
+    pub fn form_message(&self, message: &mut vec::Vec<u8>) {
+        message.push(self.start_flag);
+        message.push(self.mode);
+        message.push(self.joystick_lift);
+        message.push(self.joystick_yaw);
+        message.push(self.keyboard_yaw);
+        message.push(self.joystick_pitch);
+        message.push(self.keyboard_pitch_roll_1);
+        message.push(self.keyboard_pitch_roll_2);
+        message.push(self.joystick_roll);
+        let crc = self.calculate_crc16();
+        message.extend_from_slice(&crc.to_be_bytes());
+        message.push(self.end_flag);
+    }
+
+    pub fn format_message(message: &mut vec::Vec<u8>) -> HostProtocol {
+        let mut format_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
+        format_message.set_start_flag(message[0]);
+        format_message.set_mode(message[1]);
+        format_message.set_joystick_lift(message[2]);
+        format_message.set_joystick_yaw(message[3]);
+        format_message.set_keyboard_yaw(message[4]);
+        format_message.set_joystick_pitch(message[5]);
+        format_message.set_keyboard_pitch_roll_1(message[6]);
+        format_message.set_keyboard_pitch_roll_2(message[7]);
+        format_message.set_joystick_roll(message[8]);
+        format_message.set_crc(u16::from_be_bytes([message[9], message[10]]));
+        format_message.set_end_flag(message[11]);
+        format_message
     }
 
     // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
@@ -143,7 +155,10 @@ impl HostProtocol {
         state.update(&[self.mode]);
         state.update(&[self.joystick_lift]);
         state.update(&[self.joystick_yaw]);
+        state.update(&[self.keyboard_yaw]);
         state.update(&[self.joystick_pitch]);
+        state.update(&[self.keyboard_pitch_roll_1]);
+        state.update(&[self.keyboard_pitch_roll_2]);
         state.update(&[self.joystick_roll]);
         state.get()
     }
@@ -153,9 +168,16 @@ impl HostProtocol {
         crc.digest(&[self.mode]);
         crc.digest(&[self.joystick_lift]);
         crc.digest(&[self.joystick_yaw]);
+        crc.digest(&[self.keyboard_yaw]);
         crc.digest(&[self.joystick_pitch]);
+        crc.digest(&[self.keyboard_pitch_roll_1]);
+        crc.digest(&[self.keyboard_pitch_roll_2]);
         crc.digest(&[self.joystick_roll]);
         crc.get_crc()
+    }
+
+    pub fn set_start_flag(&mut self, start_flag: u8) {
+        self.start_flag = start_flag;
     }
 
     pub fn set_mode(&mut self, mode: u8) {
@@ -192,6 +214,10 @@ impl HostProtocol {
 
     pub fn set_crc(&mut self, crc: u16) {
         self.crc = crc;
+    }
+
+    pub fn set_end_flag(&mut self, end_flag: u8) {
+        self.end_flag = end_flag;
     }
 
     pub fn get_start_flag(&self) -> u8 {
@@ -299,31 +325,23 @@ impl DeviceProtocol {
         let crc = self.calculate_crc16();
         message.extend_from_slice(&crc.to_be_bytes());
         message.push(self.end_flag);
-
-        // message[0] = self.start_flag;
-        // message[1] = self.mode;
-        // message[2..=17].copy_from_slice(&self.duration.to_be_bytes());
-        // message[18..=19].copy_from_slice(&self.motor[0].to_be_bytes());
-        // message[20..=21].copy_from_slice(&self.motor[1].to_be_bytes());
-        // message[22..=23].copy_from_slice(&self.motor[2].to_be_bytes());
-        // message[24..=25].copy_from_slice(&self.motor[3].to_be_bytes());
-        // message[26..=29].copy_from_slice(&self.ypr[0].to_be_bytes());
-        // message[30..=33].copy_from_slice(&self.ypr[1].to_be_bytes());
-        // message[34..=37].copy_from_slice(&self.ypr[2].to_be_bytes());
-        // message[38..=39].copy_from_slice(&self.acc[0].to_be_bytes());
-        // message[40..=41].copy_from_slice(&self.acc[1].to_be_bytes());
-        // message[42..=43].copy_from_slice(&self.acc[2].to_be_bytes());
-        // message[44..=45].copy_from_slice(&self.bat.to_be_bytes());
-        // message[46..=49].copy_from_slice(&self.pres.to_be_bytes());
-        // message[50] = self.ack;
-        // // let crc = self.calculate_crc16().to_be_bytes();
-        // // message[51..53].copy_from_slice(&crc);
-        // // message[53] = self.end_flag;
-        // let crc = self.calculate_crc8();
-        // message[51] = crc;
-        // message[52] = self.end_flag;
     }
 
+    pub fn format_message(message: &mut vec::Vec<u8>) -> DeviceProtocol {
+        let mut format_message = DeviceProtocol::new(0, 0, [0; 4], [I6F26::from_num(0); 3], [0; 3], 0, 0, 0);
+        format_message.set_start_flag(message[0]);
+        format_message.set_mode(message[1]);
+        format_message.set_duration(u16::from_be_bytes([message[2], message[3]]));
+        format_message.set_motor([u16::from_be_bytes([message[4], message[5]]), u16::from_be_bytes([message[6], message[7]]), u16::from_be_bytes([message[8], message[9]]), u16::from_be_bytes([message[10], message[11]])]);
+        format_message.set_ypr([I6F26::from_be_bytes([message[12], message[13], message[14], message[15]]), I6F26::from_be_bytes([message[16], message[17], message[18], message[19]]), I6F26::from_be_bytes([message[20], message[21], message[22], message[23]])]);
+        format_message.set_acc([i16::from_be_bytes([message[24], message[25]]), i16::from_be_bytes([message[26], message[27]]), i16::from_be_bytes([message[28], message[29]])]);
+        format_message.set_bat(u16::from_be_bytes([message[30], message[31]]));
+        format_message.set_pres(u32::from_be_bytes([message[32], message[33], message[34], message[35]]));
+        format_message.set_ack(message[36]);
+        format_message.set_crc(u16::from_be_bytes([message[37], message[38]]));
+        format_message.set_end_flag(message[39]);
+        format_message
+    }
     // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
     // pub fn calculate_crc(device_protocol: &mut DeviceProtocol) {
     //     let mut crc: u16 = 0xFFFF; // initial value of the CRC

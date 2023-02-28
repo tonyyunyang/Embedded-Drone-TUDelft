@@ -30,7 +30,6 @@ pub fn control_loop() -> ! {
         let now = Instant::now();
         let dt = now.duration_since(last);
         last = now;
-
         let motors = get_motors();
         let quaternion = block!(read_dmp_bytes()).unwrap();
         let ypr = YawPitchRoll::from(quaternion);
@@ -38,53 +37,42 @@ pub fn control_loop() -> ! {
         let bat = read_battery();
         let pres = read_pressure();
 
-        // the code below is for receiving command from the PC
-        // if i % 10 == 0 {
-        //     // a buffer to store the received bytes
-        //     let mut buffer: [u8; 255] = [0; 255];
-        //     receive_bytes(&mut buffer);
-        //     let message_from_host = HostProtocol::deserialize(&mut buffer); // here might be a problem
-        //     match message_from_host {
-        //         Ok(message) => {
-        //             // verfiy the message
-        //             for counter in 0..10 {
-        //                 let _ = Green.toggle();
-        //             }
-        //             ack = verify_message(&message);
-        //         }
-        //         Err(error) => {
-        //             // if the message seems to be incomplete, read once more from the buffer
-        //             if error == Error::DeserializeUnexpectedEnd {
-        //                 let mut full_message = Vec::new();
-        //                 full_message.extend_from_slice(&buffer);
-        //                 // we read once again from the buffer here
-        //                 receive_bytes(&mut buffer);
-        //                 full_message.extend_from_slice(&buffer);
-        //                 let message_from_host = HostProtocol::deserialize(&mut full_message);
-        //                 match message_from_host {
-        //                     Ok(message) => {
-        //                         // verfiy the full message
-        //                         ack = verify_message(&message);
-        //                     }
-        //                     Err(_) => {
-        //                         // if the message is still incomplete, print out the error
-        //                         ack = 0b0000_0000;
-        //                     }
-        //                 }
-        //             } else {
-        //                 // if the message is still incomplete, print out the error
-        //                 ack = 0b0000_0000;
-        //             }
-        //         }
-        //     }
-        // }
+        // the code below is for receiving the message from the host
+        if i % 10 == 0 {
+            let mut buf: [u8; 255] = [0; 255];
+            let mut messsage_buffer: Vec<u8> = Vec::new();
+            let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
+            let mut start_receiving = false;
 
-        // the code below is for sending the message to the PC
+            let num = receive_bytes(&mut buf);
+            for i in 0..num {
+                let received_byte = buf[i];
+                if received_byte == 0x7b && start_receiving == false {
+                    messsage_buffer.clear();
+                    start_receiving = true;
+                }
+                if start_receiving == true {
+                    messsage_buffer.push(received_byte);
+                    received_bytes_count += 1;
+                }
+                if received_byte == 0x7d && start_receiving == true {
+                    if received_bytes_count != 12{
+                        ack = 0b0000_0000;
+                    } else if received_bytes_count == 12 {
+                        let nice_received_message = HostProtocol::format_message(&mut messsage_buffer);
+                        ack = verify_message(&nice_received_message);
+                        received_bytes_count = 0;
+                        start_receiving = false;
+                    }
+                }
+            }
+        }
+
+        // the code below is for sending the message to the host
         if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
             test += 1;
-            ack += 1;
-            let mut message_to_host = DeviceProtocol::new(
+            let message_to_host = DeviceProtocol::new(
                 test,
                 dt.as_millis() as u16,
                 motors,
@@ -133,6 +121,7 @@ pub fn control_loop() -> ! {
 
         // wait until the timer interrupt goes off again
         // based on the frequency set above
+        ack = 0;
         wait_for_next_tick();
     }
     unreachable!();
@@ -141,10 +130,12 @@ pub fn control_loop() -> ! {
 fn verify_message(message: &HostProtocol) -> u8  {
     // we check the start bit and the end bit first
     if message.get_start_flag() != 0x7b || message.get_end_flag() != 0x7d {
-        0b0000_0000
-    } else if verify_crc(message) {
-        0b1111_1111
-    } else {
+        if verify_crc(message) {
+            0b1111_1111
+        } else {
+            0b0000_0000
+        }
+    }else {
         0b0000_0000
     }
 }
