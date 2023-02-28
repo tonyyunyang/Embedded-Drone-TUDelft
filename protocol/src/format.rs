@@ -2,9 +2,11 @@ use crc16::{State, XMODEM};
 use crc_any::CRCu8;
 
 use fixed::{
-    types::{I6F26},
+    types::{I6F26, I16F16},
 };
 use heapless::Vec;
+
+use alloc::vec::Vec as OtherVec;
 use postcard::{from_bytes, to_vec};
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +17,10 @@ pub struct HostProtocol {
     mode: u8,           // Two bytes to represent 9 modes
     joystick_lift: u8,  // Lift up/down control
     joystick_yaw: u8,   // Yaw left/right control
+    keyboard_yaw: u8,
     joystick_pitch: u8, // Pitch up/down control
+    keyboard_pitch_roll_1: u8,
+    keyboard_pitch_roll_2: u8,
     joystick_roll: u8,  // Roll left/right control
     crc: u8,            // Cyclic redundancy check
     end_flag: u8,       // End of frame indicator
@@ -36,6 +41,7 @@ pub struct DeviceProtocol {
     acc: [i16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
     bat: u16,      // This is the data of the battery of the drone, 2 bytes
     pres: u32,     // This is the data of the pressure of the drone, 4 bytes
+    ack: u8,       // This is the data of the acknowledgement byte, 1 byte
 
     // Footer
     crc: u8,      // Cyclic redundancy check
@@ -48,7 +54,10 @@ impl HostProtocol {
         mode: u8,
         joystick_lift: u8,
         joystick_yaw: u8,
+        keyboard_yaw: u8,
         joystick_pitch: u8,
+        keyboard_pitch_roll_1: u8,
+        keyboard_pitch_roll_2: u8,
         joystick_roll: u8,
     ) -> Self {
         Self {
@@ -56,7 +65,10 @@ impl HostProtocol {
             mode,
             joystick_lift,
             joystick_yaw,
+            keyboard_yaw,
             joystick_pitch,
+            keyboard_pitch_roll_1,
+            keyboard_pitch_roll_2,
             joystick_roll,
             crc: 0x0000, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
@@ -64,7 +76,7 @@ impl HostProtocol {
     }
 
     // Serializes this protocol and creates a Vec of bytes
-    pub fn serialize(&self) -> Result<Vec<u8, 32>, postcard::Error> {
+    pub fn serialize(&self) -> Result<Vec<u8, 60>, postcard::Error> {
         let payload = to_vec(self)?;
         Ok(payload)
     }
@@ -137,8 +149,20 @@ impl HostProtocol {
         self.joystick_yaw = joystick_yaw;
     }
 
+    pub fn set_keyboard_yaw(&mut self, keyboard_yaw: u8) {
+        self.keyboard_yaw = keyboard_yaw;
+    }
+
     pub fn set_joystick_pitch(&mut self, joystick_pitch: u8) {
         self.joystick_pitch = joystick_pitch;
+    }
+
+    pub fn set_keyboard_pitch_roll_1(&mut self, keyboard_pitch_roll_1: u8) {
+        self.keyboard_pitch_roll_1 = keyboard_pitch_roll_1;
+    }
+
+    pub fn set_keyboard_pitch_roll_2(&mut self, keyboard_pitch_roll_2: u8) {
+        self.keyboard_pitch_roll_2 = keyboard_pitch_roll_2;
     }
 
     pub fn set_joystick_roll(&mut self, joystick_roll: u8) {
@@ -147,6 +171,10 @@ impl HostProtocol {
 
     pub fn set_crc(&mut self, crc: u8) {
         self.crc = crc;
+    }
+
+    pub fn get_start_flag(&self) -> u8 {
+        self.start_flag
     }
 
     pub fn get_mode(&self) -> u8 {
@@ -161,8 +189,20 @@ impl HostProtocol {
         self.joystick_yaw
     }
 
+    pub fn get_keyboard_yaw(&self) -> u8 {
+        self.keyboard_yaw
+    }
+
     pub fn get_joystick_pitch(&self) -> u8 {
         self.joystick_pitch
+    }
+
+    pub fn get_keyboard_pitch_roll_1(&self) -> u8 {
+        self.keyboard_pitch_roll_1
+    }
+
+    pub fn get_keyboard_pitch_roll_2(&self) -> u8 {
+        self.keyboard_pitch_roll_2
     }
 
     pub fn get_joystick_roll(&self) -> u8 {
@@ -171,6 +211,10 @@ impl HostProtocol {
 
     pub fn get_crc(&self) -> u8 {
         self.crc
+    }
+
+    pub fn get_end_flag(&self) -> u8 {
+        self.end_flag
     }
 }
 
@@ -184,6 +228,7 @@ impl DeviceProtocol {
         acc: [i16; 3],
         bat: u16,
         pres: u32,
+        ack: u8
     ) -> Self {
         Self {
             start_flag: 0x7b,
@@ -194,6 +239,7 @@ impl DeviceProtocol {
             acc,
             bat,
             pres,
+            ack,
             crc: 0x0000, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
@@ -201,7 +247,6 @@ impl DeviceProtocol {
 
     // Serializes this protocol and creates a Vec of bytes
     pub fn serialize(&self) -> Result<Vec<u8, 60>, postcard::Error> {
-        // the struct we created is 53 bytes long when crc-16, and 52 bytes long when crc-8
         let payload = to_vec(self)?;
         Ok(payload)
     }
@@ -258,6 +303,7 @@ impl DeviceProtocol {
         }
         state.update(&self.bat.to_be_bytes());
         state.update(&self.pres.to_be_bytes());
+        state.update(&self.ack.to_be_bytes());
         state.get()
     }
 
@@ -276,6 +322,7 @@ impl DeviceProtocol {
         }
         crc.digest(&self.bat.to_be_bytes());
         crc.digest(&self.pres.to_be_bytes());
+        crc.digest(&self.ack.to_be_bytes());
         crc.get_crc()
     }
 
@@ -305,6 +352,10 @@ impl DeviceProtocol {
 
     pub fn set_pres(&mut self, pres: u32) {
         self.pres = pres;
+    }
+
+    pub fn set_ack(&mut self, ack: u8) {
+        self.ack = ack;
     }
 
     pub fn set_crc(&mut self, crc: u8) {
@@ -341,6 +392,10 @@ impl DeviceProtocol {
 
     pub fn get_pres(&self) -> u32 {
         self.pres
+    }
+
+    pub fn get_ack(&self) -> u8 {
+        self.ack
     }
 
     pub fn get_crc(&self) -> u8 {

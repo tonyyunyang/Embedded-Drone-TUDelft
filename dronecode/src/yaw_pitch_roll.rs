@@ -1,6 +1,6 @@
 use fixed_trigonometry::atan;
 use tudelft_quadrupel::{
-    fixed::{traits::Fixed, types::I6F26},
+    fixed::{traits::Fixed, types::I6F26, types::I16F16},
     mpu::structs::Quaternion,
 };
 

@@ -702,6 +702,7 @@ checksum = "1973f95452ec56a4b2c683f5eabc15617e38f4faf2776ed4a0011d5070ecb37e"
 name = "runner"
 version = "0.1.0"
 dependencies = [
+ "fixed",
  "postcard",
  "protocol",
  "serial2",

@@ -1,22 +1,26 @@
 
 use crate::yaw_pitch_roll::YawPitchRoll;
 
-use protocol::format::DeviceProtocol;
+use alloc::vec::Vec;
+use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 
 use tudelft_quadrupel::block;
 
-use tudelft_quadrupel::led::Led::Blue;
+use tudelft_quadrupel::led::Led::{Blue, Red, Green, Yellow};
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
-use tudelft_quadrupel::uart::send_bytes;
+use tudelft_quadrupel::uart::{send_bytes, receive_bytes};
+
+use postcard::Error;
 
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
     let mut last = Instant::now();
     let mut test: u8 = 0;
+    let mut ack = 0b1111_1111;
 
     // let mut logger = logger::BlackBoxLogger::new();
     // logger.start_logging();
@@ -34,6 +38,47 @@ pub fn control_loop() -> ! {
         let bat = read_battery();
         let pres = read_pressure();
 
+        // the code below is for receiving command from the PC
+        if i % 10 == 0 {
+            // a buffer to store the received bytes
+            let mut buffer: [u8; 255] = [0; 255];
+            receive_bytes(&mut buffer);
+            let message_from_host = HostProtocol::deserialize(&mut buffer); // here might be a problem
+            match message_from_host {
+                Ok(message) => {
+                    // verfiy the message
+                    for counter in 0..10 {
+                        let _ = Green.toggle();
+                    }
+                    ack = verify_message(&message);
+                }
+                Err(error) => {
+                    // if the message seems to be incomplete, read once more from the buffer
+                    if error == Error::DeserializeUnexpectedEnd {
+                        let mut full_message = Vec::new();
+                        full_message.extend_from_slice(&buffer);
+                        // we read once again from the buffer here
+                        receive_bytes(&mut buffer);
+                        full_message.extend_from_slice(&buffer);
+                        let message_from_host = HostProtocol::deserialize(&mut full_message);
+                        match message_from_host {
+                            Ok(message) => {
+                                // verfiy the full message
+                                ack = verify_message(&message);
+                            }
+                            Err(_) => {
+                                // if the message is still incomplete, print out the error
+                                ack = 0b0000_0000;
+                            }
+                        }
+                    } else {
+                        // if the message is still incomplete, print out the error
+                        ack = 0b0000_0000;
+                    }
+                }
+            }
+        }
+
         // the code below is for sending the message to the PC
         if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
@@ -46,6 +91,7 @@ pub fn control_loop() -> ! {
                 [accel.x, accel.y, accel.z],
                 bat,
                 pres,
+                ack,
             );
 
             // Calculate the CRC and serialize the message
@@ -99,4 +145,20 @@ pub fn control_loop() -> ! {
         wait_for_next_tick();
     }
     unreachable!();
+}
+
+fn verify_message(message: &HostProtocol) -> u8  {
+    // we check the start bit and the end bit first
+    if message.get_start_flag() != 0x7b || message.get_end_flag() != 0x7d {
+        0b0000_0000
+    } else if verify_crc(message) {
+        0b1111_1111
+    } else {
+        0b0000_0000
+    }
+}
+
+fn verify_crc(message: &HostProtocol) -> bool {
+    let verification_crc = HostProtocol::calculate_crc8(message);
+    verification_crc == message.get_crc()
 }

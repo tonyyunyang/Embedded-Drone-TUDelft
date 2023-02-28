@@ -1,12 +1,15 @@
 use postcard::Error;
-use protocol::format::DeviceProtocol;
+use protocol::format::{DeviceProtocol, HostProtocol};
 use serial2::SerialPort;
 use std::env::args;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
-use std::time::Duration;
+use std::time::{Duration, self};
 use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
-use std::thread;
+use std::thread::{self, sleep};
+use fixed::{
+    types::{I6F26, I16F16},
+};
 
 fn main() {
     // get a filename from the command line. This filename will be uploaded to the drone
@@ -17,6 +20,9 @@ fn main() {
     // command line parameter.
     let file = args().nth(1);
     let port = upload_file_or_stop(PortSelector::AutoManufacturer, file);
+    let port_ref1 = port.clone();
+    let port_ref2 = port.clone();
+    let port_ref3 = port.clone();
 
     // The code below shows a very simple start to a PC-side receiver of data from the drone.
     // You can extend this into an entire interface to the drone written in Rust. However,
@@ -59,16 +65,17 @@ fn main() {
     //     }
     // }
 
+    
     let receive_device_message = thread::spawn(move || {
-        loop_receive_device_message(&mut serial, &mut buf);
+        loop_receive_device_message(port_ref1, &mut buf);
     });
 
     let read_user_input = thread::spawn(move || {
         loop_read_user_input();
     });
-
+    
     let send_host_command = thread::spawn(move || {
-        loop_send_host_command();
+        // loop_send_host_command(port_ref2);
     });
 
     send_host_command.join().unwrap();
@@ -76,8 +83,11 @@ fn main() {
     read_user_input.join().unwrap();
 }
 
-fn loop_receive_device_message(serial: &mut SerialPort, buf: &mut [u8; 255]) {
+fn loop_receive_device_message(port: PathBuf, buf: &mut [u8; 255]) {
     // below is the code receiving data from the drone via protocol and printing them out
+    let mut serial = SerialPort::open(port, 115200).unwrap();
+    serial.set_read_timeout(Duration::from_secs(1)).unwrap();
+
     loop {
         // read the serial port
         if let Ok(num) = serial.read(buf) {
@@ -86,7 +96,7 @@ fn loop_receive_device_message(serial: &mut SerialPort, buf: &mut [u8; 255]) {
                 continue;
             }
             // deserialize the message
-            let message_from_drone = DeviceProtocol::deserialize(&buf[0..num]);
+            let message_from_drone = DeviceProtocol::deserialize(&mut buf[0..num]);
             // capture whether the message is complete
             match message_from_drone {
                 Ok(message) => {
@@ -125,8 +135,43 @@ fn loop_read_user_input(){
 
 }
 
-fn loop_send_host_command(){
+fn loop_send_host_command(port: PathBuf){
+    let mut serial = SerialPort::open(port, 115200).unwrap();
+    serial.set_write_timeout(Duration::from_secs(1)).unwrap();
 
+    loop {
+        // send a message to the drone
+        let mut message_to_device = HostProtocol::new(1, 1, 1, 1,  1, 1, 1, 1);
+        message_to_device.set_crc(HostProtocol::calculate_crc8(&message_to_device));
+        let serialized_message_to_pc = HostProtocol::serialize(&message_to_device);
+        match serialized_message_to_pc {
+            Ok(message) => {
+                // send the message to the drone
+                let message_size = serial.write(&message);
+
+                // below is for debugging purpose
+                // match message_size {
+                //     Ok(size) => {
+                //         println!("Message sent, size: {}", size);
+                //         print!("The Message is:\n");
+
+                //         for i in 0..=size-1 {
+                //             print!("{} ", message[i]);
+                //         }
+
+                //         print!("\n");
+                //     }
+                //     Err(error) => {
+                //         println!("Write Error: {:?}", error);
+                //     }
+                // }
+            }
+            Err(error) => {
+                println!("Serialize Error: {:?}", error);
+            }
+        }
+        sleep(time::Duration::from_millis(100));
+    }
 }
 
 fn verify_message(message: &DeviceProtocol) {
@@ -169,8 +214,9 @@ fn print_verified_message(message: &DeviceProtocol) {
     );
     println!("BAT {bat}", bat = message.get_bat());
     println!("BAR {pres} ", pres = message.get_pres());
+    println!("ACK {ack}", ack = message.get_ack());
     println!("CRC {crc}", crc = message.get_crc());
-    println!();
+    println!("--------------------------------");
 }
 
 #[allow(unused)]
