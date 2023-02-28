@@ -20,9 +20,9 @@ fn main() {
     // command line parameter.
     let file = args().nth(1);
     let port = upload_file_or_stop(PortSelector::AutoManufacturer, file);
-    let port_ref1 = port.clone();
-    let port_ref2 = port.clone();
-    let port_ref3 = port.clone();
+    // let port_ref1 = port.clone();
+    // let port_ref2 = port.clone();
+    // let port_ref3 = port.clone();
 
     // The code below shows a very simple start to a PC-side receiver of data from the drone.
     // You can extend this into an entire interface to the drone written in Rust. However,
@@ -50,37 +50,38 @@ fn main() {
     // }
 
     // below is for debugging purpose
-    // loop {
-    //     if let Ok(num) = serial.read(&mut buf) {
-    //         print!("\n The size of the messgae is: {} \n", num);
+    loop {
+        if let Ok(num) = serial.read(&mut buf) {
+            print!("\n The size of the messgae is: {} \n", num);
 
-    //         print!("The Message is:\n");
+            print!("The Message is:\n");
 
-    //         for i in 0..num {
-    //             print!("{} ", buf[i]);
-    //         }
+            for i in 0..num {
+                print!("{:02x} ", buf[i]);
+            }
 
-    //         print!("\n");
+            print!("\n");
 
-    //     }
-    // }
+        }
+    }
 
     
-    let receive_device_message = thread::spawn(move || {
-        loop_receive_device_message(port_ref1, &mut buf);
-    });
+//     let receive_device_message = thread::spawn(move || {
+//         loop_receive_device_message(port_ref1, &mut buf);
+//     });
 
-    let read_user_input = thread::spawn(move || {
-        loop_read_user_input();
-    });
+//     let read_user_input = thread::spawn(move || {
+//         // loop_read_user_input();
+//     });
     
-    let send_host_command = thread::spawn(move || {
-        // loop_send_host_command(port_ref2);
-    });
+//     let send_host_command = thread::spawn(move || {
+//         // loop_send_host_command(port_ref2);
+//     });
 
-    send_host_command.join().unwrap();
-    receive_device_message.join().unwrap();
-    read_user_input.join().unwrap();
+//     send_host_command.join().unwrap();
+//     receive_device_message.join().unwrap();
+//     read_user_input.join().unwrap();
+
 }
 
 fn loop_receive_device_message(port: PathBuf, buf: &mut [u8; 255]) {

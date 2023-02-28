@@ -6,7 +6,7 @@ use fixed::{
 };
 use heapless::Vec;
 
-use alloc::vec::Vec as OtherVec;
+use alloc::vec::{Vec as OtherVec, self};
 use postcard::{from_bytes, to_vec};
 use serde::{Deserialize, Serialize};
 
@@ -22,7 +22,7 @@ pub struct HostProtocol {
     keyboard_pitch_roll_1: u8,
     keyboard_pitch_roll_2: u8,
     joystick_roll: u8,  // Roll left/right control
-    crc: u8,            // Cyclic redundancy check
+    crc: u16,            // Cyclic redundancy check
     end_flag: u8,       // End of frame indicator
 }
 
@@ -35,7 +35,7 @@ pub struct DeviceProtocol {
 
     // Payload
     mode: u8,        // Two bytes to represent 9 modes
-    duration: u128,  // This is the duration of the tramision, 16 bytes
+    duration: u16,  // This is the duration of the tramision, 16 bytes
     motor: [u16; 4], // This is the data of the 4 motors on the drone, each motor has 2 bytes
     ypr: [I6F26; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
     acc: [i16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
@@ -44,7 +44,7 @@ pub struct DeviceProtocol {
     ack: u8,       // This is the data of the acknowledgement byte, 1 byte
 
     // Footer
-    crc: u8,      // Cyclic redundancy check
+    crc: u16,      // Cyclic redundancy check
     end_flag: u8, // By default, this would be set to 0b01111101 = 0x7d, in ASCII, it is "}"
 }
 
@@ -70,7 +70,7 @@ impl HostProtocol {
             keyboard_pitch_roll_1,
             keyboard_pitch_roll_2,
             joystick_roll,
-            crc: 0x0000, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
+            crc: 0x00, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
     }
@@ -85,6 +85,27 @@ impl HostProtocol {
     pub fn deserialize(payload: &[u8]) -> Result<Self, postcard::Error> {
         let prot = from_bytes::<HostProtocol>(payload)?;
         Ok(prot)
+    }
+
+    // Form the message to be sent to the drone in bytes, namely form an array of bytes
+    pub fn form_message(&self) -> [u8; 11] {
+        let mut message: [u8; 11] = [0; 11];
+        message[0] = self.start_flag;
+        message[1] = self.mode;
+        message[2] = self.joystick_lift;
+        message[3] = self.joystick_yaw;
+        message[4] = self.keyboard_yaw;
+        message[5] = self.joystick_pitch;
+        message[6] = self.keyboard_pitch_roll_1;
+        message[7] = self.keyboard_pitch_roll_2;
+        message[8] = self.joystick_roll;
+        // let crc = self.calculate_crc8().to_be_bytes();
+        // message[9..10].copy_from_slice(&crc);
+        // message[11] = self.end_flag;
+        let crc = self.calculate_crc8();
+        message[9] = crc;
+        message[10] = self.end_flag;
+        message
     }
 
     // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
@@ -169,7 +190,7 @@ impl HostProtocol {
         self.joystick_roll = joystick_roll;
     }
 
-    pub fn set_crc(&mut self, crc: u8) {
+    pub fn set_crc(&mut self, crc: u16) {
         self.crc = crc;
     }
 
@@ -209,7 +230,7 @@ impl HostProtocol {
         self.joystick_roll
     }
 
-    pub fn get_crc(&self) -> u8 {
+    pub fn get_crc(&self) -> u16 {
         self.crc
     }
 
@@ -222,7 +243,7 @@ impl DeviceProtocol {
     // Construct a new DroneProtocol from its fields
     pub fn new(
         mode: u8,
-        duration: u128,
+        duration: u16,
         motor: [u16; 4],
         ypr: [I6F26; 3],
         acc: [i16; 3],
@@ -240,7 +261,7 @@ impl DeviceProtocol {
             bat,
             pres,
             ack,
-            crc: 0x0000, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
+            crc: 0x00, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
     }
@@ -255,6 +276,52 @@ impl DeviceProtocol {
     pub fn deserialize(payload: &[u8]) -> Result<Self, postcard::Error> {
         let prot = from_bytes::<DeviceProtocol>(payload)?;
         Ok(prot)
+    }
+
+    // Form the message to be sent to the drone in bytes, namely form an array of bytes
+    pub fn form_message(&self, message: &mut vec::Vec<u8>) {
+        message.push(self.start_flag);
+        message.push(self.mode);
+        message.extend_from_slice(&self.duration.to_be_bytes());
+        message.extend_from_slice(&self.motor[0].to_be_bytes());
+        message.extend_from_slice(&self.motor[1].to_be_bytes());
+        message.extend_from_slice(&self.motor[2].to_be_bytes());
+        message.extend_from_slice(&self.motor[3].to_be_bytes());
+        message.extend_from_slice(&self.ypr[0].to_be_bytes());
+        message.extend_from_slice(&self.ypr[1].to_be_bytes());
+        message.extend_from_slice(&self.ypr[2].to_be_bytes());
+        message.extend_from_slice(&self.acc[0].to_be_bytes());
+        message.extend_from_slice(&self.acc[1].to_be_bytes());
+        message.extend_from_slice(&self.acc[2].to_be_bytes());
+        message.extend_from_slice(&self.bat.to_be_bytes());
+        message.extend_from_slice(&self.pres.to_be_bytes());
+        message.push(self.ack);
+        let crc = self.calculate_crc16();
+        message.extend_from_slice(&crc.to_be_bytes());
+        message.push(self.end_flag);
+
+        // message[0] = self.start_flag;
+        // message[1] = self.mode;
+        // message[2..=17].copy_from_slice(&self.duration.to_be_bytes());
+        // message[18..=19].copy_from_slice(&self.motor[0].to_be_bytes());
+        // message[20..=21].copy_from_slice(&self.motor[1].to_be_bytes());
+        // message[22..=23].copy_from_slice(&self.motor[2].to_be_bytes());
+        // message[24..=25].copy_from_slice(&self.motor[3].to_be_bytes());
+        // message[26..=29].copy_from_slice(&self.ypr[0].to_be_bytes());
+        // message[30..=33].copy_from_slice(&self.ypr[1].to_be_bytes());
+        // message[34..=37].copy_from_slice(&self.ypr[2].to_be_bytes());
+        // message[38..=39].copy_from_slice(&self.acc[0].to_be_bytes());
+        // message[40..=41].copy_from_slice(&self.acc[1].to_be_bytes());
+        // message[42..=43].copy_from_slice(&self.acc[2].to_be_bytes());
+        // message[44..=45].copy_from_slice(&self.bat.to_be_bytes());
+        // message[46..=49].copy_from_slice(&self.pres.to_be_bytes());
+        // message[50] = self.ack;
+        // // let crc = self.calculate_crc16().to_be_bytes();
+        // // message[51..53].copy_from_slice(&crc);
+        // // message[53] = self.end_flag;
+        // let crc = self.calculate_crc8();
+        // message[51] = crc;
+        // message[52] = self.end_flag;
     }
 
     // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
@@ -330,7 +397,7 @@ impl DeviceProtocol {
         self.mode = mode;
     }
 
-    pub fn set_duration(&mut self, duration: u128) {
+    pub fn set_duration(&mut self, duration: u16) {
         self.duration = duration;
     }
 
@@ -358,8 +425,16 @@ impl DeviceProtocol {
         self.ack = ack;
     }
 
-    pub fn set_crc(&mut self, crc: u8) {
+    pub fn set_crc(&mut self, crc: u16) {
         self.crc = crc;
+    }
+
+    pub fn set_start_flag(&mut self, start_flag: u8) {
+        self.start_flag = start_flag;
+    }
+
+    pub fn set_end_flag(&mut self, end_flag: u8) {
+        self.end_flag = end_flag;
     }
 
     pub fn get_start_flag(&self) -> u8 {
@@ -370,7 +445,7 @@ impl DeviceProtocol {
         self.mode
     }
 
-    pub fn get_duration(&self) -> u128 {
+    pub fn get_duration(&self) -> u16 {
         self.duration
     }
 
@@ -398,7 +473,7 @@ impl DeviceProtocol {
         self.ack
     }
 
-    pub fn get_crc(&self) -> u8 {
+    pub fn get_crc(&self) -> u16 {
         self.crc
     }
 
