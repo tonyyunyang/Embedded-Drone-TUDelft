@@ -8,6 +8,7 @@ import time
 import sys
 import os
 import subprocess
+import threading
 from pynput import keyboard
 from tomlkit import key
 # Initialize the joysticks
@@ -30,7 +31,8 @@ if joysticks >0:
      
 
 # Loop until the user clicks the close button.
-done = False
+global done 
+done= False
 
 # Used to manage how fast the screen updates
 clock = pygame.time.Clock()
@@ -40,40 +42,50 @@ global pitch
 global yaw 
 global lift 
 global roll 
-pitch =0; yaw =0; lift =0; roll =0
+pitch =0.0; yaw =0.0; lift =0.0; roll =0.0
 
 
 #make a function for joystick data
 def get_joystick_data():
-     done=False
+    #  done=False
+    #  while (done!=True):
      for event in pygame.event.get():
+        print(event)
         if event.type == pygame.JOYBUTTONDOWN:
                     print("Button:",event.dict['button'],"pressed")
                     if event.dict['button'] == 0:
+                        global done
                         done = True
+                        # return done
                         break
-        if event.type == pygame.JOYAXISMOTION:
+        elif event.type == pygame.JOYAXISMOTION:
                 for i in range(axes):
+                    global pitch 
                     pitch = joystick.get_axis(1)
-                    # print("Pitch:" , pitch)
+                    print("Pitch:" , pitch)
+                    global yaw
                     yaw = joystick.get_axis(2)
-                    # print("Yaw:" , yaw)
+                    print("Yaw:" , yaw)
+                    global lift
                     lift = joystick.get_axis(3)
-                    # print("Lift:" , lift)
+                    print("Lift:" , lift)
+                    global roll
                     roll = joystick.get_axis(0)
-                    # print("Roll:" , roll)
-                    continue
-                return done
+                    print("Roll:" , roll)
+                    # continue
+                # return done
 #make a function for getting keyboard data
 def get_keyboard_data():
-        done=False
+        # done=False
         global pitch, yaw, lift, roll
         with keyboard.Events() as events:
-            print(keyboard.KeyCode(char="a"))
+            # print(keyboard.KeyCode(char="a"))
             for event in events:
                 # print(type(event.key.char))
                 if event.key == keyboard.Key.esc or event.key == keyboard.Key.space:
+                 global done
                  done=True
+                #  return done
                  break
                 if  event.key == keyboard.Key.up or event.key== keyboard.Key.down or event.key== keyboard.Key.left or event.key== keyboard.Key.right:
                     if event.key == keyboard.Key.up and type(event) == keyboard.Events.Press:
@@ -115,7 +127,7 @@ def get_keyboard_data():
                          print( "Mode0")
                      else:
                          break
-        return done
+        # return done
         #need to add for yaw control and pitch control ??aaa
 #function to get the data from the joystick or keyboard
 def get_data():
@@ -123,11 +135,22 @@ def get_data():
 
 
 # -------- Main Program Loop -----------
-while done==False:
+# while done!=True:
         # print("in python code")
-        if(joysticks > 0):
-            done=get_joystick_data()
-            print(get_data())
-        else:
-            done=get_keyboard_data()
-            print(get_data())
+if (joysticks > 0):
+ thread1=threading.Thread(target=get_joystick_data)
+ thread1.start()
+thread2=threading.Thread(target=get_keyboard_data)
+thread2.start()
+        # if(joysticks > 0):
+            # done=get_joystick_data()
+            # print(done)
+            # print(get_data())
+        # else:
+            # done=get_keyboard_data()
+            # print(get_data())
+# if (done==True):
+    
+thread1.join()
+thread2.join()
+print(get_data()) 
