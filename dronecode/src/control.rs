@@ -6,7 +6,8 @@ use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 
-use tudelft_quadrupel::block;
+use tudelft_quadrupel::initialize::initialize;
+use tudelft_quadrupel::{block, initialize, uart};
 
 use tudelft_quadrupel::led::Led::{Blue, Red, Green, Yellow};
 use tudelft_quadrupel::motor::get_motors;
@@ -37,32 +38,34 @@ pub fn control_loop() -> ! {
         let pres = read_pressure();
 
         // the code below is for receiving the message from the host
-        let mut buf: [u8; 255] = [0; 255];
-        let mut messsage_buffer: Vec<u8> = Vec::new();
-        let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
-        let mut start_receiving = false;
+        if i % 100 == 0 {
+            let mut buf: Vec<u8> = Vec::new();
+            let mut messsage_buffer: Vec<u8> = Vec::new();
+            let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
+            let mut start_receiving = false;
 
-        let num = receive_bytes(&mut buf);
-        if num != 0 {
-            ack = 0b1111_1111;
-            for i in 0..num {
-                let received_byte = buf[i];
-                if received_byte == 0x7b && start_receiving == false {
-                    messsage_buffer.clear();
-                    start_receiving = true;
-                }
-                if start_receiving == true {
-                    messsage_buffer.push(received_byte);
-                    received_bytes_count += 1;
-                }
-                if received_byte == 0x7d && start_receiving == true {
-                    if received_bytes_count != 12{
-                        ack = 0b0000_0000;
-                    } else if received_bytes_count == 12 {
-                        let nice_received_message = HostProtocol::format_message(&mut messsage_buffer);
-                        ack = verify_message(&nice_received_message);
-                        received_bytes_count = 0;
-                        start_receiving = false;
+            let num = receive_bytes(&mut buf);
+            if num == 0 {
+                ack = 0b1111_1111;
+                for i in 0..num {
+                    let received_byte = buf[i];
+                    if received_byte == 0x7b && start_receiving == false {
+                        messsage_buffer.clear();
+                        start_receiving = true;
+                    }
+                    if start_receiving == true {
+                        messsage_buffer.push(received_byte);
+                        received_bytes_count += 1;
+                    }
+                    if received_byte == 0x7d && start_receiving == true {
+                        if received_bytes_count != 12{
+                            ack = 0b0000_0000;
+                        } else if received_bytes_count == 12 {
+                            let nice_received_message = HostProtocol::format_message(&mut messsage_buffer);
+                            ack = verify_message(&nice_received_message);
+                            received_bytes_count = 0;
+                            start_receiving = false;
+                        }
                     }
                 }
             }
@@ -121,7 +124,6 @@ pub fn control_loop() -> ! {
 
         // wait until the timer interrupt goes off again
         // based on the frequency set above
-        ack = 0b0000_0000;
         wait_for_next_tick();
     }
     unreachable!();
