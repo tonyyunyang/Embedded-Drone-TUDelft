@@ -81,12 +81,8 @@ enum host_state {
 }
 
 fn loop_uart_handler(port: PathBuf, state: Receiver<host_state>, receiver_state: Sender<host_state>, sender_state: Sender<host_state>, message: Receiver<Vec<u8>>, command: Receiver<HostProtocol>, sending_message: Sender<Vec<u8>>) {
-    // // send the initial state to the state channel
-    // receiver_state.send(host_state::ready_to_receive).unwrap();
-    // sender_state.send(host_state::ready_to_send).unwrap();
     loop {
         receiver_state.send(host_state::ready_to_receive).unwrap();
-        sender_state.send(host_state::ready_to_receive).unwrap();
         match state.recv() {
             Ok(current_state) => {
                 match current_state {
@@ -95,7 +91,6 @@ fn loop_uart_handler(port: PathBuf, state: Receiver<host_state>, receiver_state:
                         continue;
                     },
                     host_state::ready_to_receive => {
-                        receiver_state.send(host_state::ready_to_receive).unwrap();
                         println!("\n----------------------------\nThe state channel is ready to receive.\n----------------------------\n");
                         // read the message via the channel
                         match message.recv() {
@@ -115,7 +110,6 @@ fn loop_uart_handler(port: PathBuf, state: Receiver<host_state>, receiver_state:
                         }
                     },
                     host_state::ready_to_send => {
-                        sender_state.send(host_state::ready_to_send).unwrap();
                         println!("\n----------------------------\nThe state channel is ready to send.\n----------------------------\n");
                         // read the message via the channel
                         match command.recv() {
@@ -250,11 +244,10 @@ fn loop_send_host_command(port: PathBuf, state: Receiver<host_state>, uart_state
                         match sending_message.recv() {
                             Ok(message) => {
                                 // send the message via the serial port
-                                let write_result = serial.write(&message);
-                                let _ = serial.flush();
+                                let write_result = serial.write_all(&message);
                                 match write_result {
-                                    Ok(num) => {
-                                        println!("\n----------------------------\n{} bytes are sent to the device.\n----------------------------\n", num);
+                                    Ok(_) => {
+                                        println!("\n----------------------------\n{} bytes are sent to the device.\n----------------------------\n", message.len());
                                         continue 'outer;
                                     },
                                     Err(err) => {
@@ -278,8 +271,6 @@ fn loop_send_host_command(port: PathBuf, state: Receiver<host_state>, uart_state
                 continue 'outer;
             },
         }
-
-
     }
 }
 
