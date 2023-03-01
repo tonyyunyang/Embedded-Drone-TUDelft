@@ -80,39 +80,146 @@ enum host_state {
 }
 
 fn loop_uart_handler(port: PathBuf, state: Receiver<host_state>, receiver_state: Sender<host_state>, sender_state: Sender<host_state>, message: Receiver<Vec<u8>>, command: Receiver<HostProtocol>, sending_message: Sender<Vec<u8>>) {
+    // // send the initial state to the state channel
+    // receiver_state.send(host_state::ready_to_receive).unwrap();
+    // sender_state.send(host_state::ready_to_send).unwrap();
     loop {
-        match state.try_recv() {
+        receiver_state.send(host_state::ready_to_receive).unwrap();
+        sender_state.send(host_state::ready_to_send).unwrap();
+        match state.recv() {
             Ok(current_state) => {
                 match current_state {
                     host_state::idle => {
                         println!("\n----------------------------\nThe state channel is idle.\n----------------------------\n");
+                        continue;
                     },
                     host_state::ready_to_receive => {
                         println!("\n----------------------------\nThe state channel is ready to receive.\n----------------------------\n");
+                        // read the message via the channel
+                        match message.recv() {
+                            Ok(received_message) => {
+                                // form the message
+                                let mut received_message_buffer = received_message.clone();
+                                let nice_received_message = DeviceProtocol::format_message(&mut received_message_buffer);
+                                // verify the message, and print out the message
+                                verify_message(&nice_received_message);
+                                // done receiving the message, change the state to idle
+                                receiver_state.send(host_state::idle).unwrap();
+                            },
+                            Err(_) => {
+                                println!("\n----------------------------\nThere is no message from the device yet.\n----------------------------\n");
+                                continue;
+                            },
+                        }
                     },
                     host_state::ready_to_send => {
                         println!("\n----------------------------\nThe state channel is ready to send.\n----------------------------\n");
+                        continue;
                     },
                 }
             },
             Err(_) => {
                 println!("\n----------------------------\nThere is no message from the state channel yet.\n----------------------------\n");
+                continue;
             },
         }
     }
 }
 
 fn loop_receive_device_message(port: PathBuf, state: Receiver<host_state>, uart_state: Sender<host_state>, message: Sender<Vec<u8>>) {
-
+    let mut serial = SerialPort::open(port, 115200).unwrap();
+    serial.set_read_timeout(Duration::from_secs(1)).unwrap();
+    let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
+    let mut buf = [0u8; 255];
+    let mut message_buffer = Vec::new();
+    let mut start_receiving = false;
+    'outer: loop {
+        uart_state.send(host_state::idle).unwrap();
+        let receiver_state = state.recv();{
+            match receiver_state {
+                Ok(current_state) => {
+                    match current_state {
+                        host_state::ready_to_receive => {
+                            // read the serial port
+                            let read_result = serial.read(&mut buf);
+                            match read_result {
+                                Ok(num) => {
+                                    if num != 0 {
+                                        'inner: for i in 0..num {
+                                            let received_byte = buf[i];
+                                            if received_byte == 0x7b && start_receiving == false {
+                                                message_buffer.clear();
+                                                start_receiving = true;
+                                            }
+                                            if start_receiving == true {
+                                                message_buffer.push(received_byte);
+                                                received_bytes_count += 1;
+                                            }
+                                            if received_bytes_count < 40 {
+                                                continue 'inner;
+                                            }
+                                            // when it reaches here, the bytes recieved is already >= 40
+                                            if received_byte == 0x7d && start_receiving == true {
+                                                if received_bytes_count > 40 {
+                                                    message_buffer.clear();
+                                                    received_bytes_count = 0;
+                                                    start_receiving = false;
+                                                    continue 'outer;
+                                                } else if received_bytes_count == 40 {
+                                                    // send the ready state and the message to the uart handler
+                                                    message.send(message_buffer.clone()).unwrap();
+                                                    uart_state.send(host_state::ready_to_receive).unwrap();
+                                                    // // format the message
+                                                    // let nice_received_message = DeviceProtocol::format_message(&mut message_buffer);
+                                                    // // verify the message, and print out the message
+                                                    // verify_message(&nice_received_message);
+                                                    // clean everything, initialize everything and start receiving again
+                                                    message_buffer.clear();
+                                                    received_bytes_count = 0;
+                                                    start_receiving = false;
+                                                    continue 'outer;
+                                                }
+                                                    
+                                            }
+                                        }
+                                    } else if num == 0 {
+                                        // nothing is received, so we just continue
+                                        continue 'outer;
+                                    }
+                                    
+                                },
+                                Err(err) => {
+                                    println!("\nAn error occured: {}\n", err);
+                                    continue 'outer;
+                                },
+                            }
+                        },
+                        _ => {
+                            continue 'outer;
+                        },
+                    }
+                },
+                Err(_) => {
+                    continue 'outer;
+                },
+            }
+        }
+    }
 }
 
 
 fn loop_read_user_input(port: PathBuf, state: Sender<host_state>, command: Sender<HostProtocol>){
-
+    loop {
+        
+    }
 }
 
 fn loop_send_host_command(port: PathBuf, state: Receiver<host_state>, sending_message: Receiver<Vec<u8>>) {
-
+    // let mut serial = SerialPort::open(port, 115200).unwrap();
+    // serial.set_write_timeout(Duration::from_secs(1)).unwrap();
+    loop {
+        
+    }
 }
 
 // fn loop_receive_device_message(port: PathBuf, recv_tx: &Sender<Vec<u8>>) {
