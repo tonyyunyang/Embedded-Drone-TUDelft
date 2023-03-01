@@ -26,7 +26,6 @@ pub fn control_loop() -> ! {
     // logger.start_logging();
 
     for i in 0.. {
-        let _ = Blue.toggle();
         let now = Instant::now();
         let dt = now.duration_since(last);
         last = now;
@@ -38,13 +37,16 @@ pub fn control_loop() -> ! {
         let pres = read_pressure();
 
         // the code below is for receiving the message from the host
-        if i % 10 == 0 {
-            let mut buf: [u8; 255] = [0; 255];
-            let mut messsage_buffer: Vec<u8> = Vec::new();
-            let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
-            let mut start_receiving = false;
+        let mut buf: [u8; 255] = [0; 255];
+        let mut messsage_buffer: Vec<u8> = Vec::new();
+        let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
+        let mut start_receiving = false;
 
-            let num = receive_bytes(&mut buf);
+        let num = receive_bytes(&mut buf);
+        if num != 0 {
+            for _ in 0..10 {
+                Red.toggle();
+            }
             for i in 0..num {
                 let received_byte = buf[i];
                 if received_byte == 0x7b && start_receiving == false {
@@ -121,7 +123,7 @@ pub fn control_loop() -> ! {
 
         // wait until the timer interrupt goes off again
         // based on the frequency set above
-        ack = 0;
+        ack = 0b0000_0000;
         wait_for_next_tick();
     }
     unreachable!();

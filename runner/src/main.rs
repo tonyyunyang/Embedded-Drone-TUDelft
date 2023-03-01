@@ -1,6 +1,7 @@
 use postcard::Error;
 use protocol::format::{DeviceProtocol, HostProtocol};
 use serial2::SerialPort;
+use core::num;
 use std::env::args;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
@@ -10,44 +11,28 @@ use std::thread::{self, sleep};
 use fixed::{
     types::{I6F26, I16F16},
 };
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 fn main() {
-    // get a filename from the command line. This filename will be uploaded to the drone
-    // note that if no filename is given, the upload to the drone does not fail.
-    // `upload_file_or_stop` will still try to detect the serial port on which the drone
-    // is attached. This may be useful if you don't want to actually change the code on the
-    // drone, but you do want to rerun your UI. In that case you simply don't provide any
-    // command line parameter.
     let file = args().nth(1);
     let port = upload_file_or_stop(PortSelector::AutoManufacturer, file);
     let port_ref1 = port.clone();
     let port_ref2 = port.clone();
     let port_ref3 = port.clone();
+    let port_ref4 = port.clone();
 
-    // The code below shows a very simple start to a PC-side receiver of data from the drone.
-    // You can extend this into an entire interface to the drone written in Rust. However,
-    // if you are more comfortable writing such an interface in any other programming language
-    // you like (for example, python isn't a bad choice), you can also call that here. The
-    // commented function below gives an example of how to do that with python, but again
-    // you don't need to choose python.
+    // set up channels for communication between threads
+    let (uart_state_tx, uart_state_rx): (Sender<host_state>, Receiver<host_state>) = channel();
+    let (receiver_state_tx, receiver_state_rx): (Sender<host_state>, Receiver<host_state>) = channel();
+    let (sender_state_tx, sender_state_rx): (Sender<host_state>, Receiver<host_state>) = channel();
+    let (received_message_tx, received_message_rx): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = channel();
+    let (sending_message_tx, sending_message_rx): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = channel();
+    let (censor_tx, censor_rx): (Sender<HostProtocol>, Receiver<HostProtocol>) = channel();
+
+    let receiver_uart_state_tx = uart_state_tx.clone();
+    let sender_uart_state_tx = uart_state_tx.clone();
 
     // start_interface(&port);
-
-    // open the serial port we got back from `upload_file_or_stop`. This is the same port
-    // as the upload occurred on, so we know that we can communicate with the drone over
-    // this port.
-    let mut serial = SerialPort::open(port, 115200).unwrap();
-    serial.set_read_timeout(Duration::from_secs(1)).unwrap();
-
-    // infinitely print whatever the drone sends us
-    let mut buf = [0u8; 255];
-
-    // below is the original code
-    // loop {
-    //     if let Ok(num) = serial.read(&mut buf) {
-    //         print!("{}", String::from_utf8_lossy(&buf[0..num]));
-    //     }
-    // }
 
     // below is for debugging purpose
     // loop {
@@ -65,89 +50,138 @@ fn main() {
     //     }
     // }
 
+    let uart_handler = thread::spawn(move || {
+        loop_uart_handler(port_ref1, uart_state_rx, receiver_state_tx, sender_state_tx, received_message_rx, censor_rx, sending_message_tx);
+    });
     
     let receive_device_message = thread::spawn(move || {
-        loop_receive_device_message(port_ref1, &mut buf);
+        loop_receive_device_message(port_ref2, receiver_state_rx, receiver_uart_state_tx, received_message_tx);
     });
 
     let read_user_input = thread::spawn(move || {
-        // loop_read_user_input();
+        loop_read_user_input(port_ref3, sender_uart_state_tx, censor_tx);
     });
     
     let send_host_command = thread::spawn(move || {
-        loop_send_host_command(port_ref2);
+        loop_send_host_command(port_ref4, sender_state_rx, sending_message_rx);
     });
 
-    send_host_command.join().unwrap();
+    uart_handler.join().unwrap();
     receive_device_message.join().unwrap();
     read_user_input.join().unwrap();
+    send_host_command.join().unwrap();
 
 }
 
-fn loop_receive_device_message(port: PathBuf, buf: &mut [u8;255]) {
-    let mut serial = SerialPort::open(port, 115200).unwrap();
-    serial.set_read_timeout(Duration::from_secs(1)).unwrap();
-    let mut messsage_buffer: Vec<u8> = Vec::new();
-    let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
-    let mut start_receiving = false;
-    'outer: loop {
-        // read the serial port
-        if let Ok(num) = serial.read(buf) {
-            'inner: for i in 0..num {
-                let received_byte = buf[i];
-                if received_byte == 0x7b && start_receiving == false {
-                    messsage_buffer.clear();
-                    start_receiving = true;
+enum host_state {
+    idle,
+    ready_to_receive,
+    ready_to_send,
+}
+
+fn loop_uart_handler(port: PathBuf, state: Receiver<host_state>, receiver_state: Sender<host_state>, sender_state: Sender<host_state>, message: Receiver<Vec<u8>>, command: Receiver<HostProtocol>, sending_message: Sender<Vec<u8>>) {
+    loop {
+        match state.try_recv() {
+            Ok(current_state) => {
+                match current_state {
+                    host_state::idle => {
+                        println!("\n----------------------------\nThe state channel is idle.\n----------------------------\n");
+                    },
+                    host_state::ready_to_receive => {
+                        println!("\n----------------------------\nThe state channel is ready to receive.\n----------------------------\n");
+                    },
+                    host_state::ready_to_send => {
+                        println!("\n----------------------------\nThe state channel is ready to send.\n----------------------------\n");
+                    },
                 }
-                if start_receiving == true {
-                    messsage_buffer.push(received_byte);
-                    received_bytes_count += 1;
-                }
-                if received_bytes_count < 40 {
-                    continue 'inner;
-                }
-                // when it reaches here, the bytes recieved is already >= 40
-                if received_byte == 0x7d && start_receiving == true {
-                    if received_bytes_count > 40 {
-                        messsage_buffer.clear();
-                        received_bytes_count = 0;
-                        start_receiving = false;
-                        continue 'outer;
-                    } else if received_bytes_count == 40 {
-                        // format the message
-                        let nice_received_message = DeviceProtocol::format_message(&mut messsage_buffer);
-                        // verify the message, and print out the message
-                        verify_message(&nice_received_message);
-                        // clean everything, initialize everything and start receiving again
-                        messsage_buffer.clear();
-                        received_bytes_count = 0;
-                        start_receiving = false;
-                        continue 'outer;
-                    }
-                        
-                }
-            }
+            },
+            Err(_) => {
+                println!("\n----------------------------\nThere is no message from the state channel yet.\n----------------------------\n");
+            },
         }
     }
 }
 
-fn loop_read_user_input(){
+fn loop_receive_device_message(port: PathBuf, state: Receiver<host_state>, uart_state: Sender<host_state>, message: Sender<Vec<u8>>) {
 
 }
 
-fn loop_send_host_command(port: PathBuf){
-    let mut serial = SerialPort::open(port, 115200).unwrap();
-    serial.set_write_timeout(Duration::from_secs(1)).unwrap();
-    loop {
-        // send a message to the drone
-        let message_to_device = HostProtocol::new(1, 1, 1, 1,  1, 1, 1, 1);
-        let mut message = Vec::new();
-        message_to_device.form_message(&mut message);
-        let _size = serial.write(&message).unwrap();
-        // println!("---------------------------------\nSent {} bytes\n----------------------", size);
-        sleep(time::Duration::from_millis(200));
-    }
+
+fn loop_read_user_input(port: PathBuf, state: Sender<host_state>, command: Sender<HostProtocol>){
+
 }
+
+fn loop_send_host_command(port: PathBuf, state: Receiver<host_state>, sending_message: Receiver<Vec<u8>>) {
+
+}
+
+// fn loop_receive_device_message(port: PathBuf, recv_tx: &Sender<Vec<u8>>) {
+//     let mut buf = [0u8; 255];
+//     let mut serial = SerialPort::open(port, 115200).unwrap();
+//     serial.set_read_timeout(Duration::from_secs(1)).unwrap();
+//     let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
+//     let mut start_receiving = false;
+//     'outer: loop {
+//         // read the serial port
+//         let read_result = serial.read(&mut buf);
+//         match read_result {
+//             Ok(num) => {
+//                 'inner: for i in 0..num {
+//                     let received_byte = buf[i];
+//                     if received_byte == 0x7b && start_receiving == false {
+//                         rx.recv().unwrap().clear();
+//                         start_receiving = true;
+//                     }
+//                     if start_receiving == true {
+//                         rx.recv().unwrap().push(received_byte);
+//                         received_bytes_count += 1;
+//                     }
+//                     if received_bytes_count < 40 {
+//                         continue 'inner;
+//                     }
+//                     // when it reaches here, the bytes recieved is already >= 40
+//                     if received_byte == 0x7d && start_receiving == true {
+//                         if received_bytes_count > 40 {
+//                             rx.recv().unwrap().clear();
+//                             received_bytes_count = 0;
+//                             start_receiving = false;
+//                             continue 'outer;
+//                         } else if received_bytes_count == 40 {
+//                             // format the message
+//                             let nice_received_message = DeviceProtocol::format_message(&mut rx.recv().unwrap());
+//                             // verify the message, and print out the message
+//                             verify_message(&nice_received_message);
+//                             // clean everything, initialize everything and start receiving again
+//                             rx.recv().unwrap().clear();
+//                             received_bytes_count = 0;
+//                             start_receiving = false;
+//                             continue 'outer;
+//                         }
+                            
+//                     }
+//                 }
+//             },
+//             Err(err) => {
+//                 println!("\nAn error occured: {}\n", err);
+//             },
+//         }
+//     }
+// }
+
+// fn loop_send_host_command(port: PathBuf, send_tx: &Receiver<Vec<u8>>){
+//     let mut serial = SerialPort::open(port, 115200).unwrap();
+//     serial.set_write_timeout(Duration::from_secs(1)).unwrap();
+//     loop {
+//         sleep(time::Duration::from_millis(100));
+//         // send a message to the drone
+//         let message_to_device = HostProtocol::new(1, 1, 1, 1,  1, 1, 1, 1);
+//         let mut message = Vec::new();
+//         message_to_device.form_message(&mut message);
+//         let _size = serial.write_all(&message).unwrap();
+//         let _feedback = serial.flush().unwrap();
+//         // println!("---------------------------------\nSent {} bytes\n----------------------", size);
+//     }
+// }
 
 fn verify_message(message: &DeviceProtocol) {
     // we check the start bit and the end bit first
