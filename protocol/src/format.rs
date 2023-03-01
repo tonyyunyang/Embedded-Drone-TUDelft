@@ -75,6 +75,22 @@ impl HostProtocol {
         }
     }
 
+    pub fn clone(&self) -> Self {
+        Self {
+            start_flag: self.start_flag,
+            mode: self.mode,
+            joystick_lift: self.joystick_lift,
+            joystick_yaw: self.joystick_yaw,
+            keyboard_yaw: self.keyboard_yaw,
+            joystick_pitch: self.joystick_pitch,
+            keyboard_pitch_roll_1: self.keyboard_pitch_roll_1,
+            keyboard_pitch_roll_2: self.keyboard_pitch_roll_2,
+            joystick_roll: self.joystick_roll,
+            crc: self.crc,
+            end_flag: self.end_flag,
+        }
+    }
+
     // Serializes this protocol and creates a Vec of bytes
     pub fn serialize(&self) -> Result<Vec<u8, 60>, postcard::Error> {
         let payload = to_vec(self)?;

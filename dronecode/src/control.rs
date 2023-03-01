@@ -44,9 +44,7 @@ pub fn control_loop() -> ! {
 
         let num = receive_bytes(&mut buf);
         if num != 0 {
-            for _ in 0..10 {
-                Red.toggle();
-            }
+            ack = 0b1111_1111;
             for i in 0..num {
                 let received_byte = buf[i];
                 if received_byte == 0x7b && start_receiving == false {
