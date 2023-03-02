@@ -91,7 +91,9 @@ pub fn uart_handler(serial: SerialPort) {
                 command_ready = false; // this state should be received from the channel
                 command_ready = true;
                 if command_ready == true {
-                    let message_to_device = HostProtocol::new(1, 1, 1, 1,  1, 1, 1, 1);
+                    let mut message_to_device = HostProtocol::new(1, 1, 1, 1,  1, 1, 1, 1);
+                    let crc_value = HostProtocol::calculate_crc16(&message_to_device);
+                    message_to_device.set_crc(crc_value);
                     let mut message = Vec::new();
                     message_to_device.form_message(&mut message);
                     serial.write(&message).unwrap();
