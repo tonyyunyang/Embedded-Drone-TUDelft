@@ -21,7 +21,6 @@ fn main() {
     let serial = SerialPort::open(&port, 115200).unwrap();
 
     sleep(Duration::from_millis(1000));
-    let mut buf = [0u8; 255];
 
     let uart_handler = thread::spawn(move || {
         uart_handler(serial);

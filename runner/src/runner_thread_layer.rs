@@ -42,7 +42,7 @@ pub fn uart_handler(serial: SerialPort) {
                         if received_bytes_count < 40 {
                             continue 'inner;
                         }
-                        if message_buffer.len() < 40 || repeat_flag == false{
+                        if message_buffer.len() < 40 && repeat_flag == false{
                             repeat_flag = true;
                             continue 'outer;
                         }
@@ -54,6 +54,7 @@ pub fn uart_handler(serial: SerialPort) {
                                 received_bytes_count = 0;
                                 start_receiving = false;
                                 repeat_flag = false;
+                                continue 'outer;
                             } else if received_bytes_count == 40 {
                                 // send the ready state and the message to the uart handler
                                 // // format the message
@@ -65,6 +66,7 @@ pub fn uart_handler(serial: SerialPort) {
                                 received_bytes_count = 0;
                                 start_receiving = false;
                                 repeat_flag = false;
+                                continue 'outer;
                             }
                         }
                     }
@@ -73,9 +75,9 @@ pub fn uart_handler(serial: SerialPort) {
                     received_bytes_count = 0;
                     start_receiving = false;
                     repeat_flag = false;
-                    
                     // nothing is received
                     println!("\n-------------------------Nothing is received----------------------------\n");
+                    continue 'outer;
                 }
                 
             },
@@ -93,10 +95,9 @@ pub fn uart_handler(serial: SerialPort) {
                     let mut message = Vec::new();
                     message_to_device.form_message(&mut message);
                     serial.write(&message).unwrap();
-                    sleep(Duration::from_millis(100));
                 }
                 else{
-                    continue;
+                    continue 'outer;
                 }
             },
         }

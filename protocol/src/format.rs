@@ -5,8 +5,9 @@ use fixed::{
     types::{I6F26, I16F16},
 };
 use heapless::Vec;
+use alloc::vec::Vec as OtherVec;
 
-use alloc::vec::{Vec as OtherVec, self};
+use alloc::vec::{self};
 use postcard::{from_bytes, to_vec};
 use serde::{Deserialize, Serialize};
 
@@ -121,6 +122,22 @@ impl HostProtocol {
     }
 
     pub fn format_message(message: &mut vec::Vec<u8>) -> HostProtocol {
+        let mut format_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
+        format_message.set_start_flag(message[0]);
+        format_message.set_mode(message[1]);
+        format_message.set_joystick_lift(message[2]);
+        format_message.set_joystick_yaw(message[3]);
+        format_message.set_keyboard_yaw(message[4]);
+        format_message.set_joystick_pitch(message[5]);
+        format_message.set_keyboard_pitch_roll_1(message[6]);
+        format_message.set_keyboard_pitch_roll_2(message[7]);
+        format_message.set_joystick_roll(message[8]);
+        format_message.set_crc(u16::from_be_bytes([message[9], message[10]]));
+        format_message.set_end_flag(message[11]);
+        format_message
+    }
+
+    pub fn format_message_alloc(message: &mut OtherVec<u8>) -> HostProtocol {
         let mut format_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
         format_message.set_start_flag(message[0]);
         format_message.set_mode(message[1]);

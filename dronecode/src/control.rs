@@ -1,3 +1,4 @@
+use core::num;
 
 use crate::yaw_pitch_roll::YawPitchRoll;
 
@@ -23,12 +24,10 @@ pub fn control_loop() -> ! {
     let mut last = Instant::now();
     let mut test: u8 = 0;
     let mut ack = 0b0000_0000;
-    let mut buf = [0u8; 255];
+    let mut buf = [0u8; 64];
     let mut message_buffer: Vec<u8> = Vec::new();
     let mut received_bytes_count = 0;
     let mut start_receiving = false;
-    let mut process_complete = false;
-    let mut repeat_flag = false;
 
     // let mut logger = logger::BlackBoxLogger::new();
     // logger.start_logging();
@@ -45,69 +44,34 @@ pub fn control_loop() -> ! {
         let pres = read_pressure();
 
         // the code below is for receiving the message from the host
-        if i % 10 == 0 {
-            'outer: while process_complete == false {
-                let num = receive_bytes(&mut buf);
-                if num != 0 {
-                    Yellow.on();
-                    ack = 0b1111_1111;
-                    'inner: for i in 0..num {
-                        let received_byte = buf[i];
-                        if received_byte == 0x7b && start_receiving == false {
-                            message_buffer.clear();
-                            start_receiving = true;
-                        }
-                        if start_receiving == true {
-                            message_buffer.push(received_byte);
-                            received_bytes_count += 1;
-                        }
-                        if received_bytes_count < 12 {
-                            continue 'inner;
-                        }
-                        if message_buffer.len() < 12 || repeat_flag == false{
-                            repeat_flag = true;
-                            continue 'outer;
-                        }
-                        // when it reaches here, the bytes recieved is already >= 40
-                        if received_byte == 0x7d && start_receiving == true {
-                            if received_bytes_count > 12 || received_bytes_count < 12{
-                                message_buffer.clear();
-                                received_bytes_count = 0;
-                                start_receiving = false;
-                                repeat_flag = false;
-                                process_complete = true;
-                            } else if received_bytes_count == 12 {
-                                // send the ready state and the message to the uart handler
-                                // // format the message
-                                let nice_received_message = HostProtocol::format_message(&mut message_buffer);
-                                // // verify the message, and print out the message
-                                ack = verify_message(&nice_received_message);
-                                ack = 0b1111_1111;
-                                Yellow.on();
-                                // clean everything, initialize everything and start receiving again
-                                message_buffer.clear();
-                                received_bytes_count = 0;
-                                start_receiving = false;
-                                repeat_flag = false;
-                                process_complete = true;
-                            }
-                        }
+        let num = receive_bytes(&mut buf);
+        if num != 0 {
+            if num == 12 {
+                Yellow.on();
+                for i in 0..num {
+                    let received_byte = buf[i];
+                    if received_byte == 0x7b && start_receiving == false {
                         message_buffer.clear();
-                        received_bytes_count = 0;
-                        start_receiving = false;
-                        repeat_flag = false;
-                        process_complete = true;
+                        start_receiving = true;
                     }
-                    message_buffer.clear();
-                    received_bytes_count = 0;
-                    start_receiving = false;
-                    repeat_flag = false;
-                    process_complete = true;
+                    if start_receiving == true {
+                        message_buffer.push(received_byte);
+                        received_bytes_count += 1;
+                    }
+                    if received_bytes_count < 12 {
+                        continue;
+                    }
                 }
+                let nice_received_message = HostProtocol::format_message_alloc(&mut message_buffer);
+                ack = verify_message(&nice_received_message);
+                received_bytes_count = 0;
+                message_buffer.clear();
+            }
+            else{
+                received_bytes_count = 0;
+                message_buffer.clear();
             }
         }
-        
-        
 
         // the code below is for sending the message to the host
         if i % 100 == 0 {
@@ -136,130 +100,16 @@ pub fn control_loop() -> ! {
     unreachable!();
 }
 
-// pub fn control_loop() -> ! {
-//     set_tick_frequency(100);
-//     let mut last = Instant::now();
-//     let mut test: u8 = 0;
-//     let mut ack = 0b0000_0000;
-
-//     // let mut logger = logger::BlackBoxLogger::new();
-//     // logger.start_logging();
-
-//     for i in 0.. {
-//         delay_ms_assembly(1000);
-//         let now = Instant::now();
-//         let dt = now.duration_since(last);
-//         last = now;
-//         let motors = get_motors();
-//         let quaternion = block!(read_dmp_bytes()).unwrap();
-//         let ypr = YawPitchRoll::from(quaternion);
-//         let (accel, _) = read_raw().unwrap();
-//         let bat = read_battery();
-//         let pres = read_pressure();
-
-//         // the code below is for receiving the message from the host
-//         if i % 100 == 0 {
-//             let mut buf = [0u8; 255];
-//             let mut messsage_buffer: Vec<u8> = Vec::new();
-//             let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
-//             let mut start_receiving = false;
-
-            // let num = receive_bytes(&mut buf);
-            // if num != 0 {
-            //     Yellow.on();
-            //     ack = 0b1111_1111;
-            //     for i in 0..num {
-            //         let received_byte = buf[i];
-            //         if received_byte == 0x7b && start_receiving == false {
-            //             messsage_buffer.clear();
-            //             start_receiving = true;
-            //         }
-            //         if start_receiving == true {
-            //             messsage_buffer.push(received_byte);
-            //             received_bytes_count += 1;
-            //         }
-            //         if received_byte == 0x7d && start_receiving == true {
-            //             if received_bytes_count != 12{
-            //                 ack = 0b0000_0000;
-            //             } else if received_bytes_count == 12 {
-            //                 let nice_received_message = HostProtocol::format_message(&mut messsage_buffer);
-            //                 ack = verify_message(&nice_received_message);
-            //                 received_bytes_count = 0;
-            //                 start_receiving = false;
-            //             }
-            //         }
-            //     }
-            // }
-        // }
-
-//         // the code below is for sending the message to the host
-//         if i % 100 == 0 {
-//             // Create an instance of the Drone Protocol struct
-//             test += 1;
-//             let message_to_host = DeviceProtocol::new(
-//                 test,
-//                 dt.as_millis() as u16,
-//                 motors,
-//                 [ypr.yaw, ypr.pitch, ypr.roll],
-//                 [accel.x, accel.y, accel.z],
-//                 bat,
-//                 pres,
-//                 ack,
-//             );
-
-//             // Form the message waiting to be sent to the host
-//             let mut message = Vec::new();
-//             message_to_host.form_message(&mut message);
-//             send_bytes(&message);
-
-//             /**********************
-//              **** Data logging ****
-//              **********************/
-
-//             // First fill in the data log form
-//             // Then do logger.log_data(&data_log_form);
-//             // let data_log_form = DroneLogData {
-//             //     timestamp: now.ns_since_start(),
-//             //     accel: [accel.x, accel.y, accel.z],
-//             //     motor: motors,
-//             //     ypr: [ypr.yaw.to_bits(), ypr.pitch.to_bits(), ypr.roll.to_bits()],
-//             //     bat,
-//             //     pres,
-//             //     cpu_usage: 0,
-//             //     ram_usage: 0,
-//             //     flash_usage: 0,
-//             //     mode: test,
-//             // };
-
-//             // logger.log(&data_log_form);
-
-//             // if (i % 1000) == 0 {
-//             //     // Stop logging every 10 seconds
-//             //     logger.stop_logging();
-//             // }
-//         }
-
-//         // Stop the logger
-
-//         // Read from the flash memory
-
-//         // wait until the timer interrupt goes off again
-//         // based on the frequency set above
-//         wait_for_next_tick();
-//     }
-//     unreachable!();
-// }
-
 fn verify_message(message: &HostProtocol) -> u8  {
     // we check the start bit and the end bit first
-    if message.get_start_flag() != 0x7b || message.get_end_flag() != 0x7d {
-        if verify_crc(message) {
-            0b1111_1111
+    if message.get_start_flag() == 0x7b && message.get_end_flag() == 0x7d {
+        if verify_crc(message) == true{
+            return 0b1111_1111;
         } else {
-            0b0000_0000
+            return 0b0000_0000;
         }
     }else {
-        0b0000_0000
+        return 0b0000_0000;
     }
 }
 
