@@ -70,7 +70,7 @@ impl HostProtocol {
             keyboard_pitch_roll_1,
             keyboard_pitch_roll_2,
             joystick_roll,
-            crc: 0x00, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
+            crc: 0x0000, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
     }
@@ -303,7 +303,7 @@ impl DeviceProtocol {
             bat,
             pres,
             ack,
-            crc: 0x00, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
+            crc: 0x0000, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
     }

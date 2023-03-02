@@ -24,6 +24,11 @@ pub fn control_loop() -> ! {
     let mut test: u8 = 0;
     let mut ack = 0b0000_0000;
     let mut buf = [0u8; 255];
+    let mut message_buffer: Vec<u8> = Vec::new();
+    let mut received_bytes_count = 0;
+    let mut start_receiving = false;
+    let mut process_complete = false;
+    let mut repeat_flag = false;
 
     // let mut logger = logger::BlackBoxLogger::new();
     // logger.start_logging();
@@ -41,12 +46,68 @@ pub fn control_loop() -> ! {
 
         // the code below is for receiving the message from the host
         if i % 10 == 0 {
-            let num = receive_bytes(&mut buf);
-            if num != 0 {
-                Yellow.on();
-                ack = 0b1111_1111;
+            'outer: while process_complete == false {
+                let num = receive_bytes(&mut buf);
+                if num != 0 {
+                    Yellow.on();
+                    ack = 0b1111_1111;
+                    'inner: for i in 0..num {
+                        let received_byte = buf[i];
+                        if received_byte == 0x7b && start_receiving == false {
+                            message_buffer.clear();
+                            start_receiving = true;
+                        }
+                        if start_receiving == true {
+                            message_buffer.push(received_byte);
+                            received_bytes_count += 1;
+                        }
+                        if received_bytes_count < 12 {
+                            continue 'inner;
+                        }
+                        if message_buffer.len() < 12 || repeat_flag == false{
+                            repeat_flag = true;
+                            continue 'outer;
+                        }
+                        // when it reaches here, the bytes recieved is already >= 40
+                        if received_byte == 0x7d && start_receiving == true {
+                            if received_bytes_count > 12 || received_bytes_count < 12{
+                                message_buffer.clear();
+                                received_bytes_count = 0;
+                                start_receiving = false;
+                                repeat_flag = false;
+                                process_complete = true;
+                            } else if received_bytes_count == 12 {
+                                // send the ready state and the message to the uart handler
+                                // // format the message
+                                let nice_received_message = HostProtocol::format_message(&mut message_buffer);
+                                // // verify the message, and print out the message
+                                ack = verify_message(&nice_received_message);
+                                ack = 0b1111_1111;
+                                Yellow.on();
+                                // clean everything, initialize everything and start receiving again
+                                message_buffer.clear();
+                                received_bytes_count = 0;
+                                start_receiving = false;
+                                repeat_flag = false;
+                                process_complete = true;
+                            }
+                        }
+                        message_buffer.clear();
+                        received_bytes_count = 0;
+                        start_receiving = false;
+                        repeat_flag = false;
+                        process_complete = true;
+                    }
+                    message_buffer.clear();
+                    received_bytes_count = 0;
+                    start_receiving = false;
+                    repeat_flag = false;
+                    process_complete = true;
+                }
             }
         }
+        
+        
 
         // the code below is for sending the message to the host
         if i % 100 == 0 {
@@ -103,33 +164,33 @@ pub fn control_loop() -> ! {
 //             let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
 //             let mut start_receiving = false;
 
-//             let num = receive_bytes(&mut buf);
-//             if num != 0 {
-//                 Yellow.on();
-//                 ack = 0b1111_1111;
-//                 // for i in 0..num {
-//                 //     let received_byte = buf[i];
-//                 //     if received_byte == 0x7b && start_receiving == false {
-//                 //         messsage_buffer.clear();
-//                 //         start_receiving = true;
-//                 //     }
-//                 //     if start_receiving == true {
-//                 //         messsage_buffer.push(received_byte);
-//                 //         received_bytes_count += 1;
-//                 //     }
-//                 //     if received_byte == 0x7d && start_receiving == true {
-//                 //         if received_bytes_count != 12{
-//                 //             ack = 0b0000_0000;
-//                 //         } else if received_bytes_count == 12 {
-//                 //             let nice_received_message = HostProtocol::format_message(&mut messsage_buffer);
-//                 //             ack = verify_message(&nice_received_message);
-//                 //             received_bytes_count = 0;
-//                 //             start_receiving = false;
-//                 //         }
-//                 //     }
-//                 // }
-//             }
-//         }
+            // let num = receive_bytes(&mut buf);
+            // if num != 0 {
+            //     Yellow.on();
+            //     ack = 0b1111_1111;
+            //     for i in 0..num {
+            //         let received_byte = buf[i];
+            //         if received_byte == 0x7b && start_receiving == false {
+            //             messsage_buffer.clear();
+            //             start_receiving = true;
+            //         }
+            //         if start_receiving == true {
+            //             messsage_buffer.push(received_byte);
+            //             received_bytes_count += 1;
+            //         }
+            //         if received_byte == 0x7d && start_receiving == true {
+            //             if received_bytes_count != 12{
+            //                 ack = 0b0000_0000;
+            //             } else if received_bytes_count == 12 {
+            //                 let nice_received_message = HostProtocol::format_message(&mut messsage_buffer);
+            //                 ack = verify_message(&nice_received_message);
+            //                 received_bytes_count = 0;
+            //                 start_receiving = false;
+            //             }
+            //         }
+            //     }
+            // }
+        // }
 
 //         // the code below is for sending the message to the host
 //         if i % 100 == 0 {
