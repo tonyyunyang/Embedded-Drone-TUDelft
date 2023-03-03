@@ -1,6 +1,10 @@
-use std::{sync::mpsc::{Receiver, Sender}, thread::sleep, time::Duration};
 use protocol::format::{DeviceProtocol, HostProtocol};
 use serial2::SerialPort;
+use std::{
+    sync::mpsc::{Receiver, Sender},
+    thread::sleep,
+    time::Duration,
+};
 
 // enum DeviceModes {
 //     Panic,
@@ -85,16 +89,16 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
                         match write_result {
                             Ok(_) => {
                                 println!("Message sent to device");
-                            },
+                            }
                             Err(_) => {
                                 println!("Message not sent to device");
-                            },
+                            }
                         }
                         continue 'outer;
-                    },
+                    }
                     Err(_) => {
                         continue 'outer;
-                    },
+                    }
                 }
             }
         }
@@ -103,21 +107,20 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
 
 pub fn user_input(user_input: Sender<HostProtocol>) {
     // form the messages by monitoring the user input (either joystick of keyboard)
-    let mut protocol = HostProtocol::new(1,1,1,1,1,1,1,1);
+    let mut protocol = HostProtocol::new(1, 1, 1, 1, 1, 1, 1, 1);
     let crc_value = protocol.calculate_crc16();
     protocol.set_crc(crc_value);
     let feedback = user_input.send(protocol);
     match feedback {
         Ok(_) => {
             println!("Message sent to handler");
-        },
+        }
         Err(_) => {
             println!("Message not sent to handler");
-        },
+        }
     }
     sleep(Duration::from_millis(100));
 }
-
 
 fn verify_message(message: &DeviceProtocol) {
     // we check the start bit and the end bit first
