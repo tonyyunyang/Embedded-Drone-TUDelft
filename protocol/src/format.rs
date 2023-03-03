@@ -49,6 +49,7 @@ pub struct DeviceProtocol {
 
 impl HostProtocol {
     // Construct a new HostProtocol from its fields
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         mode: u8,
         joystick_lift: u8,
@@ -74,7 +75,7 @@ impl HostProtocol {
         }
     }
 
-    pub fn clone(&self) -> Self {
+    pub fn another_clone(&self) -> Self {
         Self {
             start_flag: self.start_flag,
             mode: self.mode,
@@ -119,7 +120,7 @@ impl HostProtocol {
         message.push(self.end_flag);
     }
 
-    pub fn format_message(message: &mut vec::Vec<u8>) -> HostProtocol {
+    pub fn format_message(message: &mut [u8]) -> HostProtocol {
         let mut format_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
         format_message.set_start_flag(message[0]);
         format_message.set_mode(message[1]);
@@ -298,6 +299,7 @@ impl HostProtocol {
 
 impl DeviceProtocol {
     // Construct a new DroneProtocol from its fields
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         mode: u8,
         duration: u16,
@@ -358,7 +360,7 @@ impl DeviceProtocol {
         message.push(self.end_flag);
     }
 
-    pub fn format_message(message: &mut vec::Vec<u8>) -> DeviceProtocol {
+    pub fn format_message(message: &mut [u8]) -> DeviceProtocol {
         let mut format_message =
             DeviceProtocol::new(0, 0, [0; 4], [I6F26::from_num(0); 3], [0; 3], 0, 0, 0);
         format_message.set_start_flag(message[0]);
