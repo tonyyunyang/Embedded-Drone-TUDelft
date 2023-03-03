@@ -1,8 +1,5 @@
 use fixed_trigonometry::atan;
-use tudelft_quadrupel::{
-    fixed::{traits::Fixed, types::I6F26},
-    mpu::structs::Quaternion,
-};
+use tudelft_quadrupel::{fixed::types::I6F26, mpu::structs::Quaternion};
 
 // A struct to hold yaw, pitch, and roll values
 #[derive(Debug, Copy, Clone)]

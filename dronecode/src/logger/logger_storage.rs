@@ -123,7 +123,7 @@ impl PageBasedLogger {
                 // Everything is fine
             }
             Err(_) => {
-                // TODO: handle error
+                todo!("Handle error");
             }
         }
     }
