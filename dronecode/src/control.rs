@@ -43,7 +43,7 @@ pub fn control_loop() -> ! {
             if num == 12 {
                 Yellow.on();
                 for i in buf.iter().take(num) {
-                    let received_byte = i.clone();
+                    let received_byte = *i;
                     if received_byte == 0x7b && !start_receiving {
                         message_buffer.clear();
                         start_receiving = true;
