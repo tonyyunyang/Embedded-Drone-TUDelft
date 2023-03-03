@@ -10,14 +10,15 @@ use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::initialize::initialize;
 use tudelft_quadrupel::{block, initialize, uart};
 
-use tudelft_quadrupel::led::Led::{Blue, Red, Green, Yellow};
+use tudelft_quadrupel::led::Led::{Blue, Green, Red, Yellow};
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
-use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant, delay_us_assembly, delay_ms_assembly};
-use tudelft_quadrupel::uart::{send_bytes, receive_bytes};
+use tudelft_quadrupel::time::{
+    delay_ms_assembly, delay_us_assembly, set_tick_frequency, wait_for_next_tick, Instant,
+};
+use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
 use postcard::Error;
-
 
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
@@ -66,8 +67,7 @@ pub fn control_loop() -> ! {
                 ack = verify_message(&nice_received_message);
                 received_bytes_count = 0;
                 message_buffer.clear();
-            }
-            else{
+            } else {
                 received_bytes_count = 0;
                 message_buffer.clear();
             }
@@ -100,15 +100,15 @@ pub fn control_loop() -> ! {
     unreachable!();
 }
 
-fn verify_message(message: &HostProtocol) -> u8  {
+fn verify_message(message: &HostProtocol) -> u8 {
     // we check the start bit and the end bit first
     if message.get_start_flag() == 0x7b && message.get_end_flag() == 0x7d {
-        if verify_crc(message) == true{
+        if verify_crc(message) == true {
             return 0b1111_1111;
         } else {
             return 0b0000_0000;
         }
-    }else {
+    } else {
         return 0b0000_0000;
     }
 }

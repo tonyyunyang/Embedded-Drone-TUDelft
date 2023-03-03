@@ -1,19 +1,17 @@
 use postcard::Error;
 use protocol::format::{DeviceProtocol, HostProtocol};
 mod runner_thread_layer;
+use core::num;
+use fixed::types::{I16F16, I6F26};
 use runner_thread_layer::uart_handler;
 use serial2::SerialPort;
-use core::num;
 use std::env::args;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
-use std::time::{Duration, self};
-use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
-use std::thread::{self, sleep};
-use fixed::{
-    types::{I6F26, I16F16},
-};
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::thread::{self, sleep};
+use std::time::{self, Duration};
+use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
 
 fn main() {
     let file = args().nth(1);
@@ -27,9 +25,7 @@ fn main() {
     });
 
     uart_handler.join().unwrap();
-
 }
-
 
 #[allow(unused)]
 fn start_interface(port: &Path) {

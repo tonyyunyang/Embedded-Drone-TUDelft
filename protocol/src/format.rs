@@ -1,11 +1,9 @@
 use crc16::{State, XMODEM};
 use crc_any::CRCu8;
 
-use fixed::{
-    types::{I6F26, I16F16},
-};
-use heapless::Vec;
 use alloc::vec::Vec as OtherVec;
+use fixed::types::{I16F16, I6F26};
+use heapless::Vec;
 
 use alloc::vec::{self};
 use postcard::{from_bytes, to_vec};
@@ -14,17 +12,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct HostProtocol {
     // this is the data format for the data sent from the PC to the drone
-    start_flag: u8,     // Start of frame indicator
-    mode: u8,           // Two bytes to represent 9 modes
-    joystick_lift: u8,  // Lift up/down control
-    joystick_yaw: u8,   // Yaw left/right control
+    start_flag: u8,    // Start of frame indicator
+    mode: u8,          // Two bytes to represent 9 modes
+    joystick_lift: u8, // Lift up/down control
+    joystick_yaw: u8,  // Yaw left/right control
     keyboard_yaw: u8,
     joystick_pitch: u8, // Pitch up/down control
     keyboard_pitch_roll_1: u8,
     keyboard_pitch_roll_2: u8,
-    joystick_roll: u8,  // Roll left/right control
-    crc: u16,            // Cyclic redundancy check
-    end_flag: u8,       // End of frame indicator
+    joystick_roll: u8, // Roll left/right control
+    crc: u16,          // Cyclic redundancy check
+    end_flag: u8,      // End of frame indicator
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -36,7 +34,7 @@ pub struct DeviceProtocol {
 
     // Payload
     mode: u8,        // Two bytes to represent 9 modes
-    duration: u16,  // This is the duration of the tramision, 16 bytes
+    duration: u16,   // This is the duration of the tramision, 16 bytes
     motor: [u16; 4], // This is the data of the 4 motors on the drone, each motor has 2 bytes
     ypr: [I6F26; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
     acc: [i16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
@@ -45,7 +43,7 @@ pub struct DeviceProtocol {
     ack: u8,       // This is the data of the acknowledgement byte, 1 byte
 
     // Footer
-    crc: u16,      // Cyclic redundancy check
+    crc: u16,     // Cyclic redundancy check
     end_flag: u8, // By default, this would be set to 0b01111101 = 0x7d, in ASCII, it is "}"
 }
 
@@ -308,7 +306,7 @@ impl DeviceProtocol {
         acc: [i16; 3],
         bat: u16,
         pres: u32,
-        ack: u8
+        ack: u8,
     ) -> Self {
         Self {
             start_flag: 0x7b,
@@ -361,15 +359,34 @@ impl DeviceProtocol {
     }
 
     pub fn format_message(message: &mut vec::Vec<u8>) -> DeviceProtocol {
-        let mut format_message = DeviceProtocol::new(0, 0, [0; 4], [I6F26::from_num(0); 3], [0; 3], 0, 0, 0);
+        let mut format_message =
+            DeviceProtocol::new(0, 0, [0; 4], [I6F26::from_num(0); 3], [0; 3], 0, 0, 0);
         format_message.set_start_flag(message[0]);
         format_message.set_mode(message[1]);
         format_message.set_duration(u16::from_be_bytes([message[2], message[3]]));
-        format_message.set_motor([u16::from_be_bytes([message[4], message[5]]), u16::from_be_bytes([message[6], message[7]]), u16::from_be_bytes([message[8], message[9]]), u16::from_be_bytes([message[10], message[11]])]);
-        format_message.set_ypr([I6F26::from_be_bytes([message[12], message[13], message[14], message[15]]), I6F26::from_be_bytes([message[16], message[17], message[18], message[19]]), I6F26::from_be_bytes([message[20], message[21], message[22], message[23]])]);
-        format_message.set_acc([i16::from_be_bytes([message[24], message[25]]), i16::from_be_bytes([message[26], message[27]]), i16::from_be_bytes([message[28], message[29]])]);
+        format_message.set_motor([
+            u16::from_be_bytes([message[4], message[5]]),
+            u16::from_be_bytes([message[6], message[7]]),
+            u16::from_be_bytes([message[8], message[9]]),
+            u16::from_be_bytes([message[10], message[11]]),
+        ]);
+        format_message.set_ypr([
+            I6F26::from_be_bytes([message[12], message[13], message[14], message[15]]),
+            I6F26::from_be_bytes([message[16], message[17], message[18], message[19]]),
+            I6F26::from_be_bytes([message[20], message[21], message[22], message[23]]),
+        ]);
+        format_message.set_acc([
+            i16::from_be_bytes([message[24], message[25]]),
+            i16::from_be_bytes([message[26], message[27]]),
+            i16::from_be_bytes([message[28], message[29]]),
+        ]);
         format_message.set_bat(u16::from_be_bytes([message[30], message[31]]));
-        format_message.set_pres(u32::from_be_bytes([message[32], message[33], message[34], message[35]]));
+        format_message.set_pres(u32::from_be_bytes([
+            message[32],
+            message[33],
+            message[34],
+            message[35],
+        ]));
         format_message.set_ack(message[36]);
         format_message.set_crc(u16::from_be_bytes([message[37], message[38]]));
         format_message.set_end_flag(message[39]);
