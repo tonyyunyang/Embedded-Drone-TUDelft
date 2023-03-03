@@ -14,6 +14,7 @@ from tomlkit import key
 pygame.init()
 pygame.joystick.init() 
 
+
 # Get ready to print
 joysticks= pygame.joystick.get_count()
 print ("Number of joysticks: ", joysticks)
@@ -58,14 +59,12 @@ def get_joystick_data():
  while (True):
     global drone_mode
     global pitch, yaw, lift, roll
+    # threading.Timer(0.005, get_data).start()
     for event in pygame.event.get():
         print(event.type)
         if event.type == pygame.JOYBUTTONDOWN:
                     print("Button:",event.dict['button'],"pressed")
                     if event.dict['button'] == 0:
-                        # global done
-                        # done = True
-                        # return done
                         drone_mode = 9
                         print("stopping")
                         continue
@@ -73,20 +72,16 @@ def get_joystick_data():
                 for i in range(axes):
                     pitch = joystick.get_axis(1)
                     print("Pitch:" , pitch)
-                    # global yaw
                     yaw = joystick.get_axis(2)
                     print("Yaw:" , yaw)
-                    # global lift
                     lift = joystick.get_axis(3)
                     print("Lift:" , lift)
-                    # global roll
                     roll = joystick.get_axis(0)
                     print("Roll:" , roll)
                     continue
-            # return done
-    #make a function for getting keyboard data
+    #function for getting keyboard data
 def get_keyboard_data():
-        # done=False
+        threading.Timer(0.005, get_data).start()
         global drone_mode
         global pitch, yaw, lift, roll
         global P, P1, P2
@@ -96,11 +91,6 @@ def get_keyboard_data():
                 # print(type(event.key.char))
                 if event.key == keyboard.Key.esc or event.key == keyboard.Key.space:
                    drone_mode = 9
-                #  global done
-                #  done=True
-                #  return done
-                
-                #  break
                 elif event.key == keyboard.Key.up and type(event) == keyboard.Events.Press:
                     if pitch <= 0.9:
                         pitch = pitch + 0.1
@@ -157,8 +147,7 @@ def get_keyboard_data():
                 elif event.key == keyboard.KeyCode(char="l") and type(event) == keyboard.Events.Press:
                         P2 = P2 - 0.1 
                         print("P2: ", P2)
-        # return done1
-        #need to add for yaw control and pitch control ??aaa
+
 #function to get the data from the joystick or keyboard
 def get_data():
      return pitch, yaw, lift, roll
@@ -167,20 +156,13 @@ def get_data():
 # -------- Main Program Loop -----------
 # while done!=True:
         # print("in python code")
+# every 5ms call the get data function to get yaw, pitch, roll and thrust values
 thread1=threading.Thread(target=get_joystick_data)
 if (joysticks > 0):
  thread1.start()
 thread2=threading.Thread(target=get_keyboard_data)
 thread2.start()
-        # if(joysticks >aaaaappll 0):
-            # done=get_joystick_data()
-            # print(done)
-            # print(get_data())
-        # else:
-            # done=get_keyboard_data()
-            # print(get_data())
-# if (done==True):
+# aaaaaaaaa
 if (thread1.is_alive()):
     thread1.join()
 thread2.join()
-print(get_data()) 

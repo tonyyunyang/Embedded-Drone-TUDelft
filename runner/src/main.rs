@@ -51,7 +51,11 @@ fn start_interface() {
         .arg("my_interface.py");
         // pass the serial port as a command line parameter to the python program
         // .arg(port.to_str().unwrap());
-
+        unsafe
+        {
+            eprint!("{:?}", cmd.output().unwrap().stdout);
+        }
+   
     match cmd.output() {
         Err(e) => {
             eprintln!("{}", e);
