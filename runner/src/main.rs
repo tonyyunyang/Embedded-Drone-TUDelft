@@ -1,16 +1,13 @@
-
-
 mod runner_thread_layer;
-
 
 use runner_thread_layer::uart_handler;
 use serial2::SerialPort;
 use std::env::args;
-use std::path::{Path};
+use std::path::Path;
 use std::process::{exit, Command};
 
 use std::thread::{self, sleep};
-use std::time::{Duration};
+use std::time::Duration;
 use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
 
 fn main() {

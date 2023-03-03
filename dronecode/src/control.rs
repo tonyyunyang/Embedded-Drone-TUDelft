@@ -1,5 +1,3 @@
-
-
 use crate::yaw_pitch_roll::YawPitchRoll;
 
 use alloc::vec::Vec;
@@ -7,18 +5,13 @@ use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 
+use tudelft_quadrupel::block;
 
-use tudelft_quadrupel::{block};
-
-use tudelft_quadrupel::led::Led::{Yellow};
+use tudelft_quadrupel::led::Led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
-use tudelft_quadrupel::time::{
-    set_tick_frequency, wait_for_next_tick, Instant,
-};
+use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
-
-
 
 pub fn control_loop() -> ! {
     set_tick_frequency(100);

@@ -1,5 +1,3 @@
-
-
 use protocol::format::{DeviceProtocol, HostProtocol};
 use serial2::SerialPort;
 
