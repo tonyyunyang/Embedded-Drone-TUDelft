@@ -5,7 +5,7 @@ use runner_thread_layer::{uart_handler, user_input};
 use serial2::SerialPort;
 use std::env::args;
 
-use std::sync::mpsc::{channel};
+use std::sync::mpsc::channel;
 use std::thread::{self, sleep};
 use std::time::Duration;
 use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
