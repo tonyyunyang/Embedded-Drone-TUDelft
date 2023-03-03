@@ -42,14 +42,14 @@ pub fn control_loop() -> ! {
         if num != 0 {
             if num == 12 {
                 Yellow.on();
-                for i in 0..num {
-                    let received_byte = buf[i];
-                    if received_byte == 0x7b && !start_receiving {
+                for i in buf.iter().take(12) {
+                    let received_byte = i;
+                    if received_byte == &0x7b && !start_receiving {
                         message_buffer.clear();
                         start_receiving = true;
                     }
                     if start_receiving {
-                        message_buffer.push(received_byte);
+                        message_buffer.push(*received_byte);
                         received_bytes_count += 1;
                     }
                     if received_bytes_count < 12 {
