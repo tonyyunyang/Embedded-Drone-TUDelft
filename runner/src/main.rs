@@ -1,22 +1,22 @@
-use postcard::Error;
-use protocol::format::{DeviceProtocol, HostProtocol};
+
+
 mod runner_thread_layer;
-use core::num;
-use fixed::types::{I16F16, I6F26};
+
+
 use runner_thread_layer::uart_handler;
 use serial2::SerialPort;
 use std::env::args;
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 use std::process::{exit, Command};
-use std::sync::mpsc::{channel, Receiver, Sender};
+
 use std::thread::{self, sleep};
-use std::time::{self, Duration};
+use std::time::{Duration};
 use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
 
 fn main() {
     let file = args().nth(1);
     let port = upload_file_or_stop(PortSelector::AutoManufacturer, file);
-    let serial = SerialPort::open(&port, 115200).unwrap();
+    let serial = SerialPort::open(port, 115200).unwrap();
 
     sleep(Duration::from_millis(1000));
 

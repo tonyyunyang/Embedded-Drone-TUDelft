@@ -2,7 +2,7 @@ use crc16::{State, XMODEM};
 use crc_any::CRCu8;
 
 use alloc::vec::Vec as OtherVec;
-use fixed::types::{I16F16, I6F26};
+use fixed::types::{I6F26};
 use heapless::Vec;
 
 use alloc::vec::{self};

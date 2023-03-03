@@ -1,4 +1,4 @@
-use std::{thread::sleep, time::Duration};
+
 
 use protocol::format::{DeviceProtocol, HostProtocol};
 use serial2::SerialPort;
@@ -31,25 +31,25 @@ pub fn uart_handler(serial: SerialPort) {
                 if num != 0 {
                     'inner: for i in 0..num {
                         let received_byte = buf[i];
-                        if received_byte == 0x7b && start_receiving == false {
+                        if received_byte == 0x7b && !start_receiving {
                             message_buffer.clear();
                             start_receiving = true;
                         }
-                        if start_receiving == true {
+                        if start_receiving {
                             message_buffer.push(received_byte);
                             received_bytes_count += 1;
                         }
                         if received_bytes_count < 40 {
                             continue 'inner;
                         }
-                        if message_buffer.len() < 40 && repeat_flag == false {
+                        if message_buffer.len() < 40 && !repeat_flag {
                             repeat_flag = true;
                             continue 'outer;
                         }
 
                         // when it reaches here, the bytes recieved is already >= 40
-                        if received_byte == 0x7d && start_receiving == true {
-                            if received_bytes_count > 40 || received_bytes_count < 40 {
+                        if received_byte == 0x7d && start_receiving {
+                            if received_bytes_count != 40 {
                                 message_buffer.clear();
                                 received_bytes_count = 0;
                                 start_receiving = false;
@@ -90,7 +90,7 @@ pub fn uart_handler(serial: SerialPort) {
                 // in this case, we check the channel connect this thread and the thread that monitors the input from users
                 command_ready = false; // this state should be received from the channel
                 command_ready = true;
-                if command_ready == true {
+                if command_ready {
                     let message_to_device = HostProtocol::new(1, 1, 1, 1, 1, 1, 1, 1);
                     let mut message = Vec::new();
                     message_to_device.form_message(&mut message);
