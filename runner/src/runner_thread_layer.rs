@@ -1,24 +1,24 @@
 use protocol::format::{DeviceProtocol, HostProtocol};
 use serial2::SerialPort;
 
-enum DeviceModes {
-    Panic,
-    Manual,
-    Safety,
-}
+// enum DeviceModes {
+//     Panic,
+//     Manual,
+//     Safety,
+// }
 
-enum HostModes {
-    SendMessage,
-    ReceiveMessage,
-    Idle,
-}
+// enum HostModes {
+//     SendMessage,
+//     ReceiveMessage,
+//     Idle,
+// }
 
 pub fn uart_handler(serial: SerialPort) {
     let mut buf = [0u8; 255];
     let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
     let mut message_buffer = Vec::new();
     let mut start_receiving = false;
-    let mut command_ready = true;
+    // let mut command_ready = true;
     let mut repeat_flag = false;
 
     'outer: loop {
@@ -27,8 +27,8 @@ pub fn uart_handler(serial: SerialPort) {
         match read_result {
             Ok(num) => {
                 if num != 0 {
-                    'inner: for i in 0..num {
-                        let received_byte = buf[i];
+                    'inner: for i in buf.iter().take(num) {
+                        let received_byte = i.clone();
                         if received_byte == 0x7b && !start_receiving {
                             message_buffer.clear();
                             start_receiving = true;
@@ -86,8 +86,8 @@ pub fn uart_handler(serial: SerialPort) {
                 // if nothing is received on the host, we send the message to the device
                 // we also check if there is commands to be sent to the device
                 // in this case, we check the channel connect this thread and the thread that monitors the input from users
-                command_ready = false; // this state should be received from the channel
-                command_ready = true;
+                // command_ready = false; // this state should be received from the channel
+                let command_ready = true;
                 if command_ready {
                     let message_to_device = HostProtocol::new(1, 1, 1, 1, 1, 1, 1, 1);
                     let mut message = Vec::new();
