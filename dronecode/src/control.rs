@@ -1,49 +1,112 @@
 use crate::yaw_pitch_roll::YawPitchRoll;
-use alloc::format;
+
+use alloc::vec::Vec;
+use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
-use tudelft_quadrupel::led::Led::Blue;
+
+use tudelft_quadrupel::block;
+
+use tudelft_quadrupel::led::Led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
-use tudelft_quadrupel::uart::send_bytes;
+use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
     let mut last = Instant::now();
+    let mut test: u8 = 0;
+    let mut ack = 0b0000_0000;
+    let mut buf = [0u8; 64];
+    let mut message_buffer: Vec<u8> = Vec::new();
+    let mut received_bytes_count = 0;
+    let mut start_receiving = false;
+
+    // let mut logger = logger::BlackBoxLogger::new();
+    // logger.start_logging();
 
     for i in 0.. {
-        let _ = Blue.toggle();
         let now = Instant::now();
         let dt = now.duration_since(last);
         last = now;
-
         let motors = get_motors();
-        let quaternion = read_dmp_bytes().unwrap();
+        let quaternion = block!(read_dmp_bytes()).unwrap();
         let ypr = YawPitchRoll::from(quaternion);
         let (accel, _) = read_raw().unwrap();
         let bat = read_battery();
         let pres = read_pressure();
 
-        if i % 100 == 0 {
-            send_bytes(format!("DTT: {:?}ms\n", dt.as_millis()).as_bytes());
-            send_bytes(
-                format!(
-                    "MTR: {} {} {} {}\n",
-                    motors[0], motors[1], motors[2], motors[3]
-                )
-                .as_bytes(),
-            );
-            send_bytes(format!("YPR {} {} {}\n", ypr.yaw, ypr.pitch, ypr.roll).as_bytes());
-            send_bytes(format!("ACC {} {} {}\n", accel.x, accel.y, accel.z).as_bytes());
-            send_bytes(format!("BAT {bat}\n").as_bytes());
-            send_bytes(format!("BAR {pres} \n").as_bytes());
-            send_bytes("\n".as_bytes());
+        // the code below is for receiving the message from the host
+        let num = receive_bytes(&mut buf);
+        if num != 0 {
+            if num == 12 {
+                Yellow.on();
+                for i in buf.iter().take(num) {
+                    let received_byte = *i;
+                    if received_byte == 0x7b && !start_receiving {
+                        message_buffer.clear();
+                        start_receiving = true;
+                    }
+                    if start_receiving {
+                        message_buffer.push(received_byte);
+                        received_bytes_count += 1;
+                    }
+                    if received_bytes_count < 12 {
+                        continue;
+                    }
+                }
+                let nice_received_message = HostProtocol::format_message_alloc(&mut message_buffer);
+                ack = verify_message(&nice_received_message);
+                received_bytes_count = 0;
+                message_buffer.clear();
+            } else {
+                received_bytes_count = 0;
+                message_buffer.clear();
+            }
         }
 
-        // wait until the timer interrupt goes off again
-        // based on the frequency set above
+        // the code below is for sending the message to the host
+        if i % 100 == 0 {
+            // Create an instance of the Drone Protocol struct
+            test += 1;
+            let message_to_host = DeviceProtocol::new(
+                test,
+                dt.as_millis() as u16,
+                motors,
+                [ypr.yaw, ypr.pitch, ypr.roll],
+                [accel.x, accel.y, accel.z],
+                bat,
+                pres,
+                ack,
+            );
+
+            // Form the message waiting to be sent to the host
+            let mut message = Vec::new();
+            message_to_host.form_message(&mut message);
+            send_bytes(&message);
+            ack = 0b0000_0000;
+            Yellow.off();
+        }
         wait_for_next_tick();
     }
     unreachable!();
+}
+
+fn verify_message(message: &HostProtocol) -> u8 {
+    // we check the start bit and the end bit first
+    if message.get_start_flag() == 0x7b && message.get_end_flag() == 0x7d {
+        if verify_crc(message) {
+            0b1111_1111
+        } else {
+            0b0000_0000
+        }
+    } else {
+        0b0000_0000
+    }
+}
+
+fn verify_crc(message: &HostProtocol) -> bool {
+    let verification_crc = HostProtocol::calculate_crc16(message);
+    verification_crc == message.get_crc()
 }

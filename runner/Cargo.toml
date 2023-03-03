@@ -13,4 +13,9 @@ forced-target = "x86_64-unknown-linux-gnu"
 [dependencies]
 tudelft-serial-upload = "1"
 serial2 = "0.1.7"
-# inline-python = "0.10.0"
+protocol = {path = "../protocol"}
+postcard = "1.0.4"
+
+[dependencies.fixed]
+version = "1.23"
+features = ["serde"]
