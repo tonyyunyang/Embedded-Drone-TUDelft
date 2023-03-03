@@ -1,5 +1,3 @@
-use std::{thread::sleep, time::Duration};
-
 use protocol::format::{DeviceProtocol, HostProtocol};
 use serial2::SerialPort;
 
@@ -16,13 +14,13 @@ enum HostModes {
 }
 
 pub fn uart_handler(serial: SerialPort) {
-    let mut buf  = [0u8; 255];
+    let mut buf = [0u8; 255];
     let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
     let mut message_buffer = Vec::new();
     let mut start_receiving = false;
     let mut command_ready = true;
     let mut repeat_flag = false;
-    
+
     'outer: loop {
         // 'read: while finish_receiving == false {
         let read_result = serial.read(&mut buf);
@@ -31,25 +29,25 @@ pub fn uart_handler(serial: SerialPort) {
                 if num != 0 {
                     'inner: for i in 0..num {
                         let received_byte = buf[i];
-                        if received_byte == 0x7b && start_receiving == false {
+                        if received_byte == 0x7b && !start_receiving {
                             message_buffer.clear();
                             start_receiving = true;
                         }
-                        if start_receiving == true {
+                        if start_receiving {
                             message_buffer.push(received_byte);
                             received_bytes_count += 1;
                         }
                         if received_bytes_count < 40 {
                             continue 'inner;
                         }
-                        if message_buffer.len() < 40 && repeat_flag == false{
+                        if message_buffer.len() < 40 && !repeat_flag {
                             repeat_flag = true;
                             continue 'outer;
                         }
-                        
+
                         // when it reaches here, the bytes recieved is already >= 40
-                        if received_byte == 0x7d && start_receiving == true {
-                            if received_bytes_count > 40 || received_bytes_count < 40{
+                        if received_byte == 0x7d && start_receiving {
+                            if received_bytes_count != 40 {
                                 message_buffer.clear();
                                 received_bytes_count = 0;
                                 start_receiving = false;
@@ -58,7 +56,8 @@ pub fn uart_handler(serial: SerialPort) {
                             } else if received_bytes_count == 40 {
                                 // send the ready state and the message to the uart handler
                                 // // format the message
-                                let nice_received_message = DeviceProtocol::format_message(&mut message_buffer);
+                                let nice_received_message =
+                                    DeviceProtocol::format_message(&mut message_buffer);
                                 // // verify the message, and print out the message
                                 verify_message(&nice_received_message);
                                 // clean everything, initialize everything and start receiving again
@@ -79,8 +78,7 @@ pub fn uart_handler(serial: SerialPort) {
                     println!("\n-------------------------Nothing is received----------------------------\n");
                     continue 'outer;
                 }
-                
-            },
+            }
             Err(_) => {
                 message_buffer.clear();
                 received_bytes_count = 0;
@@ -90,16 +88,15 @@ pub fn uart_handler(serial: SerialPort) {
                 // in this case, we check the channel connect this thread and the thread that monitors the input from users
                 command_ready = false; // this state should be received from the channel
                 command_ready = true;
-                if command_ready == true {
-                    let message_to_device = HostProtocol::new(1, 1, 1, 1,  1, 1, 1, 1);
+                if command_ready {
+                    let message_to_device = HostProtocol::new(1, 1, 1, 1, 1, 1, 1, 1);
                     let mut message = Vec::new();
                     message_to_device.form_message(&mut message);
                     serial.write(&message).unwrap();
-                }
-                else{
+                } else {
                     continue 'outer;
                 }
-            },
+            }
         }
     }
 }

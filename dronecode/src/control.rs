@@ -1,5 +1,3 @@
-use core::num;
-
 use crate::yaw_pitch_roll::YawPitchRoll;
 
 use alloc::vec::Vec;
@@ -7,17 +5,13 @@ use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 
-use tudelft_quadrupel::initialize::initialize;
-use tudelft_quadrupel::{block, initialize, uart};
+use tudelft_quadrupel::block;
 
-use tudelft_quadrupel::led::Led::{Blue, Red, Green, Yellow};
+use tudelft_quadrupel::led::Led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
-use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant, delay_us_assembly, delay_ms_assembly};
-use tudelft_quadrupel::uart::{send_bytes, receive_bytes};
-
-use postcard::Error;
-
+use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
+use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
@@ -50,11 +44,11 @@ pub fn control_loop() -> ! {
                 Yellow.on();
                 for i in 0..num {
                     let received_byte = buf[i];
-                    if received_byte == 0x7b && start_receiving == false {
+                    if received_byte == 0x7b && !start_receiving {
                         message_buffer.clear();
                         start_receiving = true;
                     }
-                    if start_receiving == true {
+                    if start_receiving {
                         message_buffer.push(received_byte);
                         received_bytes_count += 1;
                     }
@@ -66,8 +60,7 @@ pub fn control_loop() -> ! {
                 ack = verify_message(&nice_received_message);
                 received_bytes_count = 0;
                 message_buffer.clear();
-            }
-            else{
+            } else {
                 received_bytes_count = 0;
                 message_buffer.clear();
             }
@@ -100,16 +93,16 @@ pub fn control_loop() -> ! {
     unreachable!();
 }
 
-fn verify_message(message: &HostProtocol) -> u8  {
+fn verify_message(message: &HostProtocol) -> u8 {
     // we check the start bit and the end bit first
     if message.get_start_flag() == 0x7b && message.get_end_flag() == 0x7d {
-        if verify_crc(message) == true{
-            return 0b1111_1111;
+        if verify_crc(message) {
+            0b1111_1111
         } else {
-            return 0b0000_0000;
+            0b0000_0000
         }
-    }else {
-        return 0b0000_0000;
+    } else {
+        0b0000_0000
     }
 }
 
