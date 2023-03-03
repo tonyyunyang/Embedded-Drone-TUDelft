@@ -152,36 +152,6 @@ impl HostProtocol {
         format_message
     }
 
-    // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
-    // pub fn calculate_crc(host_protocol: &mut HostProtocol) {
-    //     let mut crc: u16 = 0xFFFF; // initial value of the CRC
-
-    //     // iterate over the bytes of the payload and update the CRC
-    //     let payload_bytes = unsafe {
-    //         core::slice::from_raw_parts(
-    //             &host_protocol.mode as *const _ as *const u8,
-    //             core::mem::size_of_val(&host_protocol)
-    //                 - core::mem::size_of_val(&host_protocol.start_flag)
-    //                 - core::mem::size_of_val(&host_protocol.end_flag)
-    //                 - core::mem::size_of_val(&host_protocol.crc)
-    //         )
-    //     };
-
-    //     for &byte in payload_bytes {
-    //         crc ^= u16::from(byte);
-
-    //         for _ in 0..8 {
-    //             if (crc & 0x0001) != 0 {
-    //                 crc >>= 1;
-    //                 crc ^= 0xA001;
-    //             } else {
-    //                 crc >>= 1;
-    //             }
-    //         }
-    //     }
-    //     host_protocol.crc = crc;
-    // }
-
     pub fn calculate_crc16(&self) -> u16 {
         let mut state = State::<XMODEM>::new();
         state.update(&[self.mode]);
@@ -394,36 +364,6 @@ impl DeviceProtocol {
         format_message.set_end_flag(message[39]);
         format_message
     }
-    // The function below calculates the CRC-16 value for the struct, the value used for calculation is the payload (not including start byte and end byte)
-    // pub fn calculate_crc(device_protocol: &mut DeviceProtocol) {
-    //     let mut crc: u16 = 0xFFFF; // initial value of the CRC
-
-    //     // iterate over the bytes of the payload and update the CRC
-    //     let payload_bytes = unsafe {
-    //         core::slice::from_raw_parts(
-    //             &device_protocol.mode as *const _ as *const u8,
-    //             core::mem::size_of_val(&device_protocol)
-    //                 - core::mem::size_of_val(&device_protocol.start_flag)
-    //                 - core::mem::size_of_val(&device_protocol.end_flag)
-    //                 - core::mem::size_of_val(&device_protocol.crc)
-    //         )
-    //     };
-
-    //     for &byte in payload_bytes {
-    //         crc ^= u16::from(byte);
-
-    //         for _ in 0..8 {
-    //             if (crc & 0x0001) != 0 {
-    //                 crc >>= 1;
-    //                 crc ^= 0xA001;
-    //             } else {
-    //                 crc >>= 1;
-    //             }
-    //         }
-    //     }
-
-    //     device_protocol.crc = crc;
-    // }
 
     pub fn calculate_crc16(&self) -> u16 {
         let mut state = State::<XMODEM>::new();

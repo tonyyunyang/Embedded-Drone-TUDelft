@@ -1,3 +1,4 @@
+use std::{sync::mpsc::{Receiver, Sender}, thread::sleep, time::Duration};
 use protocol::format::{DeviceProtocol, HostProtocol};
 use serial2::SerialPort;
 
@@ -7,13 +8,7 @@ use serial2::SerialPort;
 //     Safety,
 // }
 
-// enum HostModes {
-//     SendMessage,
-//     ReceiveMessage,
-//     Idle,
-// }
-
-pub fn uart_handler(serial: SerialPort) {
+pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
     let mut buf = [0u8; 255];
     let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
     let mut message_buffer = Vec::new();
@@ -80,28 +75,49 @@ pub fn uart_handler(serial: SerialPort) {
                 }
             }
             Err(_) => {
-                message_buffer.clear();
-                received_bytes_count = 0;
-                start_receiving = false;
-                // if nothing is received on the host, we send the message to the device
-                // we also check if there is commands to be sent to the device
-                // in this case, we check the channel connect this thread and the thread that monitors the input from users
-                // command_ready = false; // this state should be received from the channel
-                let command_ready = true;
-                if command_ready {
-                    let mut message_to_device = HostProtocol::new(1, 1, 1, 1, 1, 1, 1, 1);
-                    let crc_value = HostProtocol::calculate_crc16(&message_to_device);
-                    message_to_device.set_crc(crc_value);
-                    let mut message = Vec::new();
-                    message_to_device.form_message(&mut message);
-                    serial.write(&message).unwrap();
-                } else {
-                    continue 'outer;
+                // if there is nothing to read, we check if there is something to be sent, if there is, we send it, if not, we continue
+                let read_user = user_input.try_recv();
+                match read_user {
+                    Ok(message_to_device) => {
+                        let mut message = Vec::new();
+                        message_to_device.form_message(&mut message);
+                        let write_result = serial.write(&message);
+                        match write_result {
+                            Ok(_) => {
+                                println!("Message sent to device");
+                            },
+                            Err(_) => {
+                                println!("Message not sent to device");
+                            },
+                        }
+                        continue 'outer;
+                    },
+                    Err(_) => {
+                        continue 'outer;
+                    },
                 }
             }
         }
     }
 }
+
+pub fn user_input(user_input: Sender<HostProtocol>) {
+    // form the messages by monitoring the user input (either joystick of keyboard)
+    let mut protocol = HostProtocol::new(1,1,1,1,1,1,1,1);
+    let crc_value = protocol.calculate_crc16();
+    protocol.set_crc(crc_value);
+    let feedback = user_input.send(protocol);
+    match feedback {
+        Ok(_) => {
+            println!("Message sent to handler");
+        },
+        Err(_) => {
+            println!("Message not sent to handler");
+        },
+    }
+    sleep(Duration::from_millis(100));
+}
+
 
 fn verify_message(message: &DeviceProtocol) {
     // we check the start bit and the end bit first
