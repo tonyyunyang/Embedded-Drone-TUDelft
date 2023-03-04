@@ -131,7 +131,7 @@ pub fn test_thread() {
     let mut end_flag = false;
     // define the values that we want
     // Read keys pressed from the keyboard and send them to the device
-    while end_flag == false {
+    while !end_flag {
         let stdin = stdin();
         //setting up stdout and going into raw mode
         let mut stdout = stdout().into_raw_mode().unwrap();
@@ -148,45 +148,45 @@ pub fn test_thread() {
 
             //i reckon this speaks for itself
             match c.unwrap() {
-                Key::Esc => {},
-                Key::Char(' ') => {},
-                Key::Char('0') => {},
-                Key::Char('1') => {},
-                Key::Char('2') => {},
-                Key::Char('3') => {},
-                Key::Char('4') => {},
-                Key::Char('5') => {},
-                Key::Char('6') => {},
-                Key::Char('7') => {},
-                Key::Char('8') => {},
-                Key::Char('9') => {},
-                Key::Char('a') => {},
-                Key::Char('z') => {},
-                Key::Char('A') => {},
-                Key::Char('Z') => {},
-                Key::Left => {},
-                Key::Right => {},
-                Key::Up => {},
-                Key::Down => {},
-                Key::Char('q') => {},
-                Key::Char('w') => {},
-                Key::Char('Q') => {},
-                Key::Char('W') => {},
-                Key::Char('u') => {},
-                Key::Char('j') => {},
-                Key::Char('U') => {},
-                Key::Char('J') => {},
-                Key::Char('i') => {},
-                Key::Char('k') => {},
-                Key::Char('I') => {},
-                Key::Char('K') => {},
-                Key::Char('o') => {},
-                Key::Char('l') => {},
-                Key::Char('O') => {},
-                Key::Char('L') => {},
+                Key::Esc => {}
+                Key::Char(' ') => {}
+                Key::Char('0') => {}
+                Key::Char('1') => {}
+                Key::Char('2') => {}
+                Key::Char('3') => {}
+                Key::Char('4') => {}
+                Key::Char('5') => {}
+                Key::Char('6') => {}
+                Key::Char('7') => {}
+                Key::Char('8') => {}
+                Key::Char('9') => {}
+                Key::Char('a') => {}
+                Key::Char('z') => {}
+                Key::Char('A') => {}
+                Key::Char('Z') => {}
+                Key::Left => {}
+                Key::Right => {}
+                Key::Up => {}
+                Key::Down => {}
+                Key::Char('q') => {}
+                Key::Char('w') => {}
+                Key::Char('Q') => {}
+                Key::Char('W') => {}
+                Key::Char('u') => {}
+                Key::Char('j') => {}
+                Key::Char('U') => {}
+                Key::Char('J') => {}
+                Key::Char('i') => {}
+                Key::Char('k') => {}
+                Key::Char('I') => {}
+                Key::Char('K') => {}
+                Key::Char('o') => {}
+                Key::Char('l') => {}
+                Key::Char('O') => {}
+                Key::Char('L') => {}
                 Key::Ctrl('q') => break,
-                _ => {//Invalid key
-                },
+                _ => { //Invalid key
+                }
             }
             stdout.flush().unwrap();
         }
