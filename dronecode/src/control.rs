@@ -85,6 +85,8 @@ pub fn control_loop() -> ! {
             let mut message = Vec::new();
             message_to_host.form_message(&mut message);
             send_bytes(&message);
+
+            // reset the ack
             ack = 0b0000_0000;
             Yellow.off();
         }

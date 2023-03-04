@@ -21,7 +21,6 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
     let mut repeat_flag = false;
 
     'outer: loop {
-        // 'read: while finish_receiving == false {
         let read_result = serial.read(&mut buf);
         match read_result {
             Ok(num) => {
@@ -106,20 +105,20 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
 }
 
 pub fn user_input(user_input: Sender<HostProtocol>) {
-    // form the messages by monitoring the user input (either joystick of keyboard)
-    let mut protocol = HostProtocol::new(1, 1, 1, 1, 1, 1, 1, 1);
-    let crc_value = protocol.calculate_crc16();
-    protocol.set_crc(crc_value);
-    let feedback = user_input.send(protocol);
-    match feedback {
-        Ok(_) => {
-            println!("Message sent to handler");
+    loop {
+        // form the messages by monitoring the user input (either joystick of keyboard)
+        let protocol = HostProtocol::new(54, 65, 89, 89, 78, 54, 65, 78);
+        let feedback = user_input.send(protocol);
+        match feedback {
+            Ok(_) => {
+                println!("Message sent to handler");
+            }
+            Err(_) => {
+                println!("Message not sent to handler");
+            }
         }
-        Err(_) => {
-            println!("Message not sent to handler");
-        }
-    }
-    sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(100));
+    }   
 }
 
 fn verify_message(message: &DeviceProtocol) {
@@ -139,6 +138,7 @@ fn verify_crc(message: &DeviceProtocol) -> bool {
 }
 
 fn print_verified_message(message: &DeviceProtocol) {
+    println!("--------------------------------");
     println!("DTT: {:?}ms", message.get_duration());
     println!("MODE: {:?}", message.get_mode());
     println!(
