@@ -1,6 +1,6 @@
 mod runner_thread_layer;
 use protocol::format::HostProtocol;
-use runner_thread_layer::{uart_handler, user_input};
+use runner_thread_layer::{test_thread, uart_handler, user_input};
 use serial2::SerialPort;
 use std::env::args;
 use std::sync::mpsc::channel;
@@ -25,7 +25,13 @@ fn main() {
         user_input(user_input_tx);
     });
 
+    let test_thread = thread::spawn(move || {
+        test_thread();
+    });
+
     uart_handler.join().unwrap();
 
     user_input.join().unwrap();
+
+    test_thread.join().unwrap();
 }

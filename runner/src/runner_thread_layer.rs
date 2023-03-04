@@ -1,10 +1,14 @@
 use protocol::format::{DeviceProtocol, HostProtocol};
 use serial2::SerialPort;
+use std::io::{stdin, stdout, Write};
 use std::{
     sync::mpsc::{Receiver, Sender},
     thread::sleep,
     time::Duration,
 };
+use termion::event::Key;
+use termion::input::TermRead;
+use termion::raw::IntoRawMode;
 
 // enum DeviceModes {
 //     Panic,
@@ -107,6 +111,7 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
 pub fn user_input(user_input: Sender<HostProtocol>) {
     loop {
         // form the messages by monitoring the user input (either joystick of keyboard)
+        // Read the joystick input in this thread and send commands continuously, when keyboard is pressed, then add the command to the current one
         let protocol = HostProtocol::new(54, 65, 89, 89, 78, 54, 65, 78);
         let feedback = user_input.send(protocol);
         match feedback {
@@ -118,6 +123,75 @@ pub fn user_input(user_input: Sender<HostProtocol>) {
             }
         }
         sleep(Duration::from_millis(100));
+    }
+}
+
+pub fn test_thread() {
+    // end_flag is used to exit the Raw Terminal Mode
+    let mut end_flag = false;
+    // define the values that we want
+    // Read keys pressed from the keyboard and send them to the device
+    while end_flag == false {
+        let stdin = stdin();
+        //setting up stdout and going into raw mode
+        let mut stdout = stdout().into_raw_mode().unwrap();
+        //detecting keydown events
+        for c in stdin.keys() {
+            //clearing the screen and going to top left corner
+            write!(
+                stdout,
+                "{}{}",
+                termion::cursor::Goto(1, 1),
+                termion::clear::All
+            )
+            .unwrap();
+
+            //i reckon this speaks for itself
+            match c.unwrap() {
+                Key::Esc => {},
+                Key::Char(' ') => {},
+                Key::Char('0') => {},
+                Key::Char('1') => {},
+                Key::Char('2') => {},
+                Key::Char('3') => {},
+                Key::Char('4') => {},
+                Key::Char('5') => {},
+                Key::Char('6') => {},
+                Key::Char('7') => {},
+                Key::Char('8') => {},
+                Key::Char('9') => {},
+                Key::Char('a') => {},
+                Key::Char('z') => {},
+                Key::Char('A') => {},
+                Key::Char('Z') => {},
+                Key::Left => {},
+                Key::Right => {},
+                Key::Up => {},
+                Key::Down => {},
+                Key::Char('q') => {},
+                Key::Char('w') => {},
+                Key::Char('Q') => {},
+                Key::Char('W') => {},
+                Key::Char('u') => {},
+                Key::Char('j') => {},
+                Key::Char('U') => {},
+                Key::Char('J') => {},
+                Key::Char('i') => {},
+                Key::Char('k') => {},
+                Key::Char('I') => {},
+                Key::Char('K') => {},
+                Key::Char('o') => {},
+                Key::Char('l') => {},
+                Key::Char('O') => {},
+                Key::Char('L') => {},
+                Key::Ctrl('q') => break,
+                _ => {//Invalid key
+                },
+            }
+            stdout.flush().unwrap();
+        }
+        drop(stdout);
+        end_flag = true;
     }
 }
 
