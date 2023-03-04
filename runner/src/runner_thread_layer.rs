@@ -118,7 +118,7 @@ pub fn user_input(user_input: Sender<HostProtocol>) {
             }
         }
         sleep(Duration::from_millis(100));
-    }   
+    }
 }
 
 fn verify_message(message: &DeviceProtocol) {

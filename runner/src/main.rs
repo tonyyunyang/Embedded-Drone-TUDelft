@@ -26,6 +26,6 @@ fn main() {
     });
 
     uart_handler.join().unwrap();
-    
+
     user_input.join().unwrap();
 }
