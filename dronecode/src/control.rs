@@ -16,7 +16,7 @@ use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
     let mut last = Instant::now();
-    let mut test: u8 = 0;
+    let mut _test: u8 = 0;
     let mut ack = 0b0000_0000;
     let mut buf = [0u8; 64];
     let mut message_buffer: Vec<u8> = Vec::new();
@@ -71,7 +71,7 @@ pub fn control_loop() -> ! {
         // the code below is for sending the message to the host
         if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
-            test += 1;
+            _test += 1;
             let message_to_host = DeviceProtocol::new(
                 mode,
                 dt.as_millis() as u16,

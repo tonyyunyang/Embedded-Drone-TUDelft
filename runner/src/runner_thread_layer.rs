@@ -142,7 +142,6 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
     let mut p = 50u8;
     let mut p1 = 50u8;
     let mut p2 = 50u8;
-    
 
     loop {
         let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
@@ -150,189 +149,187 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
         let read_keyboard = keyboard_input.try_recv();
         // read the keyboard input, and check if there is any input
         match read_keyboard {
-            Ok(keyboard_action) => {
-                match keyboard_action {
-                    KeyboardControl::SafeMode => {
-                        mode = 0b1111_0000;
-                    }
-                    KeyboardControl::PanicMode => {
-                        mode = 0b0000_1111;
-                    }
-                    KeyboardControl::Mode0 => {
-                        mode = 0b0000_0000;
-                    }
-                    KeyboardControl::Mode1 => {
-                        mode = 0b0000_0001;
-                    }
-                    KeyboardControl::Mode2 => {
-                        mode = 0b0000_0010;
-                    }
-                    KeyboardControl::Mode3 => {
-                        mode = 0b0000_0011;
-                    }
-                    KeyboardControl::Mode4 => {
-                        mode = 0b0000_0100;
-                    }
-                    KeyboardControl::Mode5 => {
-                        mode = 0b0000_0101;
-                    }
-                    KeyboardControl::Mode6 => {
-                        mode = 0b0000_0110;
-                    }
-                    KeyboardControl::Mode7 => {
-                        mode = 0b0000_0111;
-                    }
-                    KeyboardControl::Mode8 => {
-                        mode = 0b0000_1000;
-                    }
-                    KeyboardControl::Mode9 => {
-                        mode = 0b0000_1001;
-                    }
-                    KeyboardControl::LiftUp => {
-                        let temp = lift + 1;
-                        if temp > 20 {
-                            println!("Lift is at max");
-                        }else if temp < 10 {
-                            println!("Lift is at min");
-                        }else {
-                            lift = temp;
-                        }
-                    }
-                    KeyboardControl::LiftDown => {
-                        let temp = lift + 1;
-                        if temp > 20 {
-                            println!("Lift is at max");
-                        }else if temp < 10 {
-                            println!("Lift is at min");
-                        }else {
-                            lift = temp;
-                        }
-                    }
-                    KeyboardControl::RollUp => {
-                        let temp = roll + 1;
-                        if temp > 20 {
-                            println!("Roll is at max");
-                        }else if temp < 10 {
-                            println!("Roll is at min");
-                        }else {
-                            roll = temp;
-                        }
-                    }
-                    KeyboardControl::RollDown => {
-                        let temp = roll - 1;
-                        if temp > 20 {
-                            println!("Roll is at max");
-                        }else if temp < 10 {
-                            println!("Roll is at min");
-                        }else {
-                            roll = temp;
-                        }
-                    }
-                    KeyboardControl::PitchUp => {
-                        let temp = pitch + 1;
-                        if temp > 20 {
-                            println!("Pitch is at max");
-                        }else if temp < 10 {
-                            println!("Pitch is at min");
-                        }else {
-                            pitch = temp;
-                        }
-                    }
-                    KeyboardControl::PitchDown => {
-                        let temp = pitch - 1;
-                        if temp > 20 {
-                            println!("Pitch is at max");
-                        }else if temp < 10 {
-                            println!("Pitch is at min");
-                        }else {
-                            pitch = temp;
-                        }
-                    }
-                    KeyboardControl::YawUp => {
-                        let temp = yaw + 1;
-                        if temp > 20 {
-                            println!("Yaw is at max");
-                        }else if temp < 10 {
-                            println!("Yaw is at min");
-                        }else {
-                            yaw = temp;
-                        }
-                    }
-                    KeyboardControl::YawDown => {
-                        let temp = yaw - 1;
-                        if temp > 20 {
-                            println!("Yaw is at max");
-                        }else if temp < 10 {
-                            println!("Yaw is at min");
-                        }else {
-                            yaw = temp;
-                        }
-                    }
-                    KeyboardControl::YawPUp => {
-                        let temp = p + 1;
-                        if temp > 90 {
-                            println!("Yaw P Control is at max");
-                        }else if temp < 10 {
-                            println!("Yaw P Control is at min");
-                        }else {
-                            p = temp;
-                        }
-                    }
-                    KeyboardControl::YawPDown => {
-                        let temp = p - 1;
-                        if temp > 90 {
-                            println!("Yaw P Control is at max");
-                        }else if temp < 10 {
-                            println!("Yaw P Control is at min");
-                        }else {
-                            p = temp;
-                        }
-                    }
-                    KeyboardControl::RollPitchP1Up => {
-                        let temp = p1 + 1;
-                        if temp > 90 {
-                            println!("Roll Pitch P1 Control is at max");
-                        }else if temp < 10 {
-                            println!("Roll Pitch P1 Control is at min");
-                        }else {
-                            p1 = temp;
-                        }
-                    }
-                    KeyboardControl::RollPitchP1Down => {
-                        let temp = p1 - 1;
-                        if temp > 90 {
-                            println!("Roll Pitch P1 Control is at max");
-                        }else if temp < 10 {
-                            println!("Roll Pitch P1 Control is at min");
-                        }else {
-                            p1 = temp;
-                        }
-                    }
-                    KeyboardControl::RollPitchP2Up => {
-                        let temp = p2 + 1;
-                        if temp > 90 {
-                            println!("Roll Pitch P2 Control is at max");
-                        }else if temp < 10 {
-                            println!("Roll Pitch P2 Control is at min");
-                        }else {
-                            p2 = temp;
-                        }
-                    }
-                    KeyboardControl::RollPitchP2Down => {
-                        let temp = p2 - 1;
-                        if temp > 90 {
-                            println!("Roll Pitch P2 Control is at max");
-                        }else if temp < 10 {
-                            println!("Roll Pitch P2 Control is at min");
-                        }else {
-                            p2 = temp;
-                        }
+            Ok(keyboard_action) => match keyboard_action {
+                KeyboardControl::SafeMode => {
+                    mode = 0b1111_0000;
+                }
+                KeyboardControl::PanicMode => {
+                    mode = 0b0000_1111;
+                }
+                KeyboardControl::Mode0 => {
+                    mode = 0b0000_0000;
+                }
+                KeyboardControl::Mode1 => {
+                    mode = 0b0000_0001;
+                }
+                KeyboardControl::Mode2 => {
+                    mode = 0b0000_0010;
+                }
+                KeyboardControl::Mode3 => {
+                    mode = 0b0000_0011;
+                }
+                KeyboardControl::Mode4 => {
+                    mode = 0b0000_0100;
+                }
+                KeyboardControl::Mode5 => {
+                    mode = 0b0000_0101;
+                }
+                KeyboardControl::Mode6 => {
+                    mode = 0b0000_0110;
+                }
+                KeyboardControl::Mode7 => {
+                    mode = 0b0000_0111;
+                }
+                KeyboardControl::Mode8 => {
+                    mode = 0b0000_1000;
+                }
+                KeyboardControl::Mode9 => {
+                    mode = 0b0000_1001;
+                }
+                KeyboardControl::LiftUp => {
+                    let temp = lift + 1;
+                    if temp > 20 {
+                        println!("Lift is at max");
+                    } else if temp < 10 {
+                        println!("Lift is at min");
+                    } else {
+                        lift = temp;
                     }
                 }
-            }
+                KeyboardControl::LiftDown => {
+                    let temp = lift + 1;
+                    if temp > 20 {
+                        println!("Lift is at max");
+                    } else if temp < 10 {
+                        println!("Lift is at min");
+                    } else {
+                        lift = temp;
+                    }
+                }
+                KeyboardControl::RollUp => {
+                    let temp = roll + 1;
+                    if temp > 20 {
+                        println!("Roll is at max");
+                    } else if temp < 10 {
+                        println!("Roll is at min");
+                    } else {
+                        roll = temp;
+                    }
+                }
+                KeyboardControl::RollDown => {
+                    let temp = roll - 1;
+                    if temp > 20 {
+                        println!("Roll is at max");
+                    } else if temp < 10 {
+                        println!("Roll is at min");
+                    } else {
+                        roll = temp;
+                    }
+                }
+                KeyboardControl::PitchUp => {
+                    let temp = pitch + 1;
+                    if temp > 20 {
+                        println!("Pitch is at max");
+                    } else if temp < 10 {
+                        println!("Pitch is at min");
+                    } else {
+                        pitch = temp;
+                    }
+                }
+                KeyboardControl::PitchDown => {
+                    let temp = pitch - 1;
+                    if temp > 20 {
+                        println!("Pitch is at max");
+                    } else if temp < 10 {
+                        println!("Pitch is at min");
+                    } else {
+                        pitch = temp;
+                    }
+                }
+                KeyboardControl::YawUp => {
+                    let temp = yaw + 1;
+                    if temp > 20 {
+                        println!("Yaw is at max");
+                    } else if temp < 10 {
+                        println!("Yaw is at min");
+                    } else {
+                        yaw = temp;
+                    }
+                }
+                KeyboardControl::YawDown => {
+                    let temp = yaw - 1;
+                    if temp > 20 {
+                        println!("Yaw is at max");
+                    } else if temp < 10 {
+                        println!("Yaw is at min");
+                    } else {
+                        yaw = temp;
+                    }
+                }
+                KeyboardControl::YawPUp => {
+                    let temp = p + 1;
+                    if temp > 90 {
+                        println!("Yaw P Control is at max");
+                    } else if temp < 10 {
+                        println!("Yaw P Control is at min");
+                    } else {
+                        p = temp;
+                    }
+                }
+                KeyboardControl::YawPDown => {
+                    let temp = p - 1;
+                    if temp > 90 {
+                        println!("Yaw P Control is at max");
+                    } else if temp < 10 {
+                        println!("Yaw P Control is at min");
+                    } else {
+                        p = temp;
+                    }
+                }
+                KeyboardControl::RollPitchP1Up => {
+                    let temp = p1 + 1;
+                    if temp > 90 {
+                        println!("Roll Pitch P1 Control is at max");
+                    } else if temp < 10 {
+                        println!("Roll Pitch P1 Control is at min");
+                    } else {
+                        p1 = temp;
+                    }
+                }
+                KeyboardControl::RollPitchP1Down => {
+                    let temp = p1 - 1;
+                    if temp > 90 {
+                        println!("Roll Pitch P1 Control is at max");
+                    } else if temp < 10 {
+                        println!("Roll Pitch P1 Control is at min");
+                    } else {
+                        p1 = temp;
+                    }
+                }
+                KeyboardControl::RollPitchP2Up => {
+                    let temp = p2 + 1;
+                    if temp > 90 {
+                        println!("Roll Pitch P2 Control is at max");
+                    } else if temp < 10 {
+                        println!("Roll Pitch P2 Control is at min");
+                    } else {
+                        p2 = temp;
+                    }
+                }
+                KeyboardControl::RollPitchP2Down => {
+                    let temp = p2 - 1;
+                    if temp > 90 {
+                        println!("Roll Pitch P2 Control is at max");
+                    } else if temp < 10 {
+                        println!("Roll Pitch P2 Control is at min");
+                    } else {
+                        p2 = temp;
+                    }
+                }
+            },
             Err(_) => {
                 println!("Nothing on the keyboard pressed")
-            },
+            }
         }
 
         // form the message out of the input from keyboard and joystick and send it to the uart handler
@@ -500,6 +497,7 @@ pub fn keyboard_monitor(keyboard_input: Sender<KeyboardControl>) {
         }
         end_flag = true;
     }
+    #[allow(clippy::drop_copy)]
     drop(stdout);
 }
 
