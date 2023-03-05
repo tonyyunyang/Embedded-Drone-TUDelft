@@ -10,11 +10,34 @@ use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 
-// enum DeviceModes {
-//     Panic,
-//     Manual,
-//     Safety,
-// }
+pub enum KeyboardControl {
+    SafeMode,
+    PanicMode,
+    Mode0,
+    Mode1,
+    Mode2,
+    Mode3,
+    Mode4,
+    Mode5,
+    Mode6,
+    Mode7,
+    Mode8,
+    Mode9,
+    LiftUp,
+    LiftDown,
+    RollUp,
+    RollDown,
+    PitchUp,
+    PitchDown,
+    YawUp,
+    YawDown,
+    YawPUp,
+    YawPDown,
+    RollPitchP1Up,
+    RollPitchP1Down,
+    RollPitchP2Up,
+    RollPitchP2Down,
+}
 
 pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
     let mut buf = [0u8; 255];
@@ -108,7 +131,16 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
     }
 }
 
-pub fn user_input(user_input: Sender<HostProtocol>) {
+pub fn user_input(user_input: Sender<HostProtocol>, _keyboard_input: Receiver<KeyboardControl>) {
+    // let mut mode = 0b0000_0000;
+    // let mut lift = 0;
+    // let mut yaw = 0;
+    // let mut pitch = 0;
+    // let mut roll = 0;
+    // let mut p = 0;
+    // let mut p1 = 0;
+    // let mut p2 = 0;
+
     loop {
         // form the messages by monitoring the user input (either joystick of keyboard)
         // Read the joystick input in this thread and send commands continuously, when keyboard is pressed, then add the command to the current one
@@ -126,7 +158,7 @@ pub fn user_input(user_input: Sender<HostProtocol>) {
     }
 }
 
-pub fn test_thread() {
+pub fn keyboard_monitor(keyboard_input: Sender<KeyboardControl>) {
     // end_flag is used to exit the Raw Terminal Mode
     let mut end_flag = false;
     // define the values that we want
@@ -148,42 +180,118 @@ pub fn test_thread() {
 
             //i reckon this speaks for itself
             match c.unwrap() {
-                Key::Esc => {}
-                Key::Char(' ') => {}
-                Key::Char('0') => {}
-                Key::Char('1') => {}
-                Key::Char('2') => {}
-                Key::Char('3') => {}
-                Key::Char('4') => {}
-                Key::Char('5') => {}
-                Key::Char('6') => {}
-                Key::Char('7') => {}
-                Key::Char('8') => {}
-                Key::Char('9') => {}
-                Key::Char('a') => {}
-                Key::Char('z') => {}
-                Key::Char('A') => {}
-                Key::Char('Z') => {}
-                Key::Left => {}
-                Key::Right => {}
-                Key::Up => {}
-                Key::Down => {}
-                Key::Char('q') => {}
-                Key::Char('w') => {}
-                Key::Char('Q') => {}
-                Key::Char('W') => {}
-                Key::Char('u') => {}
-                Key::Char('j') => {}
-                Key::Char('U') => {}
-                Key::Char('J') => {}
-                Key::Char('i') => {}
-                Key::Char('k') => {}
-                Key::Char('I') => {}
-                Key::Char('K') => {}
-                Key::Char('o') => {}
-                Key::Char('l') => {}
-                Key::Char('O') => {}
-                Key::Char('L') => {}
+                // below are the keys related to mode switch, come back to this after modes on the drone side are implemented
+                Key::Esc => {
+                    switch_safe_mode(keyboard_input.clone());
+                }
+                Key::Char(' ') => {
+                    switch_panic_mode(keyboard_input.clone());
+                }
+                Key::Char('0') => {
+                    switch_mode_0(keyboard_input.clone());
+                }
+                Key::Char('1') => {
+                    switch_mode_1(keyboard_input.clone());
+                }
+                Key::Char('2') => {
+                    switch_mode_2(keyboard_input.clone());
+                }
+                Key::Char('3') => {
+                    switch_mode_3(keyboard_input.clone());
+                }
+                Key::Char('4') => {
+                    switch_mode_4(keyboard_input.clone());
+                }
+                Key::Char('5') => {
+                    switch_mode_5(keyboard_input.clone());
+                }
+                Key::Char('6') => {
+                    switch_mode_6(keyboard_input.clone());
+                }
+                Key::Char('7') => {
+                    switch_mode_7(keyboard_input.clone());
+                }
+                Key::Char('8') => {
+                    switch_mode_8(keyboard_input.clone());
+                }
+                Key::Char('9') => {
+                    switch_mode_9(keyboard_input.clone());
+                }
+                // below are keys related to drone control
+                Key::Char('a') => {
+                    lift_up(keyboard_input.clone());
+                }
+                Key::Char('z') => {
+                    lift_down(keyboard_input.clone());
+                }
+                Key::Char('A') => {
+                    lift_up(keyboard_input.clone());
+                }
+                Key::Char('Z') => {
+                    lift_down(keyboard_input.clone());
+                }
+                Key::Left => {
+                    roll_up(keyboard_input.clone());
+                }
+                Key::Right => {
+                    roll_down(keyboard_input.clone());
+                }
+                Key::Up => {
+                    pitch_down(keyboard_input.clone());
+                }
+                Key::Down => {
+                    pitch_up(keyboard_input.clone());
+                }
+                Key::Char('q') => {
+                    yaw_down(keyboard_input.clone());
+                }
+                Key::Char('w') => {
+                    yaw_up(keyboard_input.clone());
+                }
+                Key::Char('Q') => {
+                    yaw_down(keyboard_input.clone());
+                }
+                Key::Char('W') => {
+                    yaw_up(keyboard_input.clone());
+                }
+                // below are keys related to P control
+                Key::Char('u') => {
+                    yaw_p_up(keyboard_input.clone());
+                }
+                Key::Char('j') => {
+                    yaw_p_down(keyboard_input.clone());
+                }
+                Key::Char('U') => {
+                    yaw_p_up(keyboard_input.clone());
+                }
+                Key::Char('J') => {
+                    yaw_p_down(keyboard_input.clone());
+                }
+                Key::Char('i') => {
+                    roll_pitch_p1_up(keyboard_input.clone());
+                }
+                Key::Char('k') => {
+                    roll_pitch_p1_down(keyboard_input.clone());
+                }
+                Key::Char('I') => {
+                    roll_pitch_p1_up(keyboard_input.clone());
+                }
+                Key::Char('K') => {
+                    roll_pitch_p1_down(keyboard_input.clone());
+                }
+                Key::Char('o') => {
+                    roll_pitch_p2_up(keyboard_input.clone());
+                }
+                Key::Char('l') => {
+                    roll_pitch_p2_down(keyboard_input.clone());
+                }
+                Key::Char('O') => {
+                    roll_pitch_p2_up(keyboard_input.clone());
+                }
+                Key::Char('L') => {
+                    roll_pitch_p2_down(keyboard_input.clone());
+                }
+                /*PLEASE READ THIS! ALWAYS REMEMBER THAT THE WAY TO EXIT IS: CTRL + Q */
                 Key::Ctrl('q') => break,
                 _ => { //Invalid key
                 }
@@ -192,6 +300,220 @@ pub fn test_thread() {
         }
         drop(stdout);
         end_flag = true;
+    }
+}
+
+fn switch_safe_mode(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::SafeMode).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_panic_mode(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::PanicMode).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_0(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::Mode0).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_1(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::Mode1).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_2(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::Mode2).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_3(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::Mode3).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_4(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::Mode4).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_5(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::Mode5).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_6(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::Mode6).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_7(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::Mode7).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_8(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::Mode8).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_9(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::Mode9).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn lift_up(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::LiftUp).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn lift_down(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::LiftDown).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn roll_up(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::RollUp).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn roll_down(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::RollDown).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn pitch_up(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::PitchUp).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn pitch_down(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::PitchDown).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn yaw_up(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::YawUp).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn yaw_down(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::YawDown).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn yaw_p_up(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::YawPUp).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn yaw_p_down(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::YawPDown).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn roll_pitch_p1_up(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::RollPitchP1Up).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn roll_pitch_p1_down(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input
+        .send(KeyboardControl::RollPitchP1Down)
+        .is_ok()
+    {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn roll_pitch_p2_up(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::RollPitchP2Up).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn roll_pitch_p2_down(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input
+        .send(KeyboardControl::RollPitchP2Down)
+        .is_ok()
+    {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
     }
 }
 

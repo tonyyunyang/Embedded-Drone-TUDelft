@@ -1,6 +1,6 @@
 mod runner_thread_layer;
 use protocol::format::HostProtocol;
-use runner_thread_layer::{test_thread, uart_handler, user_input};
+use runner_thread_layer::{keyboard_monitor, uart_handler, user_input, KeyboardControl};
 use serial2::SerialPort;
 use std::env::args;
 use std::sync::mpsc::channel;
@@ -16,22 +16,23 @@ fn main() {
     sleep(Duration::from_millis(1000));
 
     let (user_input_tx, user_input_rx) = channel::<HostProtocol>();
+    let (keyboard_input_tx, keyboard_input_rx) = channel::<KeyboardControl>();
 
     let uart_handler = thread::spawn(move || {
         uart_handler(serial, user_input_rx);
     });
 
     let user_input = thread::spawn(move || {
-        user_input(user_input_tx);
+        user_input(user_input_tx, keyboard_input_rx);
     });
 
-    let test_thread = thread::spawn(move || {
-        test_thread();
+    let keyboard_monitor = thread::spawn(move || {
+        keyboard_monitor(keyboard_input_tx);
     });
 
     uart_handler.join().unwrap();
 
     user_input.join().unwrap();
 
-    test_thread.join().unwrap();
+    keyboard_monitor.join().unwrap();
 }

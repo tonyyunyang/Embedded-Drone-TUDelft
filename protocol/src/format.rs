@@ -12,17 +12,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct HostProtocol {
     // this is the data format for the data sent from the PC to the drone
-    start_flag: u8,    // Start of frame indicator
-    mode: u8,          // Two bytes to represent 9 modes
-    joystick_lift: u8, // Lift up/down control
-    joystick_yaw: u8,  // Yaw left/right control
-    keyboard_yaw: u8,
-    joystick_pitch: u8, // Pitch up/down control
-    keyboard_pitch_roll_1: u8,
-    keyboard_pitch_roll_2: u8,
-    joystick_roll: u8, // Roll left/right control
-    crc: u16,          // Cyclic redundancy check
-    end_flag: u8,      // End of frame indicator
+    start_flag: u8, // Start of frame indicator
+    mode: u8,       // Two bytes to represent 9 modes
+    lift: u8,       // Lift up/down control
+    yaw: u8,        // Yaw left/right control
+    pitch: u8,      // Pitch up/down control
+    roll: u8,       // Roll left/right control
+    p: u8,          // P control
+    p1: u8,         // P1 control
+    p2: u8,         // P2 control
+    crc: u16,       // Cyclic redundancy check
+    end_flag: u8,   // End of frame indicator
 }
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -51,25 +51,25 @@ impl HostProtocol {
     // Construct a new HostProtocol from its fields
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        mode: u8,
-        joystick_lift: u8,
-        joystick_yaw: u8,
-        keyboard_yaw: u8,
-        joystick_pitch: u8,
-        keyboard_pitch_roll_1: u8,
-        keyboard_pitch_roll_2: u8,
-        joystick_roll: u8,
+        mode: u8,  // Two bytes to represent 9 modes
+        lift: u8,  // Lift up/down control
+        yaw: u8,   // Yaw left/right control
+        pitch: u8, // Pitch up/down control
+        roll: u8,  // Roll left/right control
+        p: u8,     // P control
+        p1: u8,    // P1 control
+        p2: u8,    // P2 control
     ) -> Self {
         Self {
             start_flag: 0x7b,
             mode,
-            joystick_lift,
-            joystick_yaw,
-            keyboard_yaw,
-            joystick_pitch,
-            keyboard_pitch_roll_1,
-            keyboard_pitch_roll_2,
-            joystick_roll,
+            lift,
+            yaw,
+            pitch,
+            roll,
+            p,
+            p1,
+            p2,
             crc: 0x0000, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
@@ -79,13 +79,13 @@ impl HostProtocol {
         Self {
             start_flag: self.start_flag,
             mode: self.mode,
-            joystick_lift: self.joystick_lift,
-            joystick_yaw: self.joystick_yaw,
-            keyboard_yaw: self.keyboard_yaw,
-            joystick_pitch: self.joystick_pitch,
-            keyboard_pitch_roll_1: self.keyboard_pitch_roll_1,
-            keyboard_pitch_roll_2: self.keyboard_pitch_roll_2,
-            joystick_roll: self.joystick_roll,
+            lift: self.lift,
+            yaw: self.yaw,
+            pitch: self.pitch,
+            roll: self.roll,
+            p: self.p,
+            p1: self.p1,
+            p2: self.p2,
             crc: self.crc,
             end_flag: self.end_flag,
         }
@@ -108,13 +108,13 @@ impl HostProtocol {
     pub fn form_message(&self, message: &mut vec::Vec<u8>) {
         message.push(self.start_flag);
         message.push(self.mode);
-        message.push(self.joystick_lift);
-        message.push(self.joystick_yaw);
-        message.push(self.keyboard_yaw);
-        message.push(self.joystick_pitch);
-        message.push(self.keyboard_pitch_roll_1);
-        message.push(self.keyboard_pitch_roll_2);
-        message.push(self.joystick_roll);
+        message.push(self.lift);
+        message.push(self.yaw);
+        message.push(self.pitch);
+        message.push(self.roll);
+        message.push(self.p);
+        message.push(self.p1);
+        message.push(self.p2);
         let crc = self.calculate_crc16();
         message.extend_from_slice(&crc.to_be_bytes());
         message.push(self.end_flag);
@@ -124,13 +124,13 @@ impl HostProtocol {
         let mut format_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
         format_message.set_start_flag(message[0]);
         format_message.set_mode(message[1]);
-        format_message.set_joystick_lift(message[2]);
-        format_message.set_joystick_yaw(message[3]);
-        format_message.set_keyboard_yaw(message[4]);
-        format_message.set_joystick_pitch(message[5]);
-        format_message.set_keyboard_pitch_roll_1(message[6]);
-        format_message.set_keyboard_pitch_roll_2(message[7]);
-        format_message.set_joystick_roll(message[8]);
+        format_message.set_lift(message[2]);
+        format_message.set_yaw(message[3]);
+        format_message.set_pitch(message[4]);
+        format_message.set_roll(message[5]);
+        format_message.set_p(message[6]);
+        format_message.set_p1(message[7]);
+        format_message.set_p2(message[8]);
         format_message.set_crc(u16::from_be_bytes([message[9], message[10]]));
         format_message.set_end_flag(message[11]);
         format_message
@@ -140,13 +140,13 @@ impl HostProtocol {
         let mut format_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
         format_message.set_start_flag(message[0]);
         format_message.set_mode(message[1]);
-        format_message.set_joystick_lift(message[2]);
-        format_message.set_joystick_yaw(message[3]);
-        format_message.set_keyboard_yaw(message[4]);
-        format_message.set_joystick_pitch(message[5]);
-        format_message.set_keyboard_pitch_roll_1(message[6]);
-        format_message.set_keyboard_pitch_roll_2(message[7]);
-        format_message.set_joystick_roll(message[8]);
+        format_message.set_lift(message[2]);
+        format_message.set_yaw(message[3]);
+        format_message.set_pitch(message[4]);
+        format_message.set_roll(message[5]);
+        format_message.set_p(message[6]);
+        format_message.set_p1(message[7]);
+        format_message.set_p2(message[8]);
         format_message.set_crc(u16::from_be_bytes([message[9], message[10]]));
         format_message.set_end_flag(message[11]);
         format_message
@@ -155,26 +155,26 @@ impl HostProtocol {
     pub fn calculate_crc16(&self) -> u16 {
         let mut state = State::<XMODEM>::new();
         state.update(&[self.mode]);
-        state.update(&[self.joystick_lift]);
-        state.update(&[self.joystick_yaw]);
-        state.update(&[self.keyboard_yaw]);
-        state.update(&[self.joystick_pitch]);
-        state.update(&[self.keyboard_pitch_roll_1]);
-        state.update(&[self.keyboard_pitch_roll_2]);
-        state.update(&[self.joystick_roll]);
+        state.update(&[self.lift]);
+        state.update(&[self.yaw]);
+        state.update(&[self.pitch]);
+        state.update(&[self.roll]);
+        state.update(&[self.p]);
+        state.update(&[self.p1]);
+        state.update(&[self.p2]);
         state.get()
     }
 
     pub fn calculate_crc8(&self) -> u8 {
         let mut crc = CRCu8::create_crc(0x07, 8, 0, 0, false); // specify the CRC-8 polynomial
         crc.digest(&[self.mode]);
-        crc.digest(&[self.joystick_lift]);
-        crc.digest(&[self.joystick_yaw]);
-        crc.digest(&[self.keyboard_yaw]);
-        crc.digest(&[self.joystick_pitch]);
-        crc.digest(&[self.keyboard_pitch_roll_1]);
-        crc.digest(&[self.keyboard_pitch_roll_2]);
-        crc.digest(&[self.joystick_roll]);
+        crc.digest(&[self.lift]);
+        crc.digest(&[self.yaw]);
+        crc.digest(&[self.pitch]);
+        crc.digest(&[self.roll]);
+        crc.digest(&[self.p]);
+        crc.digest(&[self.p1]);
+        crc.digest(&[self.p2]);
         crc.get_crc()
     }
 
@@ -186,32 +186,32 @@ impl HostProtocol {
         self.mode = mode;
     }
 
-    pub fn set_joystick_lift(&mut self, joystick_lift: u8) {
-        self.joystick_lift = joystick_lift;
+    pub fn set_lift(&mut self, lift: u8) {
+        self.lift = lift;
     }
 
-    pub fn set_joystick_yaw(&mut self, joystick_yaw: u8) {
-        self.joystick_yaw = joystick_yaw;
+    pub fn set_yaw(&mut self, yaw: u8) {
+        self.yaw = yaw;
     }
 
-    pub fn set_keyboard_yaw(&mut self, keyboard_yaw: u8) {
-        self.keyboard_yaw = keyboard_yaw;
+    pub fn set_pitch(&mut self, pitch: u8) {
+        self.pitch = pitch;
     }
 
-    pub fn set_joystick_pitch(&mut self, joystick_pitch: u8) {
-        self.joystick_pitch = joystick_pitch;
+    pub fn set_roll(&mut self, roll: u8) {
+        self.roll = roll;
     }
 
-    pub fn set_keyboard_pitch_roll_1(&mut self, keyboard_pitch_roll_1: u8) {
-        self.keyboard_pitch_roll_1 = keyboard_pitch_roll_1;
+    pub fn set_p1(&mut self, p1: u8) {
+        self.p1 = p1;
     }
 
-    pub fn set_keyboard_pitch_roll_2(&mut self, keyboard_pitch_roll_2: u8) {
-        self.keyboard_pitch_roll_2 = keyboard_pitch_roll_2;
+    pub fn set_p2(&mut self, p2: u8) {
+        self.p2 = p2;
     }
 
-    pub fn set_joystick_roll(&mut self, joystick_roll: u8) {
-        self.joystick_roll = joystick_roll;
+    pub fn set_p(&mut self, p: u8) {
+        self.p = p;
     }
 
     pub fn set_crc(&mut self, crc: u16) {
@@ -230,32 +230,32 @@ impl HostProtocol {
         self.mode
     }
 
-    pub fn get_joystick_lift(&self) -> u8 {
-        self.joystick_lift
+    pub fn get_lift(&self) -> u8 {
+        self.lift
     }
 
-    pub fn get_joystick_yaw(&self) -> u8 {
-        self.joystick_yaw
+    pub fn get_yaw(&self) -> u8 {
+        self.yaw
     }
 
-    pub fn get_keyboard_yaw(&self) -> u8 {
-        self.keyboard_yaw
+    pub fn get_pitch(&self) -> u8 {
+        self.pitch
     }
 
-    pub fn get_joystick_pitch(&self) -> u8 {
-        self.joystick_pitch
+    pub fn get_roll(&self) -> u8 {
+        self.roll
     }
 
-    pub fn get_keyboard_pitch_roll_1(&self) -> u8 {
-        self.keyboard_pitch_roll_1
+    pub fn get_p1(&self) -> u8 {
+        self.p1
     }
 
-    pub fn get_keyboard_pitch_roll_2(&self) -> u8 {
-        self.keyboard_pitch_roll_2
+    pub fn get_p2(&self) -> u8 {
+        self.p2
     }
 
-    pub fn get_joystick_roll(&self) -> u8 {
-        self.joystick_roll
+    pub fn get_p(&self) -> u8 {
+        self.p
     }
 
     pub fn get_crc(&self) -> u16 {
