@@ -22,6 +22,7 @@ pub fn control_loop() -> ! {
     let mut message_buffer: Vec<u8> = Vec::new();
     let mut received_bytes_count = 0;
     let mut start_receiving = false;
+    let mut mode = 0b0000_0000;
 
     // let mut logger = logger::BlackBoxLogger::new();
     // logger.start_logging();
@@ -57,6 +58,7 @@ pub fn control_loop() -> ! {
                     }
                 }
                 let nice_received_message = HostProtocol::format_message_alloc(&mut message_buffer);
+                mode = nice_received_message.get_mode();
                 ack = verify_message(&nice_received_message);
                 received_bytes_count = 0;
                 message_buffer.clear();
@@ -71,7 +73,7 @@ pub fn control_loop() -> ! {
             // Create an instance of the Drone Protocol struct
             test += 1;
             let message_to_host = DeviceProtocol::new(
-                test,
+                mode,
                 dt.as_millis() as u16,
                 motors,
                 [ypr.yaw, ypr.pitch, ypr.roll],
@@ -88,6 +90,7 @@ pub fn control_loop() -> ! {
 
             // reset the ack
             ack = 0b0000_0000;
+            mode = 0b0000_0000;
             Yellow.off();
         }
         wait_for_next_tick();
