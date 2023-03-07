@@ -133,10 +133,12 @@ impl<T: Transition> StateMachine<T> {
                 State::Raw => self.transition_to_raw(),
                 State::Height => self.transition_to_height(),
                 State::Wireless => self.transition_to_wireless(),
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         } else {
-            Err(String::from("Invalid transition to calibration, no calibration done yet."))
+            Err(String::from(
+                "Invalid transition to calibration, no calibration done yet.",
+            ))
         }
     }
 
