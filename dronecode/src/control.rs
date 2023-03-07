@@ -1,5 +1,7 @@
+use crate::control::state_machine::StateMachine;
 use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::format;
+
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::block;
@@ -9,9 +11,13 @@ use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::send_bytes;
 
+mod state_machine;
+
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
     let mut last = Instant::now();
+
+    let state_machine = StateMachine::new();
 
     for i in 0.. {
         let _ = Blue.toggle();
