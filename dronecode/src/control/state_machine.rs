@@ -50,6 +50,7 @@ pub trait Transition {
 pub struct StateMachine<T: Transition> {
     transition: T,
     state: State,
+    operation_ready: bool,
     // Add more fields here if needed such as data to be stored in the state machine.
 }
 
@@ -60,12 +61,13 @@ impl<T: Transition> StateMachine<T> {
         StateMachine {
             transition,
             state: State::Safety,
+            operation_ready: false,
         }
     }
 
     // Get the current state of the state machine.
     pub fn state(&self) -> State {
-        self.state
+        self.state.clone()
     }
 
     // Transition the state machine to a new state.
@@ -75,11 +77,11 @@ impl<T: Transition> StateMachine<T> {
             State::Panic => self.transition_to_panic(),
             State::Manual => self.transition_to_manual(),
             State::Calibrate => self.transition_to_calibrate(),
-            State::Yaw => self.transition_to_yaw(),
-            State::Full => self.transition_to_full(),
-            State::Raw => self.transition_to_raw(),
-            State::Height => self.transition_to_height(),
-            State::Wireless => self.transition_to_wireless(),
+            State::Yaw => self.transition_to_operation(state),
+            State::Full => self.transition_to_operation(state),
+            State::Raw => self.transition_to_operation(state),
+            State::Height => self.transition_to_operation(state),
+            State::Wireless => self.transition_to_operation(state),
         }
     }
 
@@ -120,6 +122,21 @@ impl<T: Transition> StateMachine<T> {
             Ok(())
         } else {
             Err(String::from("Invalid transition to Calibrate state"))
+        }
+    }
+
+    fn transition_to_operation(&mut self, state: State) -> Result<(), String> {
+        if self.operation_ready {
+            match state {
+                State::Yaw => self.transition_to_yaw(),
+                State::Full => self.transition_to_full(),
+                State::Raw => self.transition_to_raw(),
+                State::Height => self.transition_to_height(),
+                State::Wireless => self.transition_to_wireless(),
+                _ => unreachable!()
+            }
+        } else {
+            Err(String::from("Invalid transition to calibration, no calibration done yet."))
         }
     }
 
