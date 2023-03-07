@@ -125,6 +125,7 @@ impl<T: Transition> StateMachine<T> {
         }
     }
 
+    // First check if caliration is done before we are allowed to do operational modes of the drone.
     fn transition_to_operation(&mut self, state: State) -> Result<(), String> {
         if self.operation_ready {
             match state {
