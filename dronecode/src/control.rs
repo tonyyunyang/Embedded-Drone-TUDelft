@@ -2,10 +2,12 @@ use crate::control::state_machine::StateMachine;
 use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::format;
 
+use crate::control::state_machine::State::Safety;
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::block;
 use tudelft_quadrupel::led::Led::Blue;
+use tudelft_quadrupel::led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
@@ -18,6 +20,9 @@ pub fn control_loop() -> ! {
     let mut last = Instant::now();
 
     let state_machine = StateMachine::new();
+    if state_machine.state() == Safety {
+        Yellow.toggle();
+    }
 
     for i in 0.. {
         let _ = Blue.toggle();
