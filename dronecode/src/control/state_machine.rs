@@ -50,6 +50,7 @@ pub trait Transition {
 pub struct StateMachine<T: Transition> {
     transition: T,
     state: State,
+    // Add more fields here if needed such as data to be stored in the state machine.
 }
 
 // Implement methods for the state machine.
