@@ -9,15 +9,13 @@ cargo fmt:
   artifacts:
     paths:
       - target/
-  only:
-    - merge_requests
-    - master
+  except:
+    - deploy
 
 cargo clippy:
   stage: test
   image: rust:latest
   script:
     - cargo clippy -- -D warnings
-  only:
-    - merge_requests
-    - master
+  except:
+    - deploy
