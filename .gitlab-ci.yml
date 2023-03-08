@@ -10,8 +10,8 @@ before_script:
   # Install rustfmt and Clippy for code formatting and linting
   - rustup component add rustfmt clippy
 
-  - apt-get install pkg-config
-  - apt-get install -y udev
+  - apt install pkg-config
+  - apt install udev
 
 # Define cache settings to improve build performance
 cache:
