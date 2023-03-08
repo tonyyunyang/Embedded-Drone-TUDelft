@@ -251,7 +251,7 @@ impl HostProtocol {
 
 impl DeviceProtocol {
     // Construct a new DroneProtocol from its fields
-    #[allow(clippy::too_many_arguments)]
+    // #[allow(clippy::too_many_arguments)]
     pub fn new(
         mode: u8,
         duration: u16,
