@@ -3,7 +3,6 @@ image: 'rust:latest'
 
 # Prepare the environment before running the tests and linting
 before_script:
-  - cargo clean
   # Update Rust to the latest version
   - rustup update
   # Add the required target for ARM Cortex-M0 and M0+ devices
@@ -25,6 +24,7 @@ lint:
   script:
     # Print Rust and Cargo versions for debugging purposes
     - rustc --version && cargo --version
+    - cargo clean
     - cargo build --release
     # Format the code using rustfmt and check for formatting errors
     - cargo fmt --all -- --check
