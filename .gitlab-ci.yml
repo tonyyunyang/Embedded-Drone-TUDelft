@@ -5,6 +5,7 @@ image: 'rust:latest'
 before_script:
   # Update Rust to the latest version
   - rustup update
+  - apt-get update
   # Add the required target for ARM Cortex-M0 and M0+ devices
   - rustup target add thumbv6m-none-eabi
   # Install rustfmt and Clippy for code formatting and linting
@@ -28,3 +29,4 @@ lint:
     - cargo clippy --all --all-features -- -D warnings
     # Check the code using Cargo for any errors or warnings
     - cargo check --workspace --verbose
+

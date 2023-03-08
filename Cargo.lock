@@ -814,6 +814,7 @@ version = "0.1.0"
 dependencies = [
  "fixed",
  "gilrs",
+ "libudev-sys",
  "protocol",
  "serial2",
  "termion",
