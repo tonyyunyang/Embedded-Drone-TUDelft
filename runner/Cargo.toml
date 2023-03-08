@@ -16,6 +16,7 @@ serial2 = "0.1.7"
 protocol = {path = "../protocol"}
 gilrs = "0.10.1"
 termion = "*"
+libudev-sys = "0.1"
 
 [dependencies.fixed]
 version = "1.23"
