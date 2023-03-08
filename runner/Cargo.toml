@@ -14,7 +14,6 @@ forced-target = "x86_64-unknown-linux-gnu"
 tudelft-serial-upload = "1"
 serial2 = "0.1.7"
 protocol = {path = "../protocol"}
-postcard = "1.0.4"
 gilrs = "0.10.1"
 termion = "*"
 

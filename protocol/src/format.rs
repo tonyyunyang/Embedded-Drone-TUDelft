@@ -3,13 +3,8 @@ use crc_any::CRCu8;
 
 use alloc::vec::Vec as OtherVec;
 use fixed::types::I6F26;
-use heapless::Vec;
 
 use alloc::vec::{self};
-use postcard::{from_bytes, to_vec};
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct HostProtocol {
     // this is the data format for the data sent from the PC to the drone
     start_flag: u8, // Start of frame indicator
@@ -25,7 +20,6 @@ pub struct HostProtocol {
     end_flag: u8,   // End of frame indicator
 }
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct DeviceProtocol {
     // This is the data format for the data sent from the drone to the PC
 
@@ -89,18 +83,6 @@ impl HostProtocol {
             crc: self.crc,
             end_flag: self.end_flag,
         }
-    }
-
-    // Serializes this protocol and creates a Vec of bytes
-    pub fn serialize(&self) -> Result<Vec<u8, 60>, postcard::Error> {
-        let payload = to_vec(self)?;
-        Ok(payload)
-    }
-
-    // Deserializes a byte vector into this protocol
-    pub fn deserialize(payload: &[u8]) -> Result<Self, postcard::Error> {
-        let prot = from_bytes::<HostProtocol>(payload)?;
-        Ok(prot)
     }
 
     // Form the message to be sent to the drone in bytes, namely form an array of bytes
@@ -293,18 +275,6 @@ impl DeviceProtocol {
             crc: 0x0000, // This is the default value of the CRC, it will be calculated later. If the CRC is 0x0000, it means that the CRC has not been calculated yet.
             end_flag: 0x7d,
         }
-    }
-
-    // Serializes this protocol and creates a Vec of bytes
-    pub fn serialize(&self) -> Result<Vec<u8, 60>, postcard::Error> {
-        let payload = to_vec(self)?;
-        Ok(payload)
-    }
-
-    // Deserializes a byte vector into this protocol
-    pub fn deserialize(payload: &[u8]) -> Result<Self, postcard::Error> {
-        let prot = from_bytes::<DeviceProtocol>(payload)?;
-        Ok(prot)
     }
 
     // Form the message to be sent to the drone in bytes, namely form an array of bytes
