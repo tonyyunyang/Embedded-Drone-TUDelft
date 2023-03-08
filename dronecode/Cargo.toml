@@ -1,5 +1,5 @@
 [package]
-name = "template-project"
+name = "drone-goes-brrr"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 tudelft-quadrupel = {version="2"}
 micromath = "2.0.0"
+fixed_trigonometry = "0.4.3"
+protocol = {path = "../protocol"}

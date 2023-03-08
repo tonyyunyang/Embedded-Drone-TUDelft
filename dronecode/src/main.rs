@@ -9,6 +9,7 @@ use alloc::format;
 use core::alloc::Layout;
 use core::mem::MaybeUninit;
 use core::panic::PanicInfo;
+
 use tudelft_quadrupel::initialize::initialize;
 use tudelft_quadrupel::led::Led::{Green, Red};
 use tudelft_quadrupel::time::assembly_delay;
@@ -39,16 +40,19 @@ fn main() -> ! {
         initialize(unsafe { &mut HEAP_MEMORY }, true);
     }
 
+    // Start the control loop
     control_loop()
 }
 
 #[inline(never)]
-#[cfg(not(test))]
+// #[cfg(not(test))]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     // On panic:
     // * try and write the panic message on UART
     // * blink the red light
+
+    // use tudelft_quadrupel::uart;
 
     if uart::is_initialized() {
         let msg = format!("{info}\n");
