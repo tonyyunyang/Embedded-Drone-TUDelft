@@ -5,7 +5,7 @@ image: 'rust:latest'
 before_script:
   # Update Rust to the latest version
   - rustup update
-  - yes | apt-get update
+  - apt-get update
   - yes | apt-get install libudev-dev
   - cargo clean
   # Add the required target for ARM Cortex-M0 and M0+ devices
