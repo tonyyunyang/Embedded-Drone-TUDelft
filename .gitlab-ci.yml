@@ -7,6 +7,7 @@ before_script:
   - rustup update
   - apt-get update
   - apt-get install libudev-dev
+  - Y
   - cargo clean
   # Add the required target for ARM Cortex-M0 and M0+ devices
   - rustup target add thumbv6m-none-eabi
