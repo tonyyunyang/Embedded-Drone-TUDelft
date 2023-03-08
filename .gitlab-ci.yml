@@ -6,6 +6,7 @@ before_script:
   # Update Rust to the latest version
   - rustup update
   - apt-get update
+  - apt-get install libudev-dev
   - cargo clean
   # Add the required target for ARM Cortex-M0 and M0+ devices
   - rustup target add thumbv6m-none-eabi
