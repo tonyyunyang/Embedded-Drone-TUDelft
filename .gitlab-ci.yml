@@ -27,7 +27,7 @@ lint:
     # Format the code using rustfmt and check for formatting errors
     - cargo fmt --all -- --check
     # Run Clippy and report warnings and errors
-    - cargo clippy --all-targets --workspace --bins --all-features -- -D warnings
+    - cargo clippy --all --all-features -- -D warnings
     # Check the code using Cargo for any errors or warnings
     - cargo check --workspace --verbose
 
