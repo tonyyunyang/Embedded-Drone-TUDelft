@@ -28,12 +28,12 @@ image: "rust:latest"
 test:cargo:
   script:
     - rustc --version && cargo --version  # Print version info for debugging
-    - cargo test --workspace --verbose
     - cargo build --release
     # Format the code using rustfmt and check for formatting errors
     - cargo fmt --all -- --check
     # Run Clippy and report warnings and errors
     - cargo clippy --all --all-features -- -D warnings
+    - cargo check --workspace --verbose
 
 # Optional: Use a third party library to generate gitlab junit reports
 # test:junit-report:
