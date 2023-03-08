@@ -9,6 +9,7 @@ before_script:
   - rustup target add thumbv6m-none-eabi
   # Install rustfmt and Clippy for code formatting and linting
   - rustup component add rustfmt clippy
+  - apt-get install libudev-dev
 
 # Define cache settings to improve build performance
 cache:
