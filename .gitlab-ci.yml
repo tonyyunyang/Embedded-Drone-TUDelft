@@ -11,7 +11,7 @@ before_script:
   - rustup component add rustfmt clippy
 
   - apt-get install pkg-config
-  - sudo apt-get install udev
+  - apt-get install udev
 
 # Define cache settings to improve build performance
 cache:
