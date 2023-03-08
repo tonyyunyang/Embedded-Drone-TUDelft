@@ -1,21 +1,12 @@
 stages:
-  - test
+  - build
 
-cargo fmt:
-  stage: test
-  image: rust:latest
+rust:
+  image: rust:nightly
+  stage: build
+  before_script:
+    - rustup component add rustfmt
+    - rustup component add clippy
   script:
     - cargo fmt -- --check
-  artifacts:
-    paths:
-      - target/
-  except:
-    - deploy
-
-cargo clippy:
-  stage: test
-  image: rust:latest
-  script:
     - cargo clippy -- -D warnings
-  except:
-    - deploy
