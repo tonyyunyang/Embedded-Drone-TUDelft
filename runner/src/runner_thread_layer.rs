@@ -1,3 +1,4 @@
+use gilrs::{Event, Gilrs};
 use protocol::format::{DeviceProtocol, HostProtocol};
 use serial2::SerialPort;
 use std::io::{stdin, stdout, Write};
@@ -9,6 +10,15 @@ use std::{
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
+
+pub struct JoystickControl {
+    lift: u8,
+    yaw: u8,
+    pitch: u8,
+    roll: u8,
+    mode: u8,
+    abort: bool,
+}
 
 pub enum KeyboardControl {
     SafeMode,
@@ -131,21 +141,51 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
     }
 }
 
-pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<KeyboardControl>) {
+pub fn user_input(
+    user_input: Sender<HostProtocol>,
+    keyboard_input: Receiver<KeyboardControl>,
+    joystick_input: Receiver<JoystickControl>,
+) {
     let mut mode = 0b1111_0000;
 
     // everything is u8 on the host side, we map each value to corresponding values on the device side
-    let mut lift = 20u8;
-    let mut yaw = 20u8;
-    let mut pitch = 10u8;
-    let mut roll = 10u8;
+    let mut lift = 50u8;
+    let mut yaw = 50u8;
+    let mut pitch = 50u8;
+    let mut roll = 50u8;
     let mut p = 50u8;
     let mut p1 = 50u8;
     let mut p2 = 50u8;
 
     loop {
-        let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
         // Read the joystick input in this thread and send commands continuously, when keyboard is pressed, then add the command to the current one
+        let read_joystick = joystick_input.try_recv();
+        match read_joystick {
+            Ok(joystick_action) => {
+                lift = joystick_action.lift;
+                yaw = joystick_action.yaw;
+                pitch = joystick_action.pitch;
+                roll = joystick_action.roll;
+                mode = joystick_action.mode;
+                if joystick_action.abort {
+                    mode = 0b0000_1111;
+                    let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
+                    let feedback = user_input.send(protocol);
+                    match feedback {
+                        Ok(_) => {
+                            println!("Abort command sent");
+                        }
+                        Err(_) => {
+                            println!("Abort command not sent");
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                println!("Nothing on the joystick pressed")
+            }
+        }
+
         let read_keyboard = keyboard_input.try_recv();
         // read the keyboard input, and check if there is any input
         match read_keyboard {
@@ -187,8 +227,8 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
                     mode = 0b0000_1001;
                 }
                 KeyboardControl::LiftUp => {
-                    let temp = lift + 1;
-                    if temp > 20 {
+                    let temp = lift + 5;
+                    if temp > 90 {
                         println!("Lift is at max");
                     } else if temp < 10 {
                         println!("Lift is at min");
@@ -197,8 +237,8 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
                     }
                 }
                 KeyboardControl::LiftDown => {
-                    let temp = lift + 1;
-                    if temp > 20 {
+                    let temp = lift - 5;
+                    if temp > 90 {
                         println!("Lift is at max");
                     } else if temp < 10 {
                         println!("Lift is at min");
@@ -207,8 +247,8 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
                     }
                 }
                 KeyboardControl::RollUp => {
-                    let temp = roll + 1;
-                    if temp > 20 {
+                    let temp = roll + 5;
+                    if temp > 90 {
                         println!("Roll is at max");
                     } else if temp < 10 {
                         println!("Roll is at min");
@@ -217,8 +257,8 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
                     }
                 }
                 KeyboardControl::RollDown => {
-                    let temp = roll - 1;
-                    if temp > 20 {
+                    let temp = roll - 5;
+                    if temp > 90 {
                         println!("Roll is at max");
                     } else if temp < 10 {
                         println!("Roll is at min");
@@ -227,8 +267,8 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
                     }
                 }
                 KeyboardControl::PitchUp => {
-                    let temp = pitch + 1;
-                    if temp > 20 {
+                    let temp = pitch + 5;
+                    if temp > 90 {
                         println!("Pitch is at max");
                     } else if temp < 10 {
                         println!("Pitch is at min");
@@ -237,8 +277,8 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
                     }
                 }
                 KeyboardControl::PitchDown => {
-                    let temp = pitch - 1;
-                    if temp > 20 {
+                    let temp = pitch - 5;
+                    if temp > 90 {
                         println!("Pitch is at max");
                     } else if temp < 10 {
                         println!("Pitch is at min");
@@ -247,8 +287,8 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
                     }
                 }
                 KeyboardControl::YawUp => {
-                    let temp = yaw + 1;
-                    if temp > 20 {
+                    let temp = yaw + 5;
+                    if temp > 90 {
                         println!("Yaw is at max");
                     } else if temp < 10 {
                         println!("Yaw is at min");
@@ -257,8 +297,8 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
                     }
                 }
                 KeyboardControl::YawDown => {
-                    let temp = yaw - 1;
-                    if temp > 20 {
+                    let temp = yaw - 5;
+                    if temp > 90 {
                         println!("Yaw is at max");
                     } else if temp < 10 {
                         println!("Yaw is at min");
@@ -333,6 +373,7 @@ pub fn user_input(user_input: Sender<HostProtocol>, keyboard_input: Receiver<Key
         }
 
         // form the message out of the input from keyboard and joystick and send it to the uart handler
+        let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
         let feedback = user_input.send(protocol);
         match feedback {
             Ok(_) => {
@@ -499,6 +540,156 @@ pub fn keyboard_monitor(keyboard_input: Sender<KeyboardControl>) {
     }
     #[allow(clippy::drop_copy)]
     drop(stdout);
+}
+
+pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut Gilrs) {
+    let mut lift: u8 = 50u8;
+    let mut yaw: u8 = 50u8;
+    let mut pitch: u8 = 50u8;
+    let mut roll: u8 = 50u8;
+    let mut mode: u8 = 0b0000_0000;
+    let mut abort: bool = false;
+    loop {
+        while let Some(Event {
+            id: _,
+            event,
+            time: _,
+        }) = joystick.next_event()
+        {
+            match event {
+                gilrs::EventType::ButtonPressed(_button, code) => {
+                    match code.into_u32() {
+                        65824 => {
+                            // the shooter button
+                            mode = 0b0000_1111;
+                        }
+                        65825 => { // the thumb button
+                        }
+                        65826 => {
+                            // the button 3
+                            mode = 0b0000_0011;
+                        }
+                        65827 => {
+                            // the button 4
+                            mode = 0b0000_0100;
+                        }
+                        65828 => {
+                            // the button 5
+                            mode = 0b0000_0101;
+                        }
+                        65829 => {
+                            // the button 6
+                            mode = 0b0000_0110;
+                        }
+                        65830 => {
+                            // the button 7
+                            mode = 0b0000_0111;
+                        }
+                        65831 => {
+                            // the button 8
+                            mode = 0b0000_1000;
+                        }
+                        65832 => {
+                            // the button 9
+                            mode = 0b0000_1001;
+                        }
+                        65833 => { // the button 10
+                        }
+                        65834 => { // the button 11
+                        }
+                        65835 => { // the button 12
+                        }
+                        _ => {}
+                    }
+                }
+                gilrs::EventType::ButtonRepeated(_, _) => {}
+                gilrs::EventType::ButtonReleased(_, _) => {}
+                gilrs::EventType::ButtonChanged(_, _, _) => {}
+                gilrs::EventType::AxisChanged(axis, data, code) => {
+                    match axis {
+                        gilrs::Axis::LeftStickX => {
+                            // roll
+                            roll = map_joystick_values(data);
+                        }
+                        gilrs::Axis::LeftStickY => {
+                            pitch = map_joystick_values(data);
+                        }
+                        gilrs::Axis::LeftZ => {}
+                        gilrs::Axis::RightStickX => {}
+                        gilrs::Axis::RightStickY => {}
+                        gilrs::Axis::RightZ => {
+                            yaw = map_joystick_values(data);
+                        }
+                        gilrs::Axis::DPadX => {}
+                        gilrs::Axis::DPadY => {}
+                        gilrs::Axis::Unknown => {
+                            if code.into_u32() == 196614 {
+                                // lift
+                                lift = map_joystick_values(data);
+                            }
+                        }
+                    }
+                }
+                gilrs::EventType::Connected => {}
+                gilrs::EventType::Disconnected => {
+                    // go to panic mode
+                    abort = true;
+                    mode = 0b0000_1111;
+                }
+                gilrs::EventType::Dropped => {}
+            }
+            let feed_back = joystick_input.send(JoystickControl {
+                lift,
+                yaw,
+                pitch,
+                roll,
+                mode,
+                abort,
+            });
+            match feed_back {
+                Ok(_) => {
+                    println!("Joystick command sent to handler successful!");
+                }
+                Err(_) => {
+                    println!("Joystick command sent to handler failed!");
+                }
+            }
+        }
+    }
+}
+
+fn map_joystick_values(data: f32) -> u8 {
+    if data > 0.875 {
+        90
+    } else if data > 0.75 {
+        85
+    } else if data > 0.625 {
+        80
+    } else if data > 0.5 {
+        75
+    } else if data > 0.375 {
+        70
+    } else if data > 0.25 {
+        65
+    } else if data > 0.125 {
+        60
+    } else if data > -0.125 {
+        50
+    } else if data > -0.25 {
+        40
+    } else if data > -0.375 {
+        35
+    } else if data > -0.5 {
+        30
+    } else if data > -0.625 {
+        25
+    } else if data > -0.75 {
+        20
+    } else if data > -0.875 {
+        15
+    } else {
+        10
+    }
 }
 
 fn switch_safe_mode(keyboard_input: Sender<KeyboardControl>) {
