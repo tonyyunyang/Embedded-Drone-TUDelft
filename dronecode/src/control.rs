@@ -1,21 +1,26 @@
+use crate::control::state_machine::State::Safety;
+use crate::control::state_machine::StateMachine;
 use crate::yaw_pitch_roll::YawPitchRoll;
-
 use alloc::vec::Vec;
 use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
-
 use tudelft_quadrupel::block;
-
-use tudelft_quadrupel::led::Led::Yellow;
+use tudelft_quadrupel::led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
+mod state_machine;
 
 pub fn control_loop() -> ! {
     set_tick_frequency(100);
     let mut last = Instant::now();
+
+    let state_machine = StateMachine::new();
+    if state_machine.state() == Safety {
+        Yellow.toggle();
+    }
     let mut _test: u8 = 0;
     let mut ack = 0b0000_0000;
     let mut buf = [0u8; 64];
