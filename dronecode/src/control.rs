@@ -20,6 +20,8 @@ pub fn control_loop() -> ! {
     let mut last = Instant::now();
 
     let state_machine = StateMachine::new();
+
+    // Quick test to see if state_machine is initialized, can be removed later.
     if state_machine.state() == Safety {
         Yellow.toggle();
     }
@@ -29,6 +31,22 @@ pub fn control_loop() -> ! {
         let now = Instant::now();
         let dt = now.duration_since(last);
         last = now;
+
+        // In communication protocol parse the bit string for mode to one of states in state_machine
+        // Store this parsed mode as next_state then call function transition()
+        // state_machine.transition(next_state)
+
+        // if state_machine.permissions.calibration {
+        // Do calibration.
+        // }
+
+        // if state_machine.permissions.controller {
+        // process controller commands
+        // }
+
+        //if (state_machine.permissions.yaw_control) {
+        // yaw control loop in here
+        //}
 
         let motors = get_motors();
         let quaternion = block!(read_dmp_bytes()).unwrap();

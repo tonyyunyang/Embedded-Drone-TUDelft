@@ -39,8 +39,8 @@ pub enum State {
 #[derive(Clone)]
 pub struct StateMachine {
     state: State,
-    operation_ready: bool,
-    permissions: Permissions,
+    pub operation_ready: bool,
+    pub permissions: Permissions,
     // Add more fields here if needed such as data to be stored in the state machine.
 }
 
@@ -50,12 +50,13 @@ pub struct StateMachine {
 // For example, manual mode would not use sensor data -> sensors: false.
 #[derive(Clone)]
 pub struct Permissions {
-    controller: bool,
-    yaw_control: bool,
-    pitch_roll_control: bool,
-    height_control: bool,
-    wireless: bool,
-    sensors: bool,
+    pub controller: bool,
+    pub calibration: bool,
+    pub yaw_control: bool,
+    pub pitch_roll_control: bool,
+    pub height_control: bool,
+    pub wireless: bool,
+    pub sensors: bool,
 }
 
 // Implement methods for the state machine.
@@ -67,6 +68,7 @@ impl StateMachine {
             operation_ready: false,
             permissions: Permissions {
                 controller: false,
+                calibration: false,
                 yaw_control: false,
                 pitch_roll_control: false,
                 height_control: false,
@@ -104,6 +106,7 @@ impl StateMachine {
     fn transition_safe(&mut self) -> bool {
         self.state = State::Safety;
         self.permissions.controller = false;
+        self.permissions.calibration = false;
         self.permissions.yaw_control = false;
         self.permissions.pitch_roll_control = false;
         self.permissions.height_control = false;
@@ -116,6 +119,7 @@ impl StateMachine {
     fn transition_panic(&mut self) -> bool {
         self.state = State::Panic;
         self.permissions.controller = false;
+        self.permissions.calibration = false;
         self.permissions.yaw_control = false;
         self.permissions.pitch_roll_control = false;
         self.permissions.height_control = false;
@@ -133,6 +137,7 @@ impl StateMachine {
         if self.state == State::Safety {
             self.state = State::Manual;
             self.permissions.controller = true;
+            self.permissions.calibration = false;
             self.permissions.yaw_control = false;
             self.permissions.pitch_roll_control = false;
             self.permissions.height_control = false;
@@ -150,6 +155,7 @@ impl StateMachine {
         if self.state == State::Safety {
             self.state = State::Calibrate;
             self.permissions.controller = false;
+            self.permissions.calibration = true;
             self.permissions.yaw_control = false;
             self.permissions.pitch_roll_control = false;
             self.permissions.height_control = false;
@@ -195,6 +201,7 @@ impl StateMachine {
     fn transition_full(&mut self) -> bool {
         self.state = State::Full;
         self.permissions.controller = true;
+        self.permissions.calibration = false;
         self.permissions.yaw_control = true;
         self.permissions.pitch_roll_control = true;
         self.permissions.height_control = false;
@@ -207,6 +214,7 @@ impl StateMachine {
     fn transition_raw(&mut self) -> bool {
         self.state = State::Raw;
         self.permissions.controller = true;
+        self.permissions.calibration = false;
         self.permissions.yaw_control = true;
         self.permissions.pitch_roll_control = true;
         self.permissions.height_control = false;
@@ -219,6 +227,7 @@ impl StateMachine {
     fn transition_height(&mut self) -> bool {
         self.state = State::Height;
         self.permissions.controller = true;
+        self.permissions.calibration = false;
         self.permissions.yaw_control = true;
         self.permissions.pitch_roll_control = true;
         self.permissions.height_control = true;
@@ -233,6 +242,7 @@ impl StateMachine {
     fn transition_wireless(&mut self) -> bool {
         self.state = State::Wireless;
         self.permissions.controller = true;
+        self.permissions.calibration = false;
         self.permissions.yaw_control = true;
         self.permissions.pitch_roll_control = true;
         self.permissions.height_control = true;
