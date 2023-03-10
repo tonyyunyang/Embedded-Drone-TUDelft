@@ -146,7 +146,7 @@ pub fn user_input(
     keyboard_input: Receiver<KeyboardControl>,
     joystick_input: Receiver<JoystickControl>,
 ) {
-    let mut mode = 0b1111_0000;
+    let mut mode = 0b0000_0000;
 
     // everything is u8 on the host side, we map each value to corresponding values on the device side
     let mut lift = 50u8;
@@ -168,7 +168,7 @@ pub fn user_input(
                 roll = joystick_action.roll;
                 mode = joystick_action.mode;
                 if joystick_action.abort {
-                    mode = 0b0000_1111;
+                    mode = 0b0000_0001;
                     let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
                     let feedback = user_input.send(protocol);
                     match feedback {
@@ -191,39 +191,51 @@ pub fn user_input(
         match read_keyboard {
             Ok(keyboard_action) => match keyboard_action {
                 KeyboardControl::SafeMode => {
-                    mode = 0b1111_0000;
+                    // safe
+                    mode = 0b0000_0000;
                 }
                 KeyboardControl::PanicMode => {
-                    mode = 0b0000_1111;
+                    // panic
+                    mode = 0b0000_0001;
                 }
                 KeyboardControl::Mode0 => {
+                    // safe
                     mode = 0b0000_0000;
                 }
                 KeyboardControl::Mode1 => {
+                    // panic
                     mode = 0b0000_0001;
                 }
                 KeyboardControl::Mode2 => {
+                    // manual
                     mode = 0b0000_0010;
                 }
                 KeyboardControl::Mode3 => {
+                    // calibration
                     mode = 0b0000_0011;
                 }
                 KeyboardControl::Mode4 => {
+                    // yaw
                     mode = 0b0000_0100;
                 }
                 KeyboardControl::Mode5 => {
+                    // full
                     mode = 0b0000_0101;
                 }
                 KeyboardControl::Mode6 => {
+                    // raw
                     mode = 0b0000_0110;
                 }
                 KeyboardControl::Mode7 => {
+                    // height
                     mode = 0b0000_0111;
                 }
                 KeyboardControl::Mode8 => {
+                    // wireless
                     mode = 0b0000_1000;
                 }
                 KeyboardControl::Mode9 => {
+                    // nothing yet, but leads to panic on the drone
                     mode = 0b0000_1001;
                 }
                 KeyboardControl::LiftUp => {
