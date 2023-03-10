@@ -87,7 +87,7 @@ impl StateMachine {
     // Returns true for a proper transition and false for an illegal transition.
     // This value can then be communicated back to the PC.
     pub fn transition(&mut self, next_state: State) -> bool {
-        if self.state != next_state {
+        if self.state() != next_state {
             match next_state {
                 State::Safety => self.transition_safe(),
                 State::Panic => self.transition_panic(),
