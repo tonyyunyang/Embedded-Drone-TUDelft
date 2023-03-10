@@ -5,7 +5,7 @@ use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::block;
-use tudelft_quadrupel::led::Yellow;
+use tudelft_quadrupel::led::{Blue, Green, Red, Yellow};
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
@@ -104,9 +104,20 @@ pub fn control_loop() -> ! {
         }
 
         // the code below is for switching the state of the drone
-        state_machine.transition(map_to_state(mode));
-        let current_state = state_machine.state();
-        mode = map_to_mode(current_state);
+        if ack == 0b1111_1111 {
+            state_machine.transition(map_to_state(mode));
+            let current_state = state_machine.state();
+            if current_state == State::Calibrate {
+                Red.on();
+            }
+            if current_state == State::Manual {
+                Blue.on();
+            }
+            if current_state == State::Panic {
+                Green.on();
+            }
+            mode = map_to_mode(current_state);
+        }
 
         // the code below is for sending the message to the host
         if i % 100 == 0 {
