@@ -198,43 +198,43 @@ pub fn user_input(
                     // panic
                     mode = 0b0000_0001;
                 }
-                KeyboardControl::Mode0 => {
+                KeyboardControl::Mode0 => { // safe
                     // safe
                     mode = 0b0000_0000;
                 }
-                KeyboardControl::Mode1 => {
+                KeyboardControl::Mode1 => { // panic
                     // panic
                     mode = 0b0000_0001;
                 }
-                KeyboardControl::Mode2 => {
+                KeyboardControl::Mode2 => { // manual
                     // manual
                     mode = 0b0000_0010;
                 }
-                KeyboardControl::Mode3 => {
+                KeyboardControl::Mode3 => { // calibration
                     // calibration
                     mode = 0b0000_0011;
                 }
-                KeyboardControl::Mode4 => {
+                KeyboardControl::Mode4 => { // yaw
                     // yaw
                     mode = 0b0000_0100;
                 }
-                KeyboardControl::Mode5 => {
+                KeyboardControl::Mode5 => { // full
                     // full
                     mode = 0b0000_0101;
                 }
-                KeyboardControl::Mode6 => {
+                KeyboardControl::Mode6 => { // raw
                     // raw
                     mode = 0b0000_0110;
                 }
-                KeyboardControl::Mode7 => {
+                KeyboardControl::Mode7 => { // height
                     // height
                     mode = 0b0000_0111;
                 }
-                KeyboardControl::Mode8 => {
+                KeyboardControl::Mode8 => { // wireless
                     // wireless
                     mode = 0b0000_1000;
                 }
-                KeyboardControl::Mode9 => {
+                KeyboardControl::Mode9 => { // for now, this also leads to panic
                     // nothing yet, but leads to panic on the drone
                     mode = 0b0000_1001;
                 }
