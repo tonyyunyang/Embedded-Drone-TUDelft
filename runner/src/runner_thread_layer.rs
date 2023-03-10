@@ -198,43 +198,44 @@ pub fn user_input(
                     // panic
                     mode = 0b0000_0001;
                 }
-                KeyboardControl::Mode0 => { // safe
+                KeyboardControl::Mode0 => {
                     // safe
                     mode = 0b0000_0000;
                 }
-                KeyboardControl::Mode1 => { // panic
+                KeyboardControl::Mode1 => {
                     // panic
                     mode = 0b0000_0001;
                 }
-                KeyboardControl::Mode2 => { // manual
+                KeyboardControl::Mode2 => {
                     // manual
                     mode = 0b0000_0010;
                 }
-                KeyboardControl::Mode3 => { // calibration
+                KeyboardControl::Mode3 => {
                     // calibration
                     mode = 0b0000_0011;
                 }
-                KeyboardControl::Mode4 => { // yaw
+                KeyboardControl::Mode4 => {
                     // yaw
                     mode = 0b0000_0100;
                 }
-                KeyboardControl::Mode5 => { // full
+                KeyboardControl::Mode5 => {
                     // full
                     mode = 0b0000_0101;
                 }
-                KeyboardControl::Mode6 => { // raw
+                KeyboardControl::Mode6 => {
                     // raw
                     mode = 0b0000_0110;
                 }
-                KeyboardControl::Mode7 => { // height
+                KeyboardControl::Mode7 => {
                     // height
                     mode = 0b0000_0111;
                 }
-                KeyboardControl::Mode8 => { // wireless
+                KeyboardControl::Mode8 => {
                     // wireless
                     mode = 0b0000_1000;
                 }
-                KeyboardControl::Mode9 => { // for now, this also leads to panic
+                KeyboardControl::Mode9 => {
+                    // for now, this also leads to panic
                     // nothing yet, but leads to panic on the drone
                     mode = 0b0000_1001;
                 }
