@@ -149,7 +149,7 @@ pub fn user_input(
     let mut mode = 0b0000_0000;
 
     // everything is u8 on the host side, we map each value to corresponding values on the device side
-    let mut lift = 50u8;
+    let mut lift = 10u8;
     let mut yaw = 50u8;
     let mut pitch = 50u8;
     let mut roll = 50u8;
@@ -235,6 +235,7 @@ pub fn user_input(
                     mode = 0b0000_1000;
                 }
                 KeyboardControl::Mode9 => {
+                    // for now, this also leads to panic
                     // nothing yet, but leads to panic on the drone
                     mode = 0b0000_1001;
                 }
@@ -555,7 +556,7 @@ pub fn keyboard_monitor(keyboard_input: Sender<KeyboardControl>) {
 }
 
 pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut Gilrs) {
-    let mut lift: u8 = 50u8;
+    let mut lift: u8 = 10u8;
     let mut yaw: u8 = 50u8;
     let mut pitch: u8 = 50u8;
     let mut roll: u8 = 50u8;
@@ -661,6 +662,12 @@ pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut 
             match feed_back {
                 Ok(_) => {
                     println!("Joystick command sent to handler successful!");
+                    // print the whole protocol message out
+                    // println!("Mode: {:b}", mode);
+                    // println!("Lift: {}", lift);
+                    // println!("Yaw: {}", yaw);
+                    // println!("Pitch: {}", pitch);
+                    // println!("Roll: {}", roll);
                 }
                 Err(_) => {
                     println!("Joystick command sent to handler failed!");
