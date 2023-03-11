@@ -1,11 +1,11 @@
-use crate::control::state_machine::StateMachine;
+use crate::control::state_machine::{execute_state_function, StateMachine};
 use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::vec::Vec;
 use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::block;
-use tudelft_quadrupel::led::{Blue, Green, Red, Yellow};
+use tudelft_quadrupel::led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
@@ -18,9 +18,7 @@ pub fn control_loop() -> ! {
     set_tick_frequency(100);
     let mut last = Instant::now();
     let mut state_machine = StateMachine::new();
-    #[allow(unused_assignments)]
     let mut nice_received_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
-    let mut _test: u8 = 0;
     let mut ack = 0b0000_0000;
     let mut buf = [0u8; 64];
     let mut message_buffer: Vec<u8> = Vec::new();
@@ -39,26 +37,10 @@ pub fn control_loop() -> ! {
     // logger.start_logging();
 
     for i in 0.. {
+        // reads the data from the sensors
         let now = Instant::now();
         let dt = now.duration_since(last);
         last = now;
-
-        // In communication protocol parse the bit string for mode to one of states in state_machine
-        // Store this parsed mode as next_state then call function transition()
-        // state_machine.transition(next_state)
-
-        // if state_machine.permissions.calibration {
-        // Do calibration.
-        // }
-
-        // if state_machine.permissions.controller {
-        // process controller commands
-        // }
-
-        //if (state_machine.permissions.yaw_control) {
-        // yaw control loop in here
-        //}
-
         let motors = get_motors();
         let quaternion = block!(read_dmp_bytes()).unwrap();
         let ypr = YawPitchRoll::from(quaternion);
@@ -70,7 +52,6 @@ pub fn control_loop() -> ! {
         let num = receive_bytes(&mut buf);
         if num != 0 {
             if num == 12 {
-                Yellow.on();
                 for i in buf.iter().take(num) {
                     let received_byte = *i;
                     if received_byte == 0x7b && !start_receiving {
@@ -103,26 +84,20 @@ pub fn control_loop() -> ! {
             }
         }
 
-        // the code below is for switching the state of the drone
+        // if the code received by the drone is acknowledged, then we transition to the next state, and execute corresponding function
         if ack == 0b1111_1111 {
-            state_machine.transition(map_to_state(mode));
+            Yellow.on();
+            let transition_result = state_machine.transition(map_to_state(mode));
             let current_state = state_machine.state();
-            if current_state == State::Calibrate {
-                Red.on();
+            mode = map_to_mode(&current_state);
+            if transition_result {
+                execute_state_function(&current_state, &nice_received_message);
             }
-            if current_state == State::Manual {
-                Blue.on();
-            }
-            if current_state == State::Panic {
-                Green.on();
-            }
-            mode = map_to_mode(current_state);
         }
 
         // the code below is for sending the message to the host
         if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
-            _test += 1;
             let message_to_host = DeviceProtocol::new(
                 mode,
                 dt.as_millis() as u16,
@@ -135,7 +110,7 @@ pub fn control_loop() -> ! {
             );
 
             // Form the message waiting to be sent to the host
-            let mut message = Vec::new();
+            let mut message: Vec<u8> = Vec::new();
             message_to_host.form_message(&mut message);
             send_bytes(&message);
 
@@ -183,7 +158,7 @@ fn map_to_state(mode_received: u8) -> State {
     }
 }
 
-fn map_to_mode(current_state: State) -> u8 {
+fn map_to_mode(current_state: &State) -> u8 {
     match current_state {
         State::Safety => 0b0000_0000,
         State::Panic => 0b0000_0001,
