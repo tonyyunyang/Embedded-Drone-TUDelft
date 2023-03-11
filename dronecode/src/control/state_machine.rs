@@ -567,7 +567,7 @@ fn map_roll_command(command: u8) -> u16 {
     } else if command == 10 {
         40
     } else {
-        // not a valid command, we set motor to 0
+        //not a valid command, we set motor to 0
         0
     }
 }
