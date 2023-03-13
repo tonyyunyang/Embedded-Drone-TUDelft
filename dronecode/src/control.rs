@@ -25,7 +25,6 @@ pub fn control_loop() -> ! {
     let timeout_limit = 3 * tick_frequency;
     let mut last = Instant::now();
     let mut state_machine = StateMachine::new();
-    // Gio, the struct below is for you
     let mut joystick_control = JoystickControl::new();
     let mut nice_received_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
     let mut ack = 0b0000_0000;
@@ -121,13 +120,29 @@ pub fn control_loop() -> ! {
         // if the code received by the drone is acknowledged, then we transition to the next state, and execute corresponding function
         if ack == 0b1111_1111 {
             Yellow.on();
-            let transition_result = state_machine.transition(map_to_state(mode));
-            let current_state = state_machine.state();
-            mode = map_to_mode(&current_state);
+            let next_state = map_to_state(mode);
+
+            // Update global struct.
             joystick_control.set_lift(lift);
             joystick_control.set_yaw(yaw);
             joystick_control.set_pitch(pitch);
             joystick_control.set_roll(roll);
+
+            // Assume that transition is false before transition, will become true if transition is successful.
+            let mut transition_result = false;
+
+            // After updating, check if the stick is in a neutral state before transition.
+            // The OR statement is added for panic state, since drone should always be able to panic.
+            if joystick_neutral_check(next_state.clone(), joystick_control.clone())
+                || next_state == State::Panic
+            {
+                transition_result = state_machine.transition(next_state);
+            } else {
+                // TODO communicate back to PC that there was no state transition, due to non neutral stick
+            }
+            let current_state = state_machine.state();
+            mode = map_to_mode(&current_state);
+
             // Reset time out counter, since message was received successfully.
             timeout_counter = 0;
             if transition_result {
@@ -211,4 +226,12 @@ fn map_to_mode(current_state: &State) -> u8 {
         State::Height => 0b0000_0111,
         State::Wireless => 0b0000_1000,
     }
+}
+
+// Check if lift, yaw, pitch and roll are all neutral on the controller.
+fn joystick_neutral_check(next_state: State, joystick_control: JoystickControl) -> bool {
+    joystick_control.lift == 0
+        && joystick_control.yaw == 0
+        && joystick_control.pitch == 0
+        && joystick_control.roll == 0
 }
