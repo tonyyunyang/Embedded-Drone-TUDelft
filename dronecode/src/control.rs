@@ -15,7 +15,12 @@ use self::state_machine::State;
 mod state_machine;
 
 pub fn control_loop() -> ! {
-    set_tick_frequency(100);
+    // Save the tick frequency as a variable so it can be used for multiple things.
+    let tick_frequency = 100;
+    set_tick_frequency(tick_frequency);
+    // tick_frequency is how many ticks per second.
+    // The timeout counter goes up with each tick. This means it times out after x seconds.
+    let timeout_limit = 3 * tick_frequency;
     let mut last = Instant::now();
     let mut state_machine = StateMachine::new();
     let mut nice_received_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -25,6 +30,7 @@ pub fn control_loop() -> ! {
     let mut received_bytes_count = 0;
     let mut start_receiving = false;
     let mut mode = 0b0000_0000;
+    let mut timeout_counter = 0;
     // let mut lift: u8 = 0;
     // let mut yaw: u8 = 0;
     // let mut pitch: u8 = 0;
@@ -37,6 +43,20 @@ pub fn control_loop() -> ! {
     // logger.start_logging();
 
     for i in 0.. {
+        // Check if the time limit has been reached for no message received.
+        if timeout_counter > timeout_limit {
+            // Panic because connection timed out.
+            state_machine.transition(State::Panic);
+            // Reset the timeout counter, since it's going to go back to safe mode.
+            timeout_counter = 0;
+
+            // TODO Might want to communicate something to the PC here.
+
+            // Wait for the next tick from the timer interrupt.
+            wait_for_next_tick();
+            // Go to next loop cycle.
+            continue;
+        }
         // reads the data from the sensors
         let now = Instant::now();
         let dt = now.duration_since(last);
@@ -90,6 +110,8 @@ pub fn control_loop() -> ! {
             let transition_result = state_machine.transition(map_to_state(mode));
             let current_state = state_machine.state();
             mode = map_to_mode(&current_state);
+            // Reset time out counter, since message was received successfully.
+            timeout_counter = 0;
             if transition_result {
                 execute_state_function(&current_state, &nice_received_message);
             }
@@ -118,6 +140,7 @@ pub fn control_loop() -> ! {
             ack = 0b0000_0000;
             Yellow.off();
         }
+        timeout_counter += 1;
         wait_for_next_tick();
     }
     unreachable!();
