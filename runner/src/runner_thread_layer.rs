@@ -969,15 +969,15 @@ fn print_verified_message(message: &DeviceProtocol) {
     println!("ACK {ack}", ack = message.get_ack());
     println!("CRC {crc}", crc = message.get_crc());
     println!("--------------------------------");
-    if message.get_bat() < 15 {
+    if message.get_bat() < 7 {
         println!(
             "
             |--------------------------------------------------|
-            |                Battery is low                    |
+            |                Drone Shutting Down               |
             |--------------------------------------------------|
             "
         );
-    }else if message.get_bat() < 10 {
+    } else if message.get_bat() < 10 {
         println!(
             "
             |--------------------------------------------------|
@@ -985,11 +985,11 @@ fn print_verified_message(message: &DeviceProtocol) {
             |--------------------------------------------------|
             "
         );
-    }else if message.get_bat() < 7 {
+    } else if message.get_bat() < 15 {
         println!(
             "
             |--------------------------------------------------|
-            |                Drone Shutting Down               |
+            |                Battery is low                    |
             |--------------------------------------------------|
             "
         );
