@@ -17,6 +17,7 @@ mod state_machine;
 pub fn control_loop() -> ! {
     // Save the tick frequency as a variable so it can be used for multiple things.
     let tick_frequency = 100;
+    let battery_low_counter_limit = 500;
     set_tick_frequency(tick_frequency);
     // tick_frequency is how many ticks per second.
     // The timeout counter goes up with each tick. This means it times out after x seconds.
@@ -31,6 +32,7 @@ pub fn control_loop() -> ! {
     let mut start_receiving = false;
     let mut mode = 0b0000_0000;
     let mut timeout_counter = 0;
+    let mut battery_low_counter = 0;
     // let mut lift: u8 = 0;
     // let mut yaw: u8 = 0;
     // let mut pitch: u8 = 0;
@@ -67,6 +69,15 @@ pub fn control_loop() -> ! {
         let (accel, _) = read_raw().unwrap();
         let bat = read_battery();
         let pres = read_pressure();
+        // Check if battery level is low, if positive then go to panic state.
+        if bat < 7 {
+            battery_low_counter += 1;
+        }
+        if battery_low_counter > battery_low_counter_limit {
+            state_machine.transition(State::Panic);
+            // then end the function
+            panic!();
+        }
 
         // the code below is for receiving the message from the host
         let num = receive_bytes(&mut buf);
