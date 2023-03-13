@@ -12,6 +12,7 @@ use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
 use self::state_machine::State;
+mod motor_control;
 mod state_machine;
 
 pub fn control_loop() -> ! {
