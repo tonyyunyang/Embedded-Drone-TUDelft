@@ -127,22 +127,18 @@ pub fn control_loop() -> ! {
             joystick_control.set_yaw(yaw);
             joystick_control.set_pitch(pitch);
             joystick_control.set_roll(roll);
-
             // Assume that transition is false before transition, will become true if transition is successful.
             let mut transition_result = false;
-
             // After updating, check if the stick is in a neutral state before transition.
             // The OR statement is added for panic state, since drone should always be able to panic.
-            if joystick_neutral_check(next_state.clone(), joystick_control.clone())
-                || next_state == State::Panic
-            {
+            if joystick_control.joystick_neutral_check() || next_state == State::Panic {
                 transition_result = state_machine.transition(next_state);
             } else {
-                // TODO communicate back to PC that there was no state transition, due to non neutral stick
+                // TODO: communicate back to PC that there was no state transition, due to non neutral stick
             }
+
             let current_state = state_machine.state();
             mode = map_to_mode(&current_state);
-
             // Reset time out counter, since message was received successfully.
             timeout_counter = 0;
             if transition_result {
@@ -226,12 +222,4 @@ fn map_to_mode(current_state: &State) -> u8 {
         State::Height => 0b0000_0111,
         State::Wireless => 0b0000_1000,
     }
-}
-
-// Check if lift, yaw, pitch and roll are all neutral on the controller.
-fn joystick_neutral_check(next_state: State, joystick_control: JoystickControl) -> bool {
-    joystick_control.lift == 0
-        && joystick_control.yaw == 0
-        && joystick_control.pitch == 0
-        && joystick_control.roll == 0
 }

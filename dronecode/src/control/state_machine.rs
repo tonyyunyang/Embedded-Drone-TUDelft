@@ -296,6 +296,11 @@ impl JoystickControl {
     pub fn set_roll(&mut self, roll: u8) {
         self.roll = roll;
     }
+
+    // Check if lift, yaw, pitch and roll are all neutral on the controller.
+    pub fn joystick_neutral_check(&mut self) -> bool {
+        self.lift == 10 && self.yaw == 50 && self.pitch == 50 && self.roll == 50
+    }
 }
 
 pub fn execute_state_function(current_state: &State, command: &HostProtocol) {
