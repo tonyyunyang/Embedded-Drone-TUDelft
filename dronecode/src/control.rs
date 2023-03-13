@@ -1,4 +1,4 @@
-use crate::control::state_machine::{execute_state_function, StateMachine};
+use crate::control::state_machine::{execute_state_function, JoystickControl, StateMachine};
 use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::vec::Vec;
 use protocol::format::{DeviceProtocol, HostProtocol};
@@ -25,6 +25,8 @@ pub fn control_loop() -> ! {
     let timeout_limit = 3 * tick_frequency;
     let mut last = Instant::now();
     let mut state_machine = StateMachine::new();
+    // Gio, the struct below is for you
+    let mut joystick_control = JoystickControl::new();
     let mut nice_received_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
     let mut ack = 0b0000_0000;
     let mut buf = [0u8; 64];
@@ -34,10 +36,10 @@ pub fn control_loop() -> ! {
     let mut mode = 0b0000_0000;
     let mut timeout_counter = 0;
     let mut battery_low_counter = 0;
-    // let mut lift: u8 = 0;
-    // let mut yaw: u8 = 0;
-    // let mut pitch: u8 = 0;
-    // let mut roll: u8 = 0;
+    let mut lift: u8 = 0;
+    let mut yaw: u8 = 0;
+    let mut pitch: u8 = 0;
+    let mut roll: u8 = 0;
     // let mut p: u8 = 0;
     // let mut p1: u8 = 0;
     // let mut p2: u8 = 0;
@@ -100,10 +102,10 @@ pub fn control_loop() -> ! {
                 }
                 nice_received_message = HostProtocol::format_message_alloc(&mut message_buffer);
                 mode = nice_received_message.get_mode();
-                // lift = nice_received_message.get_lift();
-                // yaw = nice_received_message.get_yaw();
-                // pitch = nice_received_message.get_pitch();
-                // roll = nice_received_message.get_roll();
+                lift = nice_received_message.get_lift();
+                yaw = nice_received_message.get_yaw();
+                pitch = nice_received_message.get_pitch();
+                roll = nice_received_message.get_roll();
                 // p = nice_received_message.get_p();
                 // p1 = nice_received_message.get_p1();
                 // p2 = nice_received_message.get_p2();
@@ -122,6 +124,10 @@ pub fn control_loop() -> ! {
             let transition_result = state_machine.transition(map_to_state(mode));
             let current_state = state_machine.state();
             mode = map_to_mode(&current_state);
+            joystick_control.set_lift(lift);
+            joystick_control.set_yaw(yaw);
+            joystick_control.set_pitch(pitch);
+            joystick_control.set_roll(roll);
             // Reset time out counter, since message was received successfully.
             timeout_counter = 0;
             if transition_result {

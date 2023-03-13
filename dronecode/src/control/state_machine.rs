@@ -64,6 +64,14 @@ pub struct Permissions {
     pub sensors: bool,
 }
 
+#[derive(Clone)]
+pub struct JoystickControl {
+    pub lift: u8,
+    pub yaw: u8,
+    pub pitch: u8,
+    pub roll: u8,
+}
+
 // Implement methods for the state machine.
 impl StateMachine {
     // Create a new state machine in the Safety state.
@@ -260,6 +268,33 @@ impl StateMachine {
         self.permissions.wireless = true;
         self.permissions.sensors = true;
         true
+    }
+}
+
+impl JoystickControl {
+    pub fn new() -> Self {
+        Self {
+            lift: 120,
+            yaw: 120,
+            pitch: 120,
+            roll: 120,
+        }
+    }
+
+    pub fn set_lift(&mut self, lift: u8) {
+        self.lift = lift;
+    }
+
+    pub fn set_yaw(&mut self, yaw: u8) {
+        self.yaw = yaw;
+    }
+
+    pub fn set_pitch(&mut self, pitch: u8) {
+        self.pitch = pitch;
+    }
+
+    pub fn set_roll(&mut self, roll: u8) {
+        self.roll = roll;
     }
 }
 
