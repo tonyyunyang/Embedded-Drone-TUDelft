@@ -218,6 +218,7 @@ pub fn map_lift_command(command: u8) -> u16 {
     }
 }
 
+#[allow(clippy::approx_constant)]
 pub fn map_yaw_command(command: u8) -> I16F16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, twisting left is negative, turning right is positive
     // this is the angular velocity below
@@ -261,6 +262,7 @@ pub fn map_yaw_command(command: u8) -> I16F16 {
     }
 }
 
+#[allow(clippy::approx_constant)]
 pub fn map_pitch_command(command: u8) -> I16F16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, pushing forward is positive, pushing backward is negative
     // this is the pitch angle below, this is not the angular velocity
@@ -304,6 +306,7 @@ pub fn map_pitch_command(command: u8) -> I16F16 {
     }
 }
 
+#[allow(clippy::approx_constant)]
 pub fn map_roll_command(command: u8) -> I16F16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, pushing forward is positive, pushing backward is negative
     // this is the roll angle below, this is not the angular velocity
