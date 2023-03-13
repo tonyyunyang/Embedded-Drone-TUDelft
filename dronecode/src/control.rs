@@ -1,4 +1,4 @@
-use crate::control::state_machine::{execute_state_function, StateMachine};
+use crate::control::state_machine::{execute_state_function, JoystickControl, StateMachine};
 use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::vec::Vec;
 use protocol::format::{DeviceProtocol, HostProtocol};
@@ -12,17 +12,20 @@ use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
 use self::state_machine::State;
+mod motor_control;
 mod state_machine;
 
 pub fn control_loop() -> ! {
     // Save the tick frequency as a variable so it can be used for multiple things.
     let tick_frequency = 100;
+    let battery_low_counter_limit = 500;
     set_tick_frequency(tick_frequency);
     // tick_frequency is how many ticks per second.
     // The timeout counter goes up with each tick. This means it times out after x seconds.
     let timeout_limit = 3 * tick_frequency;
     let mut last = Instant::now();
     let mut state_machine = StateMachine::new();
+    let mut joystick_control = JoystickControl::new();
     let mut nice_received_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
     let mut ack = 0b0000_0000;
     let mut buf = [0u8; 64];
@@ -31,10 +34,11 @@ pub fn control_loop() -> ! {
     let mut start_receiving = false;
     let mut mode = 0b0000_0000;
     let mut timeout_counter = 0;
-    // let mut lift: u8 = 0;
-    // let mut yaw: u8 = 0;
-    // let mut pitch: u8 = 0;
-    // let mut roll: u8 = 0;
+    let mut battery_low_counter = 0;
+    let mut lift: u8 = 0;
+    let mut yaw: u8 = 0;
+    let mut pitch: u8 = 0;
+    let mut roll: u8 = 0;
     // let mut p: u8 = 0;
     // let mut p1: u8 = 0;
     // let mut p2: u8 = 0;
@@ -67,6 +71,15 @@ pub fn control_loop() -> ! {
         let (accel, _) = read_raw().unwrap();
         let bat = read_battery();
         let pres = read_pressure();
+        // Check if battery level is low, if positive then go to panic state.
+        if bat < 7 {
+            battery_low_counter += 1;
+        }
+        if battery_low_counter > battery_low_counter_limit {
+            state_machine.transition(State::Panic);
+            // then end the function
+            panic!();
+        }
 
         // the code below is for receiving the message from the host
         let num = receive_bytes(&mut buf);
@@ -88,10 +101,10 @@ pub fn control_loop() -> ! {
                 }
                 nice_received_message = HostProtocol::format_message_alloc(&mut message_buffer);
                 mode = nice_received_message.get_mode();
-                // lift = nice_received_message.get_lift();
-                // yaw = nice_received_message.get_yaw();
-                // pitch = nice_received_message.get_pitch();
-                // roll = nice_received_message.get_roll();
+                lift = nice_received_message.get_lift();
+                yaw = nice_received_message.get_yaw();
+                pitch = nice_received_message.get_pitch();
+                roll = nice_received_message.get_roll();
                 // p = nice_received_message.get_p();
                 // p1 = nice_received_message.get_p1();
                 // p2 = nice_received_message.get_p2();
@@ -107,7 +120,23 @@ pub fn control_loop() -> ! {
         // if the code received by the drone is acknowledged, then we transition to the next state, and execute corresponding function
         if ack == 0b1111_1111 {
             Yellow.on();
-            let transition_result = state_machine.transition(map_to_state(mode));
+            let next_state = map_to_state(mode);
+
+            // Update global struct.
+            joystick_control.set_lift(lift);
+            joystick_control.set_yaw(yaw);
+            joystick_control.set_pitch(pitch);
+            joystick_control.set_roll(roll);
+            // Assume that transition is false before transition, will become true if transition is successful.
+            let mut transition_result = false;
+            // After updating, check if the stick is in a neutral state before transition.
+            // The OR statement is added for panic state, since drone should always be able to panic.
+            if joystick_control.joystick_neutral_check() || next_state == State::Panic {
+                transition_result = state_machine.transition(next_state);
+            } else {
+                ack = 0b1111_0000; // this means that the joystick is not in neutral state
+            }
+
             let current_state = state_machine.state();
             mode = map_to_mode(&current_state);
             // Reset time out counter, since message was received successfully.
