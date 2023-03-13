@@ -134,7 +134,7 @@ pub fn control_loop() -> ! {
             if joystick_control.joystick_neutral_check() || next_state == State::Panic {
                 transition_result = state_machine.transition(next_state);
             } else {
-                // TODO: communicate back to PC that there was no state transition, due to non neutral stick
+                ack = 0b1111_0000; // this means that the joystick is not in neutral state
             }
 
             let current_state = state_machine.state();

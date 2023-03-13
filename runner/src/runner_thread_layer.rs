@@ -49,6 +49,13 @@ pub enum KeyboardControl {
     RollPitchP2Down,
 }
 
+pub enum AckByteCorespondingState {
+    Ack,
+    Nack,
+    NotAtNeutralState,
+    NotDefined,
+}
+
 pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
     let mut buf = [0u8; 255];
     let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
@@ -943,31 +950,32 @@ fn verify_crc(message: &DeviceProtocol) -> bool {
 
 fn print_verified_message(message: &DeviceProtocol) {
     println!("--------------------------------");
-    println!("DTT: {:?}ms", message.get_duration());
-    println!("MODE: {:?}", message.get_mode());
+    println!("DTT: {:?}ms\r", message.get_duration());
+    println!("MODE: {:?}\r", message.get_mode());
     println!(
-        "MTR: {} {} {} {}",
+        "MTR: {} {} {} {}\r",
         message.get_motor()[0],
         message.get_motor()[1],
         message.get_motor()[2],
         message.get_motor()[3]
     );
     println!(
-        "YPR {} {} {}",
+        "YPR {} {} {}\r",
         message.get_ypr()[0],
         message.get_ypr()[1],
         message.get_ypr()[2]
     );
     println!(
-        "ACC {} {} {}",
+        "ACC {} {} {}\r",
         message.get_acc()[0],
         message.get_acc()[1],
         message.get_acc()[2]
     );
-    println!("BAT {bat}", bat = message.get_bat());
-    println!("BAR {pres} ", pres = message.get_pres());
-    println!("ACK {ack}", ack = message.get_ack());
-    println!("CRC {crc}", crc = message.get_crc());
+    println!("BAT {bat}\r", bat = message.get_bat());
+    println!("BAR {pres}\r", pres = message.get_pres());
+    print_ack(&message.get_ack());
+    // println!("ACK {ack}", ack = message.get_ack());
+    println!("CRC {crc}\r", crc = message.get_crc());
     println!("--------------------------------");
     if message.get_bat() < 7 {
         println!(
@@ -993,5 +1001,21 @@ fn print_verified_message(message: &DeviceProtocol) {
             |--------------------------------------------------|
             "
         );
+    }
+}
+
+fn print_ack(ack: &u8) {
+    let mut information = AckByteCorespondingState::NotDefined;
+    match ack {
+        0b0000_0000 => information = AckByteCorespondingState::Nack,
+        0b1111_1111 => information = AckByteCorespondingState::Ack,
+        0b1111_0000 => information = AckByteCorespondingState::NotAtNeutralState,
+        _ => {}
+    }
+    match information {
+        AckByteCorespondingState::Nack => println!("ACK: NACK\r"),
+        AckByteCorespondingState::Ack => println!("ACK: ACK\r"),
+        AckByteCorespondingState::NotAtNeutralState => println!("ACK: Not at neutral state\r"),
+        AckByteCorespondingState::NotDefined => println!("ACK: Not defined\r"),
     }
 }
