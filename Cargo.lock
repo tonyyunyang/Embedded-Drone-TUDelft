@@ -874,9 +874,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.154"
+version = "1.0.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cdd151213925e7f1ab45a9bbfb129316bd00799784b174b7cc7bcd16961c49e"
+checksum = "71f2b4817415c6d4210bfe1c7bfcf4801b2d904cb4d0e1a8fdb651013c9e86b8"
 
 [[package]]
 name = "serial2"
@@ -1036,8 +1036,9 @@ dependencies = [
 
 [[package]]
 name = "tudelft-quadrupel"
-version = "2.0.2"
-source = "git+https://gitlab.ewi.tudelft.nl/cese/embedded-systems-lab/tudelft-quadrupel.git?branch=2-read-imu-attempt6#39be19cfaf18f2256c593c2b1917feea5bd9f2b7"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2af81145cc762ffab3dcf58a6e1eb7ee7d3cc682318fe0d506ee8fa2e56970ac"
 dependencies = [
  "alloc-cortex-m",
  "cortex-m",

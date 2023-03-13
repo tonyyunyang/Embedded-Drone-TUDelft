@@ -130,8 +130,14 @@ impl StateMachine {
         self.permissions.sensors = false;
         // Reset the calibration flag if there was a panic.
         self.operation_ready = false;
-        // TODO Panic handling
-        true
+        // TODO Proper power down instead of instant
+
+        // Power down motors, due to panic.
+        let no_motor_power = [0, 0, 0, 0];
+        set_motors(no_motor_power);
+
+        // Automatically go back to safe mode.
+        self.transition_safe()
     }
 
     // Manual mode should accept all controller movements, but not use any sensor data.
@@ -567,7 +573,7 @@ fn map_roll_command(command: u8) -> u16 {
     } else if command == 10 {
         40
     } else {
-        // not a valid command, we set motor to 0
+        //not a valid command, we set motor to 0
         0
     }
 }
