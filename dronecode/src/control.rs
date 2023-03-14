@@ -78,7 +78,7 @@ pub fn control_loop() -> ! {
         if battery_low_counter > battery_low_counter_limit {
             state_machine.transition(State::Panic);
             // then end the function
-            panic!();
+            // panic!();
         }
 
         // the code below is for receiving the message from the host
@@ -131,7 +131,7 @@ pub fn control_loop() -> ! {
             let mut transition_result = false;
             // After updating, check if the stick is in a neutral state before transition.
             // The OR statement is added for panic state, since drone should always be able to panic.
-            if joystick_control.joystick_neutral_check() || next_state == State::Panic {
+            if (joystick_control.joystick_neutral_check()) || next_state == State::Panic {
                 transition_result = state_machine.transition(next_state);
             } else {
                 ack = 0b1111_0000; // this means that the joystick is not in neutral state

@@ -16,8 +16,27 @@ pub struct JoystickControl {
     yaw: u8,
     pitch: u8,
     roll: u8,
-    mode: u8,
+    mode: JoystickModeControl,
     abort: bool,
+}
+
+#[derive(Clone, Copy)]
+pub enum JoystickModeControl {
+    Safe,
+    Panic,
+    _Zero,
+    _One,
+    _Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+    Ten,
+    Eleven,
+    Twelve,
 }
 
 pub enum KeyboardControl {
@@ -128,15 +147,15 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
                     Ok(message_to_device) => {
                         let mut message = Vec::new();
                         message_to_device.form_message(&mut message);
-                        let write_result = serial.write(&message);
-                        match write_result {
-                            Ok(_) => {
-                                println!("Message sent to device");
-                            }
-                            Err(_) => {
-                                println!("Message not sent to device");
-                            }
-                        }
+                        let _write_result = serial.write(&message);
+                        // match write_result {
+                        //     Ok(_) => {
+                        //         println!("Message sent to device");
+                        //     }
+                        //     Err(_) => {
+                        //         println!("Message not sent to device");
+                        //     }
+                        // }
                         continue 'outer;
                     }
                     Err(_) => {
@@ -156,7 +175,7 @@ pub fn user_input(
     let mut mode = 0b0000_0000;
 
     // everything is u8 on the host side, we map each value to corresponding values on the device side
-    let mut lift = 10u8;
+    let mut lift = 90u8;
     let mut yaw = 50u8;
     let mut pitch = 50u8;
     let mut roll = 50u8;
@@ -167,13 +186,18 @@ pub fn user_input(
     loop {
         // Read the joystick input in this thread and send commands continuously, when keyboard is pressed, then add the command to the current one
         let read_joystick = joystick_input.try_recv();
+        #[allow(clippy::single_match)]
         match read_joystick {
             Ok(joystick_action) => {
+                match joystick_action.mode {
+                    JoystickModeControl::Safe => mode = 0b0000_0000,
+                    JoystickModeControl::Panic => mode = 0b0000_0001,
+                    _ => {}
+                }
                 lift = joystick_action.lift;
                 yaw = joystick_action.yaw;
                 pitch = joystick_action.pitch;
                 roll = joystick_action.roll;
-                mode = joystick_action.mode;
                 if joystick_action.abort {
                     mode = 0b0000_0001;
                     let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
@@ -189,12 +213,13 @@ pub fn user_input(
                 }
             }
             Err(_) => {
-                println!("Nothing on the joystick pressed")
+                // println!("Nothing on the joystick pressed")
             }
         }
 
         let read_keyboard = keyboard_input.try_recv();
         // read the keyboard input, and check if there is any input
+        #[allow(clippy::single_match)]
         match read_keyboard {
             Ok(keyboard_action) => match keyboard_action {
                 KeyboardControl::SafeMode => {
@@ -388,30 +413,30 @@ pub fn user_input(
                 }
             },
             Err(_) => {
-                println!("Nothing on the keyboard pressed")
+                // println!("Nothing on the keyboard pressed")
             }
         }
 
         // form the message out of the input from keyboard and joystick and send it to the uart handler
         let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
-        let feedback = user_input.send(protocol);
-        match feedback {
-            Ok(_) => {
-                println!("Message sent to handler");
-                // print the whole protocol message out
-                // println!("Mode: {:b}", mode);
-                // println!("Lift: {}", lift);
-                // println!("Yaw: {}", yaw);
-                // println!("Pitch: {}", pitch);
-                // println!("Roll: {}", roll);
-                // println!("P: {}", p);
-                // println!("P1: {}", p1);
-                // println!("P2: {}", p2);
-            }
-            Err(_) => {
-                println!("Message not sent to handler");
-            }
-        }
+        let _feedback = user_input.send(protocol);
+        // match feedback {
+        //     Ok(_) => {
+        //         println!("Message sent to handler");
+        //         // print the whole protocol message out
+        //         println!("Mode: {:b}\r", mode);
+        //         println!("Lift: {}\r", lift);
+        //         println!("Yaw: {}\r", yaw);
+        //         println!("Pitch: {}\r", pitch);
+        //         println!("Roll: {}\r", roll);
+        //         println!("P: {}\r", p);
+        //         println!("P1: {}\r", p1);
+        //         println!("P2: {}\r", p2);
+        //     }
+        //     Err(_) => {
+        //         println!("Message not sent to handler");
+        //     }
+        // }
         sleep(Duration::from_millis(100));
     }
 }
@@ -563,11 +588,15 @@ pub fn keyboard_monitor(keyboard_input: Sender<KeyboardControl>) {
 }
 
 pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut Gilrs) {
-    let mut lift: u8 = 10u8;
+    let mut lift: u8 = 90u8;
     let mut yaw: u8 = 50u8;
     let mut pitch: u8 = 50u8;
     let mut roll: u8 = 50u8;
-    let mut mode: u8 = 0b0000_0000;
+    let mut new_lift: u8 = 90u8;
+    let mut new_yaw: u8 = 50u8;
+    let mut new_pitch: u8 = 50u8;
+    let mut new_roll: u8 = 50u8;
+    let mut mode: JoystickModeControl = JoystickModeControl::Safe;
     let mut abort: bool = false;
     loop {
         while let Some(Event {
@@ -581,46 +610,76 @@ pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut 
                     match code.into_u32() {
                         65824 => {
                             // the shooter button
-                            mode = 0b0000_1111;
+                            mode = JoystickModeControl::Panic;
                         }
-                        65825 => { // the thumb button
+                        65825 => {
+                            // the thumb button
+                            mode = JoystickModeControl::Panic;
                         }
                         65826 => {
                             // the button 3
-                            mode = 0b0000_0011;
+                            mode = JoystickModeControl::Three;
                         }
                         65827 => {
                             // the button 4
-                            mode = 0b0000_0100;
+                            mode = JoystickModeControl::Four;
                         }
                         65828 => {
                             // the button 5
-                            mode = 0b0000_0101;
+                            mode = JoystickModeControl::Five;
                         }
                         65829 => {
                             // the button 6
-                            mode = 0b0000_0110;
+                            mode = JoystickModeControl::Six;
                         }
                         65830 => {
                             // the button 7
-                            mode = 0b0000_0111;
+                            mode = JoystickModeControl::Seven;
                         }
                         65831 => {
                             // the button 8
-                            mode = 0b0000_1000;
+                            mode = JoystickModeControl::Eight;
                         }
                         65832 => {
                             // the button 9
-                            mode = 0b0000_1001;
+                            mode = JoystickModeControl::Nine;
                         }
-                        65833 => { // the button 10
+                        65833 => {
+                            // the button 10'
+                            mode = JoystickModeControl::Ten;
                         }
-                        65834 => { // the button 11
+                        65834 => {
+                            // the button 11
+                            mode = JoystickModeControl::Eleven;
                         }
-                        65835 => { // the button 12
+                        65835 => {
+                            // the button 12
+                            mode = JoystickModeControl::Twelve;
                         }
                         _ => {}
                     }
+                    let _feed_back = joystick_input.send(JoystickControl {
+                        lift: new_lift,
+                        yaw: new_yaw,
+                        pitch: new_pitch,
+                        roll: new_roll,
+                        mode,
+                        abort,
+                    });
+                    // match feed_back {
+                    //     Ok(_) => {
+                    //         println!("Joystick command sent to handler successful!");
+                    //         // print the whole protocol message out
+                    //         println!("Mode: {:b}", mode);
+                    //         println!("Lift: {}", lift);
+                    //         println!("Yaw: {}", yaw);
+                    //         println!("Pitch: {}", pitch);
+                    //         println!("Roll: {}", roll);
+                    //     }
+                    //     Err(_) => {
+                    //         println!("Joystick command sent to handler failed!");
+                    //     }
+                    // }
                 }
                 gilrs::EventType::ButtonRepeated(_, _) => {}
                 gilrs::EventType::ButtonReleased(_, _) => {}
@@ -629,69 +688,126 @@ pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut 
                     match axis {
                         gilrs::Axis::LeftStickX => {
                             // roll
-                            roll = map_joystick_values(data);
+                            new_roll = map_joystick_values(data);
                         }
                         gilrs::Axis::LeftStickY => {
-                            pitch = map_joystick_values(data);
+                            new_pitch = map_joystick_values(data);
                         }
                         gilrs::Axis::LeftZ => {}
                         gilrs::Axis::RightStickX => {}
                         gilrs::Axis::RightStickY => {}
                         gilrs::Axis::RightZ => {
-                            yaw = map_joystick_values(data);
+                            new_yaw = map_joystick_values(data);
                         }
                         gilrs::Axis::DPadX => {}
                         gilrs::Axis::DPadY => {}
                         gilrs::Axis::Unknown => {
                             if code.into_u32() == 196614 {
                                 // lift
-                                lift = map_joystick_values(data);
+                                new_lift = map_joystick_values(data);
                             }
                         }
                     }
                 }
-                gilrs::EventType::Connected => {}
+                gilrs::EventType::Connected => {
+                    abort = false;
+                    mode = JoystickModeControl::Safe;
+                    let _feed_back = joystick_input.send(JoystickControl {
+                        lift: new_lift,
+                        yaw: new_yaw,
+                        pitch: new_pitch,
+                        roll: new_roll,
+                        mode,
+                        abort,
+                    });
+                    // match feed_back {
+                    //     Ok(_) => {
+                    //         println!("Joystick command sent to handler successful!");
+                    //         // print the whole protocol message out
+                    //         println!("Mode: {}", mode);
+                    //         println!("Lift: {}", lift);
+                    //         println!("Yaw: {}", yaw);
+                    //         println!("Pitch: {}", pitch);
+                    //         println!("Roll: {}", roll);
+                    //     }
+                    //     Err(_) => {
+                    //         println!("Joystick command sent to handler failed!");
+                    //     }
+                    // }
+                }
                 gilrs::EventType::Disconnected => {
                     // go to panic mode
                     abort = true;
-                    mode = 0b0000_1111;
+                    mode = JoystickModeControl::Panic;
+                    let _feed_back = joystick_input.send(JoystickControl {
+                        lift: new_lift,
+                        yaw: new_yaw,
+                        pitch: new_pitch,
+                        roll: new_roll,
+                        mode,
+                        abort,
+                    });
+                    // match feed_back {
+                    //     Ok(_) => {
+                    //         println!("Joystick command sent to handler successful!");
+                    //         // print the whole protocol message out
+                    //         println!("Mode: {:b}", mode);
+                    //         println!("Lift: {}", lift);
+                    //         println!("Yaw: {}", yaw);
+                    //         println!("Pitch: {}", pitch);
+                    //         println!("Roll: {}", roll);
+                    //     }
+                    //     Err(_) => {
+                    //         println!("Joystick command sent to handler failed!");
+                    //     }
+                    // }
                 }
                 gilrs::EventType::Dropped => {}
             }
-            let feed_back = joystick_input.send(JoystickControl {
-                lift,
-                yaw,
-                pitch,
-                roll,
-                mode,
-                abort,
-            });
-            match feed_back {
-                Ok(_) => {
-                    println!("Joystick command sent to handler successful!");
-                    // print the whole protocol message out
-                    // println!("Mode: {:b}", mode);
-                    // println!("Lift: {}", lift);
-                    // println!("Yaw: {}", yaw);
-                    // println!("Pitch: {}", pitch);
-                    // println!("Roll: {}", roll);
-                }
-                Err(_) => {
-                    println!("Joystick command sent to handler failed!");
-                }
+            if (lift.abs_diff(new_lift) >= 5)
+                || (yaw.abs_diff(new_yaw) >= 5)
+                || (pitch.abs_diff(new_pitch) >= 5)
+                || (roll.abs_diff(new_roll) >= 5)
+            {
+                let _feed_back = joystick_input.send(JoystickControl {
+                    lift: new_lift,
+                    yaw: new_yaw,
+                    pitch: new_pitch,
+                    roll: new_roll,
+                    mode,
+                    abort,
+                });
+                // match feed_back {
+                //     Ok(_) => {
+                //         println!("Joystick command sent to handler successful!");
+                //         // print the whole protocol message out
+                //         // println!("Mode: {}", mode);
+                //         println!("Lift: {}", lift);
+                //         println!("Yaw: {}", yaw);
+                //         println!("Pitch: {}", pitch);
+                //         println!("Roll: {}", roll);
+                //     }
+                //     Err(_) => {
+                //         println!("Joystick command sent to handler failed!");
+                //     }
+                // }
             }
+            lift = new_lift;
+            yaw = new_yaw;
+            pitch = new_pitch;
+            roll = new_roll;
         }
     }
 }
 
 fn map_joystick_values(data: f32) -> u8 {
-    if data > 0.875 {
+    if data > 0.85 {
         90
-    } else if data > 0.75 {
+    } else if data > 0.8 {
         85
-    } else if data > 0.625 {
+    } else if data > 0.75 {
         80
-    } else if data > 0.5 {
+    } else if data > 0.7 {
         75
     } else if data > 0.375 {
         70

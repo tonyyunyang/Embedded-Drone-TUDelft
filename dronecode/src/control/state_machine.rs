@@ -2,7 +2,11 @@
 // The state machine is a finite state machine (FSM) that is used to control the drone.
 
 use protocol::format::HostProtocol;
-use tudelft_quadrupel::{fixed::types::I16F16, motor::set_motors};
+use tudelft_quadrupel::{
+    fixed::types::I16F16,
+    led::Led::Blue,
+    motor::{get_motors, set_motors},
+};
 
 use crate::control::state_machine::State::Safety;
 use core::clone::Clone;
@@ -131,6 +135,7 @@ impl StateMachine {
     // Panic mode should also do nothing from the controller, might need the sensors (for now false).
     fn transition_panic(&mut self) -> bool {
         self.state = State::Panic;
+        Blue.on();
         self.permissions.controller = false;
         self.permissions.calibration = false;
         self.permissions.yaw_control = false;
@@ -274,10 +279,10 @@ impl StateMachine {
 impl JoystickControl {
     pub fn new() -> Self {
         Self {
-            lift: 120,
-            yaw: 120,
-            pitch: 120,
-            roll: 120,
+            lift: 90,
+            yaw: 50,
+            pitch: 50,
+            roll: 50,
         }
     }
 
@@ -299,7 +304,10 @@ impl JoystickControl {
 
     // Check if lift, yaw, pitch and roll are all neutral on the controller.
     pub fn joystick_neutral_check(&mut self) -> bool {
-        self.lift == 10 && self.yaw == 50 && self.pitch == 50 && self.roll == 50
+        (self.lift <= 90 || self.lift >= 80)
+            && (self.yaw >= 45 || self.yaw <= 55)
+            && (self.pitch >= 45 || self.pitch <= 55)
+            && (self.roll >= 45 || self.roll <= 55)
     }
 }
 
@@ -360,7 +368,13 @@ fn safety_mode() {
 }
 
 fn panic_mode() {
-    // TODO
+    let mut motors = get_motors();
+    for i in 0..4 {
+        if motors[i] > 0 {
+            motors[i] -= 20;
+        }
+        set_motors(motors);
+    }
 }
 
 fn manual_mode(lift: u8, yaw: u8, pitch: u8, roll: u8) {
