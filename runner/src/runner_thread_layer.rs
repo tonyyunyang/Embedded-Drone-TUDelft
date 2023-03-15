@@ -69,9 +69,13 @@ pub enum KeyboardControl {
 }
 
 pub enum AckByteCorespondingState {
-    Ack,
-    Nack,
-    NotAtNeutralState,
+    Ack,                     // 0b1111_1111
+    Nack,                    // 0b0000_0000
+    NotAtNeutralState,       // 0b1111_0000
+    StateTransitionDeclined, // 0b0000_1111
+    StateTransitionAllowed,  // 0b0011_1100
+    RemainingOnTheSameMode,  // 0b0000_0001
+    FromPanic,               // 0b0000_0010
     NotDefined,
 }
 
@@ -141,25 +145,35 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
                 }
             }
             Err(_) => {
-                // if there is nothing to read, we check if there is something to be sent, if there is, we send it, if not, we continue
-                let read_user = user_input.try_recv();
-                match read_user {
-                    Ok(message_to_device) => {
-                        let mut message = Vec::new();
-                        message_to_device.form_message(&mut message);
-                        let _write_result = serial.write(&message);
-                        // match write_result {
-                        //     Ok(_) => {
-                        //         println!("Message sent to device");
-                        //     }
-                        //     Err(_) => {
-                        //         println!("Message not sent to device");
-                        //     }
-                        // }
-                        continue 'outer;
-                    }
-                    Err(_) => {
-                        continue 'outer;
+                loop {
+                    // if there is nothing to read, we check if there is something to be sent, if there is, we send it, if not, we continue
+                    let read_user = user_input.try_recv();
+                    match read_user {
+                        Ok(message_to_device) => {
+                            let mut message = Vec::new();
+                            message_to_device.form_message(&mut message);
+                            let _write_result = serial.write(&message);
+                            // match _write_result {
+                            //     Ok(_) => {
+                            //         println!("Message sent to device");
+                            //     }
+                            //     Err(_) => {
+                            //         println!("Message not sent to device");
+                            //     }
+                            // }
+                            // println!("Mode: {:b}\r", message_to_device.get_mode());
+                            // println!("Lift: {}\r", message_to_device.get_lift());
+                            // println!("Yaw: {}\r", message_to_device.get_yaw());
+                            // println!("Pitch: {}\r", message_to_device.get_pitch());
+                            // println!("Roll: {}\r", message_to_device.get_roll());
+                            // println!("P: {}\r", message_to_device.get_p());
+                            // println!("P1: {}\r", message_to_device.get_p1());
+                            // println!("P2: {}\r", message_to_device.get_p2());
+                            // continue 'outer;
+                        }
+                        Err(_) => {
+                            continue 'outer;
+                        }
                     }
                 }
             }
@@ -192,6 +206,9 @@ pub fn user_input(
                 match joystick_action.mode {
                     JoystickModeControl::Safe => mode = 0b0000_0000,
                     JoystickModeControl::Panic => mode = 0b0000_0001,
+                    JoystickModeControl::_Zero => {
+                        // do nothing, this is the ignore state for the joystick
+                    }
                     _ => {}
                 }
                 lift = joystick_action.lift;
@@ -416,11 +433,10 @@ pub fn user_input(
                 // println!("Nothing on the keyboard pressed")
             }
         }
-
         // form the message out of the input from keyboard and joystick and send it to the uart handler
         let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
         let _feedback = user_input.send(protocol);
-        // match feedback {
+        // match _feedback {
         //     Ok(_) => {
         //         println!("Message sent to handler");
         //         // print the whole protocol message out
@@ -437,7 +453,7 @@ pub fn user_input(
         //         println!("Message not sent to handler");
         //     }
         // }
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(60));
     }
 }
 
@@ -596,7 +612,7 @@ pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut 
     let mut new_yaw: u8 = 50u8;
     let mut new_pitch: u8 = 50u8;
     let mut new_roll: u8 = 50u8;
-    let mut mode: JoystickModeControl = JoystickModeControl::Safe;
+    let mut mode: JoystickModeControl = JoystickModeControl::_Zero;
     let mut abort: bool = false;
     loop {
         while let Some(Event {
@@ -666,6 +682,7 @@ pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut 
                         mode,
                         abort,
                     });
+                    mode = JoystickModeControl::_Zero;
                     // match feed_back {
                     //     Ok(_) => {
                     //         println!("Joystick command sent to handler successful!");
@@ -720,6 +737,7 @@ pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut 
                         mode,
                         abort,
                     });
+                    mode = JoystickModeControl::_Zero;
                     // match feed_back {
                     //     Ok(_) => {
                     //         println!("Joystick command sent to handler successful!");
@@ -747,6 +765,7 @@ pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut 
                         mode,
                         abort,
                     });
+                    mode = JoystickModeControl::_Zero;
                     // match feed_back {
                     //     Ok(_) => {
                     //         println!("Joystick command sent to handler successful!");
@@ -777,6 +796,7 @@ pub fn joystick_monitor(joystick_input: Sender<JoystickControl>, joystick: &mut 
                     mode,
                     abort,
                 });
+                mode = JoystickModeControl::_Zero;
                 // match feed_back {
                 //     Ok(_) => {
                 //         println!("Joystick command sent to handler successful!");
@@ -1121,17 +1141,32 @@ fn print_verified_message(message: &DeviceProtocol) {
 }
 
 fn print_ack(ack: &u8) {
+    #[allow(unused_assignments)]
     let mut information = AckByteCorespondingState::NotDefined;
     match ack {
         0b0000_0000 => information = AckByteCorespondingState::Nack,
         0b1111_1111 => information = AckByteCorespondingState::Ack,
         0b1111_0000 => information = AckByteCorespondingState::NotAtNeutralState,
-        _ => {}
+        0b0000_1111 => information = AckByteCorespondingState::StateTransitionDeclined,
+        0b0011_1100 => information = AckByteCorespondingState::StateTransitionAllowed,
+        0b0000_0001 => information = AckByteCorespondingState::RemainingOnTheSameMode,
+        0b0000_0010 => information = AckByteCorespondingState::FromPanic,
+        _ => information = AckByteCorespondingState::NotDefined,
     }
     match information {
         AckByteCorespondingState::Nack => println!("ACK: NACK\r"),
         AckByteCorespondingState::Ack => println!("ACK: ACK\r"),
         AckByteCorespondingState::NotAtNeutralState => println!("ACK: Not at neutral state\r"),
         AckByteCorespondingState::NotDefined => println!("ACK: Not defined\r"),
+        AckByteCorespondingState::StateTransitionDeclined => {
+            println!("ACK: State transition declined\r")
+        }
+        AckByteCorespondingState::StateTransitionAllowed => {
+            println!("ACK: State transition allowed\r")
+        }
+        AckByteCorespondingState::RemainingOnTheSameMode => {
+            println!("ACK: Remaining on the same mode\r")
+        }
+        AckByteCorespondingState::FromPanic => println!("ACK: Panicked\r"),
     }
 }

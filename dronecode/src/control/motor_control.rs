@@ -1,4 +1,8 @@
-use tudelft_quadrupel::{fixed::types::I16F16, motor::set_motors};
+use tudelft_quadrupel::{
+    fixed::types::I16F16,
+    motor::{get_motors, set_motors},
+    time::delay_ms_assembly,
+};
 
 pub fn set_motor_speeds_manual(lift: u16, yaw: u16, pitch: u16, roll: u16) {
     if lift > roll + yaw {
@@ -347,5 +351,24 @@ pub fn map_roll_command(command: u8) -> I16F16 {
     } else {
         // not a valid command, we set motor to 0
         I16F16::from_num(0.0) // 0 degrees in radians
+    }
+}
+
+pub fn gradually_slow_down_motors() {
+    let motors_speed = get_motors();
+    let mut motor0 = motors_speed[0];
+    let mut motor1 = motors_speed[1];
+    let mut motor2 = motors_speed[2];
+    let mut motor3 = motors_speed[3];
+
+    while (motor0 > 0) || (motor1 > 0) || (motor2 > 0) || (motor3 > 0) {
+        motor0 = motor0.saturating_sub(1);
+        motor1 = motor1.saturating_sub(1);
+        motor2 = motor2.saturating_sub(1);
+        motor3 = motor3.saturating_sub(1);
+
+        delay_ms_assembly(1);
+
+        set_motors([motor0, motor1, motor2, motor3]);
     }
 }
