@@ -5,8 +5,11 @@ use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::block;
+use tudelft_quadrupel::fixed::types::I6F26;
+use tudelft_quadrupel::fixed::{types, FixedI32};
 use tudelft_quadrupel::led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
+use tudelft_quadrupel::mpu::structs::{Accel, Quaternion};
 use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
@@ -16,6 +19,25 @@ mod motor_control;
 mod state_machine;
 
 pub fn control_loop() -> ! {
+    // Create the variables for the read values from the sensors
+    let mut motors: [u16; 4] = [0; 4];
+    let zero_u30 = FixedI32::<types::extra::U30>::from_num(0.0);
+    #[allow(unused_assignments)]
+    let mut quaternion: Quaternion = Quaternion {
+        w: zero_u30,
+        x: zero_u30,
+        y: zero_u30,
+        z: zero_u30,
+    };
+    let zero_i6 = I6F26::from_num(0.0);
+    let mut ypr = YawPitchRoll {
+        yaw: zero_i6,
+        pitch: zero_i6,
+        roll: zero_i6,
+    };
+    let mut accel = Accel { x: 0, y: 0, z: 0 };
+    let mut bat: u16 = 0;
+    let mut pres: u32 = 0;
     // Save the tick frequency as a variable so it can be used for multiple things.
     let tick_frequency = 100;
     let battery_low_counter_limit = 500;
@@ -29,9 +51,6 @@ pub fn control_loop() -> ! {
     let mut nice_received_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
     let mut ack = 0b0000_0000;
     let mut buf = [0u8; 64];
-    let mut message_buffer: Vec<u8> = Vec::new();
-    let mut received_bytes_count = 0;
-    let mut start_receiving = false;
     let mut mode = 0b0000_0000;
     let mut timeout_counter = 0;
     let mut battery_low_counter = 0;
@@ -43,99 +62,43 @@ pub fn control_loop() -> ! {
     // let mut p1: u8 = 0;
     // let mut p2: u8 = 0;
 
-    // let mut logger = logger::BlackBoxLogger::new();
-    // logger.start_logging();
-
     for i in 0.. {
-        // Check if the time limit has been reached for no message received.
-        if timeout_counter > timeout_limit {
-            // Panic because connection timed out.
-            state_machine.transition(State::Panic);
-            // Reset the timeout counter, since it's going to go back to safe mode.
-            timeout_counter = 0;
-
-            // TODO Might want to communicate something to the PC here.
-
-            // Wait for the next tick from the timer interrupt.
-            wait_for_next_tick();
-            // Go to next loop cycle.
-            continue;
-        }
+        // the code below is for sending the message to the host
         // reads the data from the sensors
         let now = Instant::now();
         let dt = now.duration_since(last);
         last = now;
-        let motors = get_motors();
-        let quaternion = block!(read_dmp_bytes()).unwrap();
-        let ypr = YawPitchRoll::from(quaternion);
-        let (accel, _) = read_raw().unwrap();
-        let bat = read_battery();
-        let pres = read_pressure();
-        // Check if battery level is low, if positive then go to panic state.
-        if bat < 7 {
-            battery_low_counter += 1;
-        }
-        if battery_low_counter > battery_low_counter_limit {
-            state_machine.transition(State::Panic);
-            // then end the function
-            panic!();
-        }
 
         // the code below is for receiving the message from the host
         let num = receive_bytes(&mut buf);
-        if num != 0 {
-            if num == 12 {
-                for i in buf.iter().take(num) {
-                    let received_byte = *i;
-                    if received_byte == 0x7b && !start_receiving {
-                        message_buffer.clear();
-                        start_receiving = true;
-                    }
-                    if start_receiving {
-                        message_buffer.push(received_byte);
-                        received_bytes_count += 1;
-                    }
-                    if received_bytes_count < 12 {
-                        continue;
-                    }
-                }
-                nice_received_message = HostProtocol::format_message_alloc(&mut message_buffer);
-                mode = nice_received_message.get_mode();
-                lift = nice_received_message.get_lift();
-                yaw = nice_received_message.get_yaw();
-                pitch = nice_received_message.get_pitch();
-                roll = nice_received_message.get_roll();
-                // p = nice_received_message.get_p();
-                // p1 = nice_received_message.get_p1();
-                // p2 = nice_received_message.get_p2();
-                ack = verify_message(&nice_received_message);
-                received_bytes_count = 0;
-                message_buffer.clear();
-            } else {
-                received_bytes_count = 0;
-                message_buffer.clear();
-            }
+        if num == 12 {
+            nice_received_message = HostProtocol::format_message(&mut buf[0..12]);
+            mode = nice_received_message.get_mode();
+            lift = nice_received_message.get_lift();
+            yaw = nice_received_message.get_yaw();
+            pitch = nice_received_message.get_pitch();
+            roll = nice_received_message.get_roll();
+            // p = nice_received_message.get_p();
+            // p1 = nice_received_message.get_p1();
+            // p2 = nice_received_message.get_p2();
+            ack = verify_message(&nice_received_message);
         }
 
         // if the code received by the drone is acknowledged, then we transition to the next state, and execute corresponding function
         if ack == 0b1111_1111 {
             Yellow.on();
             let next_state = map_to_state(mode);
-
             // Update global struct.
             joystick_control.set_lift(lift);
             joystick_control.set_yaw(yaw);
             joystick_control.set_pitch(pitch);
             joystick_control.set_roll(roll);
             // Assume that transition is false before transition, will become true if transition is successful.
+            #[allow(unused_assignments)]
             let mut transition_result = false;
             // After updating, check if the stick is in a neutral state before transition.
             // The OR statement is added for panic state, since drone should always be able to panic.
-            if joystick_control.joystick_neutral_check() || next_state == State::Panic {
-                transition_result = state_machine.transition(next_state);
-            } else {
-                ack = 0b1111_0000; // this means that the joystick is not in neutral state
-            }
+            (transition_result, ack) = state_machine.transition(next_state, &mut joystick_control);
 
             let current_state = state_machine.state();
             mode = map_to_mode(&current_state);
@@ -146,7 +109,15 @@ pub fn control_loop() -> ! {
             }
         }
 
-        // the code below is for sending the message to the host
+        if i % 100 == 0 {
+            motors = get_motors();
+            quaternion = block!(read_dmp_bytes()).unwrap();
+            ypr = YawPitchRoll::from(quaternion);
+            (accel, _) = read_raw().unwrap();
+            bat = read_battery();
+            pres = read_pressure();
+        }
+
         if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
             let message_to_host = DeviceProtocol::new(
@@ -170,6 +141,22 @@ pub fn control_loop() -> ! {
             Yellow.off();
         }
         timeout_counter += 1;
+        // Check if the time limit has been reached for no message received.
+        if timeout_counter > timeout_limit {
+            // Panic because connection timed out.
+            state_machine.transition(State::Panic, &mut joystick_control);
+            // Reset the timeout counter, since it's going to go back to safe mode.
+            timeout_counter = 0;
+        }
+        // Check if battery level is low, if positive then go to panic state.
+        if bat < 7 {
+            battery_low_counter += 1;
+        }
+        if battery_low_counter > battery_low_counter_limit {
+            state_machine.transition(State::Panic, &mut joystick_control);
+            // then end the function
+            panic!();
+        }
         wait_for_next_tick();
     }
     unreachable!();
