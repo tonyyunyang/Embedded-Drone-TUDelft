@@ -4,19 +4,24 @@ use tudelft_quadrupel::{
     time::delay_ms_assembly,
 };
 
-pub fn set_motor_speeds_manual(lift: u16, yaw: u16, pitch: u16, roll: u16) {
-    if lift > roll + yaw {
-        let ae1: u16 = lift + yaw - pitch;
-        let ae2: u16 = lift + roll - yaw;
-        let ae3: u16 = lift + yaw + pitch;
-        let ae4: u16 = lift - roll - yaw;
-        set_motors([ae1, ae2, ae3, ae4]);
-    } else {
-        set_motors([lift; 4]);
-    }
+pub fn set_motor_speeds_manual(lift: i16, yaw: i16, pitch: i16, roll: i16) {
+    // if lift > roll + yaw {
+    //     let ae1: u16 = lift + yaw - pitch;
+    //     let ae2: u16 = lift + roll - yaw;
+    //     let ae3: u16 = lift + yaw + pitch;
+    //     let ae4: u16 = lift - roll - yaw;
+    //     set_motors([ae1, ae2, ae3, ae4]);
+    // } else {
+    //     set_motors([lift; 4]);
+    // }
+    let ae1: u16 = (lift - pitch + yaw) as u16;
+    let ae2: u16 = (lift - roll - yaw) as u16;
+    let ae3: u16 = (lift + pitch + yaw) as u16;
+    let ae4: u16 = (lift + roll - yaw) as u16;
+    set_motors([ae1, ae2, ae3, ae4]);
 }
 
-pub fn map_lift_command_manual(command: u8) -> u16 {
+pub fn map_lift_command_manual(command: u8) -> i16 {
     // the mapping might be wrong, for now, I will assume the lift from the joystick starts at -1, and goes to 1
     if command == 90 {
         200
@@ -56,7 +61,7 @@ pub fn map_lift_command_manual(command: u8) -> u16 {
     }
 }
 
-pub fn map_yaw_command_manual(command: u8) -> u16 {
+pub fn map_yaw_command_manual(command: u8) -> i16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, twisting left is negative, turning right is positive
     if command == 90 {
         40
@@ -77,28 +82,28 @@ pub fn map_yaw_command_manual(command: u8) -> u16 {
     } else if command == 50 {
         0
     } else if command == 45 {
-        5
+        -5
     } else if command == 40 {
-        10
+        -10
     } else if command == 35 {
-        15
+        -15
     } else if command == 30 {
-        20
+        -20
     } else if command == 25 {
-        25
+        -25
     } else if command == 20 {
-        30
+        -30
     } else if command == 15 {
-        35
+        -35
     } else if command == 10 {
-        40
+        -40
     } else {
         // not a valid command, we set motor to 0
         0
     }
 }
 
-pub fn map_pitch_command_manual(command: u8) -> u16 {
+pub fn map_pitch_command_manual(command: u8) -> i16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, pushing forward is positive, pushing backward is negative
     if command == 90 {
         40
@@ -119,28 +124,28 @@ pub fn map_pitch_command_manual(command: u8) -> u16 {
     } else if command == 50 {
         0
     } else if command == 45 {
-        5
+        -5
     } else if command == 40 {
-        10
+        -10
     } else if command == 35 {
-        15
+        -15
     } else if command == 30 {
-        20
+        -20
     } else if command == 25 {
-        25
+        -25
     } else if command == 20 {
-        30
+        -30
     } else if command == 15 {
-        35
+        -35
     } else if command == 10 {
-        40
+        -40
     } else {
         // not a valid command, we set motor to 0
         0
     }
 }
 
-pub fn map_roll_command_manual(command: u8) -> u16 {
+pub fn map_roll_command_manual(command: u8) -> i16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, pushing left is negative, pushing right is positive
     if command == 90 {
         40
@@ -161,21 +166,21 @@ pub fn map_roll_command_manual(command: u8) -> u16 {
     } else if command == 50 {
         0
     } else if command == 45 {
-        5
+        -5
     } else if command == 40 {
-        10
+        -10
     } else if command == 35 {
-        15
+        -15
     } else if command == 30 {
-        20
+        -20
     } else if command == 25 {
-        25
+        -25
     } else if command == 20 {
-        30
+        -30
     } else if command == 15 {
-        35
+        -35
     } else if command == 10 {
-        40
+        -40
     } else {
         //not a valid command, we set motor to 0
         0

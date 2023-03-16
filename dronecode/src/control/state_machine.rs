@@ -393,10 +393,10 @@ fn safety_mode() {
 }
 
 fn manual_mode(lift: u8, yaw: u8, pitch: u8, roll: u8) {
-    let lift: u16 = map_lift_command_manual(lift);
-    let yaw: u16 = map_yaw_command_manual(yaw);
-    let pitch: u16 = map_pitch_command_manual(pitch);
-    let roll: u16 = map_roll_command_manual(roll);
+    let lift: i16 = map_lift_command_manual(lift);
+    let yaw: i16 = map_yaw_command_manual(yaw);
+    let pitch: i16 = map_pitch_command_manual(pitch);
+    let roll: i16 = map_roll_command_manual(roll);
     set_motor_speeds_manual(lift, yaw, pitch, roll);
 }
 
