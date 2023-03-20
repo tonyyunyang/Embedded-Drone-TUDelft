@@ -2,7 +2,7 @@ use crc16::{State, XMODEM};
 use crc_any::CRCu8;
 
 use alloc::vec::Vec as OtherVec;
-use fixed::types::I6F26;
+use fixed::types::I16F16;
 
 use alloc::vec::{self};
 pub struct HostProtocol {
@@ -27,10 +27,10 @@ pub struct DeviceProtocol {
     start_flag: u8, // By default, this would be set to 0b01111011 = 0x7b, in ASCII, it is "{"
 
     // Payload
-    mode: u8,        // Two bytes to represent 9 modes
-    duration: u16,   // This is the duration of the tramision, 16 bytes
-    motor: [u16; 4], // This is the data of the 4 motors on the drone, each motor has 2 bytes
-    ypr: [I6F26; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
+    mode: u8,         // Two bytes to represent 9 modes
+    duration: u16,    // This is the duration of the tramision, 16 bytes
+    motor: [u16; 4],  // This is the data of the 4 motors on the drone, each motor has 2 bytes
+    ypr: [I16F16; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
     acc: [i16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
     bat: u16,      // This is the data of the battery of the drone, 2 bytes
     pres: u32,     // This is the data of the pressure of the drone, 4 bytes
@@ -256,7 +256,7 @@ impl DeviceProtocol {
         mode: u8,
         duration: u16,
         motor: [u16; 4],
-        ypr: [I6F26; 3],
+        ypr: [I16F16; 3],
         acc: [i16; 3],
         bat: u16,
         pres: u32,
@@ -302,7 +302,7 @@ impl DeviceProtocol {
 
     pub fn format_message(message: &mut [u8]) -> DeviceProtocol {
         let mut format_message =
-            DeviceProtocol::new(0, 0, [0; 4], [I6F26::from_num(0); 3], [0; 3], 0, 0, 0);
+            DeviceProtocol::new(0, 0, [0; 4], [I16F16::from_num(0); 3], [0; 3], 0, 0, 0);
         format_message.set_start_flag(message[0]);
         format_message.set_mode(message[1]);
         format_message.set_duration(u16::from_be_bytes([message[2], message[3]]));
@@ -313,9 +313,9 @@ impl DeviceProtocol {
             u16::from_be_bytes([message[10], message[11]]),
         ]);
         format_message.set_ypr([
-            I6F26::from_be_bytes([message[12], message[13], message[14], message[15]]),
-            I6F26::from_be_bytes([message[16], message[17], message[18], message[19]]),
-            I6F26::from_be_bytes([message[20], message[21], message[22], message[23]]),
+            I16F16::from_be_bytes([message[12], message[13], message[14], message[15]]),
+            I16F16::from_be_bytes([message[16], message[17], message[18], message[19]]),
+            I16F16::from_be_bytes([message[20], message[21], message[22], message[23]]),
         ]);
         format_message.set_acc([
             i16::from_be_bytes([message[24], message[25]]),
@@ -385,7 +385,7 @@ impl DeviceProtocol {
         self.motor = motor;
     }
 
-    pub fn set_ypr(&mut self, ypr: [I6F26; 3]) {
+    pub fn set_ypr(&mut self, ypr: [I16F16; 3]) {
         self.ypr = ypr;
     }
 
@@ -433,7 +433,7 @@ impl DeviceProtocol {
         self.motor
     }
 
-    pub fn get_ypr(&self) -> [I6F26; 3] {
+    pub fn get_ypr(&self) -> [I16F16; 3] {
         self.ypr
     }
 

@@ -5,7 +5,7 @@ use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::block;
-use tudelft_quadrupel::fixed::types::I6F26;
+use tudelft_quadrupel::fixed::types::I16F16;
 use tudelft_quadrupel::fixed::{types, FixedI32};
 use tudelft_quadrupel::led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
@@ -29,7 +29,7 @@ pub fn control_loop() -> ! {
         y: zero_u30,
         z: zero_u30,
     };
-    let zero_i6 = I6F26::from_num(0.0);
+    let zero_i6 = I16F16::from_num(0.0);
     let mut ypr = YawPitchRoll {
         yaw: zero_i6,
         pitch: zero_i6,
