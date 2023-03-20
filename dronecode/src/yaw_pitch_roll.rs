@@ -1,12 +1,12 @@
-use fixed_trigonometry::atan;
-use tudelft_quadrupel::{fixed::types::I6F26, mpu::structs::Quaternion};
+use fixed_trigonometry::{atan, sqrt};
+use tudelft_quadrupel::{fixed::types::I16F16, mpu::structs::Quaternion};
 
 // A struct to hold yaw, pitch, and roll values
 #[derive(Debug, Copy, Clone)]
 pub struct YawPitchRoll {
-    pub yaw: I6F26,
-    pub pitch: I6F26,
-    pub roll: I6F26,
+    pub yaw: I16F16,
+    pub pitch: I16F16,
+    pub roll: I16F16,
 }
 
 // An implementation of the `From` trait for converting a `Quaternion` into a `YawPitchRoll`
@@ -17,17 +17,29 @@ impl From<Quaternion> for YawPitchRoll {
         // 12.0000
 
         // Calculate the values for yaw, pitch, and roll using the quaternion components
-        let two = 2;
+        let w: I16F16 = w.to_num();
+        let x: I16F16 = x.to_num();
+        let y: I16F16 = y.to_num();
+        let z: I16F16 = z.to_num();
+        // let w: f32 = w.to_num();
+        // let x: f32 = x.to_num();
+        // let y: f32 = y.to_num();
+        // let z: f32 = z.to_num();
 
-        // // calculate values and format to FixedI32<types::extra::U29> format
-        let gx = I6F26::from_num(two * x * z - w * y);
-        let gy = I6F26::from_num(two * w * x + y * z);
-        let gz = I6F26::from_num(w * w - x * x - y * y + z * z);
+        let two = I16F16::from_num(2.0);
+        let one = I16F16::from_num(1.0);
+
+        let gx = two * (x * z - w * y);
+        let gy = two * (w * x + y * z);
+        let gz = w * w - x * x - y * y + z * z;
 
         // Calculate the values for yaw, pitch, and roll using the Cordic library
-        let yaw = atan::atan2(gx, gz);
-        let pitch = atan::atan2(gy, gz);
-        let roll = atan::atan2(gx, gy);
+        // let yaw = I16F16::from_num(micromath::F32Ext::atan2(2.0 * x * y - 2.0 * w * z, 2.0 * w * w + 2.0 * x * x - 1.0));
+        // let pitch = I16F16::from_num(micromath::F32Ext::atan2(gx, micromath::F32Ext::sqrt(gy * gy + gz * gz)));
+        // let roll = I16F16::from_num(micromath::F32Ext::atan2(gy, gz));
+        let yaw = atan::atan2(two * x * y - two * w * z, two * w * w + two * x * x - one);
+        let pitch = atan::atan2(gx, sqrt::niirf(gy * gy + gz * gz, 2));
+        let roll = atan::atan2(gy, gz);
 
         // Create a new `YawPitchRoll` struct with the calculated yaw, pitch, and roll values
         Self { yaw, pitch, roll }
