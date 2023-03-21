@@ -40,6 +40,7 @@ pub enum JoystickModeControl {
 }
 
 pub enum KeyboardControl {
+    #[allow(dead_code)]
     SafeMode,
     PanicMode,
     Mode0,
