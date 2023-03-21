@@ -140,23 +140,23 @@ pub fn control_loop() -> ! {
             ack = 0b0000_0000;
             Yellow.off();
         }
-        // timeout_counter += 1;
-        // // Check if the time limit has been reached for no message received.
-        // if timeout_counter > timeout_limit {
-        //     // Panic because connection timed out.
-        //     state_machine.transition(State::Panic, &mut joystick_control);
-        //     // Reset the timeout counter, since it's going to go back to safe mode.
-        //     timeout_counter = 0;
-        // }
-        // // Check if battery level is low, if positive then go to panic state.
-        // if bat < 7 {
-        //     battery_low_counter += 1;
-        // }
-        // if battery_low_counter > battery_low_counter_limit {
-        //     state_machine.transition(State::Panic, &mut joystick_control);
-        //     // then end the function
-        //     panic!();
-        // }
+        timeout_counter += 1;
+        // Check if the time limit has been reached for no message received.
+        if timeout_counter > timeout_limit {
+            // Panic because connection timed out.
+            state_machine.transition(State::Panic, &mut joystick_control);
+            // Reset the timeout counter, since it's going to go back to safe mode.
+            timeout_counter = 0;
+        }
+        // Check if battery level is low, if positive then go to panic state.
+        if bat < 7 {
+            battery_low_counter += 1;
+        }
+        if battery_low_counter > battery_low_counter_limit {
+            state_machine.transition(State::Panic, &mut joystick_control);
+            // then end the function
+            panic!();
+        }
         wait_for_next_tick();
     }
     unreachable!();

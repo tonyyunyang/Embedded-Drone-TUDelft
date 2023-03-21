@@ -442,8 +442,8 @@ pub fn user_input(
         let no_transition_option = ack.try_recv();
         match no_transition_option {
             Ok(true) => mode = 0b0000_0001,
-            Ok(false) => {}, // do nothing,
-            Err(_) => {} // do nothing
+            Ok(false) => {} // do nothing,
+            Err(_) => {}    // do nothing
         }
         // if no_transition_option.is_ok {
         //     mode = 0b0000_0001;
