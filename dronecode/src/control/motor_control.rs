@@ -14,11 +14,19 @@ pub fn set_motor_speeds_manual(lift: i16, yaw: i16, pitch: i16, roll: i16) {
     // } else {
     //     set_motors([lift; 4]);
     // }
-    let ae1: u16 = (lift - pitch + yaw) as u16;
-    let ae2: u16 = (lift - roll - yaw) as u16;
-    let ae3: u16 = (lift + pitch + yaw) as u16;
-    let ae4: u16 = (lift + roll - yaw) as u16;
-    set_motors([ae1, ae2, ae3, ae4]);
+    if lift == 200 {
+        let ae1_safe: u16 = 0;
+        let ae2_safe: u16 = 0;
+        let ae3_safe: u16 = 0;
+        let ae4_safe: u16 = 0;
+        set_motors([ae1_safe, ae2_safe, ae3_safe, ae4_safe]);
+    } else {
+        let ae1: u16 = (lift - pitch - yaw) as u16;
+        let ae2: u16 = (lift - roll + yaw) as u16;
+        let ae3: u16 = (lift + pitch - yaw) as u16;
+        let ae4: u16 = (lift + roll + yaw) as u16;
+        set_motors([ae1, ae2, ae3, ae4]);
+    }
 }
 
 pub fn map_lift_command_manual(command: u8) -> i16 {
@@ -372,7 +380,7 @@ pub fn gradually_slow_down_motors() {
         motor2 = motor2.saturating_sub(1);
         motor3 = motor3.saturating_sub(1);
 
-        delay_ms_assembly(1);
+        delay_ms_assembly(15);
 
         set_motors([motor0, motor1, motor2, motor3]);
     }

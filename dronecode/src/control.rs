@@ -3,7 +3,7 @@ use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::vec::Vec;
 use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
-use tudelft_quadrupel::battery::read_battery;
+// use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::block;
 use tudelft_quadrupel::fixed::types::I16F16;
 use tudelft_quadrupel::fixed::{types, FixedI32};
@@ -40,7 +40,7 @@ pub fn control_loop() -> ! {
     let mut pres: u32 = 0;
     // Save the tick frequency as a variable so it can be used for multiple things.
     let tick_frequency = 100;
-    let battery_low_counter_limit = 500;
+    let battery_low_counter_limit = 200;
     set_tick_frequency(tick_frequency);
     // tick_frequency is how many ticks per second.
     // The timeout counter goes up with each tick. This means it times out after x seconds.
@@ -114,7 +114,8 @@ pub fn control_loop() -> ! {
             quaternion = block!(read_dmp_bytes()).unwrap();
             ypr = YawPitchRoll::from(quaternion);
             (accel, _) = read_raw().unwrap();
-            bat = read_battery();
+            // bat = read_battery();
+            bat = 99;
             pres = read_pressure();
         }
 
@@ -149,7 +150,7 @@ pub fn control_loop() -> ! {
             timeout_counter = 0;
         }
         // Check if battery level is low, if positive then go to panic state.
-        if bat < 7 {
+        if bat < 120 {
             battery_low_counter += 1;
         }
         if battery_low_counter > battery_low_counter_limit {
