@@ -118,6 +118,22 @@ impl HostProtocol {
         format_message
     }
 
+    pub fn format_message_not_mut(message: &[u8]) -> HostProtocol {
+        let mut format_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
+        format_message.set_start_flag(message[0]);
+        format_message.set_mode(message[1]);
+        format_message.set_lift(message[2]);
+        format_message.set_yaw(message[3]);
+        format_message.set_pitch(message[4]);
+        format_message.set_roll(message[5]);
+        format_message.set_p(message[6]);
+        format_message.set_p1(message[7]);
+        format_message.set_p2(message[8]);
+        format_message.set_crc(u16::from_be_bytes([message[9], message[10]]));
+        format_message.set_end_flag(message[11]);
+        format_message
+    }
+
     pub fn format_message_alloc(message: &mut OtherVec<u8>) -> HostProtocol {
         let mut format_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
         format_message.set_start_flag(message[0]);
