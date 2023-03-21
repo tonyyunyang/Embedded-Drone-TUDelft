@@ -40,7 +40,7 @@ pub fn control_loop() -> ! {
     let mut pres: u32 = 0;
     // Save the tick frequency as a variable so it can be used for multiple things.
     let tick_frequency = 100;
-    let battery_low_counter_limit = 500;
+    let battery_low_counter_limit = 200;
     set_tick_frequency(tick_frequency);
     // tick_frequency is how many ticks per second.
     // The timeout counter goes up with each tick. This means it times out after x seconds.
@@ -114,7 +114,8 @@ pub fn control_loop() -> ! {
             quaternion = block!(read_dmp_bytes()).unwrap();
             ypr = YawPitchRoll::from(quaternion);
             (accel, _) = read_raw().unwrap();
-            bat = read_battery();
+            // bat = read_battery();
+            bat = 99;
             pres = read_pressure();
         }
 
@@ -149,14 +150,14 @@ pub fn control_loop() -> ! {
             timeout_counter = 0;
         }
         // Check if battery level is low, if positive then go to panic state.
-        if bat < 7 {
-            battery_low_counter += 1;
-        }
-        if battery_low_counter > battery_low_counter_limit {
-            state_machine.transition(State::Panic, &mut joystick_control);
-            // then end the function
-            panic!();
-        }
+        // if bat < 120 {
+        //     battery_low_counter += 1;
+        // }
+        // if battery_low_counter > battery_low_counter_limit {
+        //     state_machine.transition(State::Panic, &mut joystick_control);
+        //     // then end the function
+        //     panic!();
+        // }
         wait_for_next_tick();
     }
     unreachable!();
