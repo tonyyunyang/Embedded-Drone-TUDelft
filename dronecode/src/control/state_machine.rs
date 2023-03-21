@@ -212,17 +212,22 @@ impl StateMachine {
     // Manual mode should accept all controller movements, but not use any sensor data.
     fn transition_manual(&mut self) -> (bool, u8) {
         // Can only go into manual mode from safe mode.
-        if self.state == State::Safety && self.controller_ready {
-            self.state = State::Manual;
-            self.permissions.controller = true;
-            self.permissions.calibration = false;
-            self.permissions.yaw_control = false;
-            self.permissions.pitch_roll_control = false;
-            self.permissions.height_control = false;
-            self.permissions.wireless = false;
-            self.permissions.sensors = false;
-            (true, 0b0011_1100)
+        if self.controller_ready {
+            if self.state == State::Safety {
+                self.state = State::Manual;
+                self.permissions.controller = true;
+                self.permissions.calibration = false;
+                self.permissions.yaw_control = false;
+                self.permissions.pitch_roll_control = false;
+                self.permissions.height_control = false;
+                self.permissions.wireless = false;
+                self.permissions.sensors = false;
+                (true, 0b0011_1100)
+            } else {
+                (false, 0b0000_1111)
+            }
         } else {
+            self.state = State::Safety;
             (false, 0b0000_1111)
         }
     }
