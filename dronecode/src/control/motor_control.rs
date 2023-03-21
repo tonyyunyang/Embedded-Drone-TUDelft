@@ -1,7 +1,7 @@
 use tudelft_quadrupel::{
     fixed::types::I16F16,
     motor::{get_motors, set_motors},
-    time::delay_ms_assembly,
+    time::delay_us_assembly,
 };
 
 pub fn set_motor_speeds_manual(lift: i16, yaw: i16, pitch: i16, roll: i16) {
@@ -380,7 +380,7 @@ pub fn gradually_slow_down_motors() {
         motor2 = motor2.saturating_sub(1);
         motor3 = motor3.saturating_sub(1);
 
-        delay_ms_assembly(15);
+        delay_us_assembly(1500);
 
         set_motors([motor0, motor1, motor2, motor3]);
     }

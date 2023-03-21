@@ -70,13 +70,13 @@ pub enum KeyboardControl {
 }
 
 pub enum AckByteCorespondingState {
-    Ack,                     // 0b1111_1111
-    Nack,                    // 0b0000_0000
-    NotAtNeutralState,       // 0b1111_0000
-    StateTransitionDeclined, // 0b0000_1111
-    StateTransitionAllowed,  // 0b0011_1100
-    RemainingOnTheSameMode,  // 0b0000_0001
-    FromPanic,               // 0b0000_0010
+    Ack,                     // 0b1111_1111, 255
+    Nack,                    // 0b0000_0000, 0
+    NotAtNeutralState,       // 0b1111_0000, 240
+    StateTransitionDeclined, // 0b0000_1111, 15
+    StateTransitionAllowed,  // 0b0011_1100, 60
+    RemainingOnTheSameMode,  // 0b0000_0001, 1
+    FromPanic,               // 0b0000_0010, 2
     NotDefined,
 }
 
@@ -469,7 +469,7 @@ pub fn user_input(
         //         println!("Message not sent to handler");
         //     }
         // }
-        sleep(Duration::from_millis(60));
+        sleep(Duration::from_millis(30));
     }
 }
 
