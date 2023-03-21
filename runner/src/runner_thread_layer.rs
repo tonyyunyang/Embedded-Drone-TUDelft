@@ -40,6 +40,7 @@ pub enum JoystickModeControl {
 }
 
 pub enum KeyboardControl {
+    #[allow(dead_code)]
     SafeMode,
     PanicMode,
     Mode0,
@@ -79,7 +80,7 @@ pub enum AckByteCorespondingState {
     NotDefined,
 }
 
-pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
+pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack: Sender<bool>) {
     let mut buf = [0u8; 255];
     let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
     let mut message_buffer = Vec::new();
@@ -124,7 +125,10 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>) {
                                 let nice_received_message =
                                     DeviceProtocol::format_message(&mut message_buffer);
                                 // // verify the message, and print out the message
-                                verify_message(&nice_received_message);
+                                let no_transition = verify_message(&nice_received_message);
+                                if no_transition {
+                                    let _tmp = ack.send(no_transition);
+                                }
                                 // clean everything, initialize everything and start receiving again
                                 message_buffer.clear();
                                 received_bytes_count = 0;
@@ -185,6 +189,7 @@ pub fn user_input(
     user_input: Sender<HostProtocol>,
     keyboard_input: Receiver<KeyboardControl>,
     joystick_input: Receiver<JoystickControl>,
+    ack: Receiver<bool>,
 ) {
     let mut mode = 0b0000_0000;
 
@@ -434,6 +439,17 @@ pub fn user_input(
             }
         }
         // form the message out of the input from keyboard and joystick and send it to the uart handler
+
+        let no_transition_option = ack.try_recv();
+        match no_transition_option {
+            Ok(true) => mode = 0b0000_0001,
+            Ok(false) => {} // do nothing,
+            Err(_) => {}    // do nothing
+        }
+        // if no_transition_option.is_ok {
+        //     mode = 0b0000_0001;
+        // }
+
         let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
         let _feedback = user_input.send(protocol);
         // match _feedback {
@@ -855,7 +871,7 @@ fn map_joystick_values(data: f32) -> u8 {
 }
 
 fn switch_safe_mode(keyboard_input: Sender<KeyboardControl>) {
-    if keyboard_input.send(KeyboardControl::SafeMode).is_ok() {
+    if keyboard_input.send(KeyboardControl::PanicMode).is_ok() {
         println!("Message sent to message formatter");
     } else {
         println!("Message not sent to message formatter");
@@ -1068,14 +1084,16 @@ fn roll_pitch_p2_down(keyboard_input: Sender<KeyboardControl>) {
     }
 }
 
-fn verify_message(message: &DeviceProtocol) {
+fn verify_message(message: &DeviceProtocol) -> bool {
     // we check the start bit and the end bit first
     if message.get_start_flag() != 0x7b || message.get_end_flag() != 0x7d {
         println!("Start or End flag is wrong");
+        false
     } else if verify_crc(message) {
-        print_verified_message(message);
+        print_verified_message(message)
     } else {
         println!("CRC verification failed");
+        false
     }
 }
 
@@ -1084,7 +1102,7 @@ fn verify_crc(message: &DeviceProtocol) -> bool {
     verification_crc == message.get_crc()
 }
 
-fn print_verified_message(message: &DeviceProtocol) {
+fn print_verified_message(message: &DeviceProtocol) -> bool {
     println!("--------------------------------");
     println!("DTT: {:?}ms\r", message.get_duration());
     println!("MODE: {:?}\r", message.get_mode());
@@ -1110,6 +1128,14 @@ fn print_verified_message(message: &DeviceProtocol) {
     println!("BAT {bat}\r", bat = message.get_bat());
     println!("BAR {pres}\r", pres = message.get_pres());
     print_ack(&message.get_ack());
+    let mut proper_ack = false;
+    // match &message.get_ack() {
+    //     0b0000_1111 => proper_ack = false,
+    //     _ => {} // do nothing
+    // }
+    if message.get_ack() == 0b0000_1111 {
+        proper_ack = true;
+    }
     // println!("ACK {ack}", ack = message.get_ack());
     println!("CRC {crc}\r", crc = message.get_crc());
     println!("--------------------------------");
@@ -1138,6 +1164,7 @@ fn print_verified_message(message: &DeviceProtocol) {
             "
         );
     }
+    proper_ack
 }
 
 fn print_ack(ack: &u8) {

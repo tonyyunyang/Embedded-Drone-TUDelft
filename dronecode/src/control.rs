@@ -104,7 +104,7 @@ pub fn control_loop() -> ! {
             mode = map_to_mode(&current_state);
             // Reset time out counter, since message was received successfully.
             timeout_counter = 0;
-            if transition_result {
+            if transition_result && ack != 0b0000_1111 {
                 execute_state_function(&current_state, &nice_received_message);
             }
         }

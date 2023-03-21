@@ -23,13 +23,14 @@ fn main() {
     let (user_input_tx, user_input_rx) = channel::<HostProtocol>();
     let (keyboard_input_tx, keyboard_input_rx) = channel::<KeyboardControl>();
     let (joystick_input_tx, joystick_input_rx) = channel::<JoystickControl>();
+    let (ack_tx, ack_rx) = channel::<bool>();
 
     let uart_handler = thread::spawn(move || {
-        uart_handler(serial, user_input_rx);
+        uart_handler(serial, user_input_rx, ack_tx);
     });
 
     let user_input = thread::spawn(move || {
-        user_input(user_input_tx, keyboard_input_rx, joystick_input_rx);
+        user_input(user_input_tx, keyboard_input_rx, joystick_input_rx, ack_rx);
     });
 
     let keyboard_monitor = thread::spawn(move || {
