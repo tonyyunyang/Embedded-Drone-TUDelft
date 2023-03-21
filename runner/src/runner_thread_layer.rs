@@ -440,13 +440,14 @@ pub fn user_input(
         // form the message out of the input from keyboard and joystick and send it to the uart handler
 
         let no_transition_option = ack.try_recv();
-        // match no_transition_option {
-        //     Ok(_) => mode = 0b0000_0000,
-        //     Err(_) => {} // do nothing
-        // }
-        if no_transition_option.is_ok() {
-            mode = 0b0000_0000;
+        match no_transition_option {
+            Ok(true) => mode = 0b0000_0001,
+            Ok(false) => {}, // do nothing,
+            Err(_) => {} // do nothing
         }
+        // if no_transition_option.is_ok {
+        //     mode = 0b0000_0001;
+        // }
 
         let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
         let _feedback = user_input.send(protocol);
@@ -1126,13 +1127,13 @@ fn print_verified_message(message: &DeviceProtocol) -> bool {
     println!("BAT {bat}\r", bat = message.get_bat());
     println!("BAR {pres}\r", pres = message.get_pres());
     print_ack(&message.get_ack());
-    let mut proper_ack = true;
+    let mut proper_ack = false;
     // match &message.get_ack() {
     //     0b0000_1111 => proper_ack = false,
     //     _ => {} // do nothing
     // }
     if message.get_ack() == 0b0000_1111 {
-        proper_ack = false;
+        proper_ack = true;
     }
     // println!("ACK {ack}", ack = message.get_ack());
     println!("CRC {crc}\r", crc = message.get_crc());
