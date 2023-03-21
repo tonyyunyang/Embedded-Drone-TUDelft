@@ -870,7 +870,7 @@ fn map_joystick_values(data: f32) -> u8 {
 }
 
 fn switch_safe_mode(keyboard_input: Sender<KeyboardControl>) {
-    if keyboard_input.send(KeyboardControl::SafeMode).is_ok() {
+    if keyboard_input.send(KeyboardControl::PanicMode).is_ok() {
         println!("Message sent to message formatter");
     } else {
         println!("Message not sent to message formatter");
