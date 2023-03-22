@@ -1,6 +1,7 @@
 use crate::control::state_machine::{execute_state_function, JoystickControl, StateMachine};
 use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::vec::Vec;
+// use heapless::Vec as HVec;
 use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
 // use tudelft_quadrupel::battery::read_battery;
@@ -52,6 +53,7 @@ pub fn control_loop() -> ! {
     let mut nice_received_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
     let mut ack = 0b0000_0000;
     let mut buf = [0u8; 257];
+    // let mut command_buf: HVec<u8, 1024> = HVec::new();
     let mut command_buf: Vec<u8> = Vec::new();
     let mut mode = 0b0000_0000;
     // let mut p: u8 = 0;
@@ -67,11 +69,13 @@ pub fn control_loop() -> ! {
 
         // the code below is for receiving the message from the host
         let num = receive_bytes(&mut buf);
+        // command_buf.extend_from_slice(&buf[0..num]).unwrap();
         command_buf.extend_from_slice(&buf[0..num]);
         if command_buf.len() >= 12 {
             let temp = command_buf.clone();
             let (message, rest) = temp.split_at(12);
             command_buf.clear();
+            // command_buf.extend_from_slice(rest).unwrap();
             command_buf.extend_from_slice(rest);
             nice_received_message = HostProtocol::format_message_not_mut(message);
             // p = nice_received_message.get_p();
@@ -110,7 +114,7 @@ pub fn control_loop() -> ! {
             }
         }
 
-        if i % 100 == 0 {
+        if i % 20 == 0 {
             motors = get_motors();
             quaternion = block!(read_dmp_bytes()).unwrap();
             ypr = YawPitchRoll::from(quaternion);
@@ -120,7 +124,7 @@ pub fn control_loop() -> ! {
             pres = read_pressure();
         }
 
-        if i % 100 == 0 {
+        if i % 20 == 0 {
             // Create an instance of the Drone Protocol struct
             let message_to_host = DeviceProtocol::new(
                 mode,
