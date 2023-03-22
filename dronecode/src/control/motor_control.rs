@@ -380,7 +380,7 @@ pub fn gradually_slow_down_motors() {
         motor2 = motor2.saturating_sub(1);
         motor3 = motor3.saturating_sub(1);
 
-        delay_us_assembly(1300);
+        delay_us_assembly(2500);
 
         set_motors([motor0, motor1, motor2, motor3]);
     }
