@@ -7,6 +7,7 @@ use tudelft_quadrupel::barometer::read_pressure;
 use tudelft_quadrupel::block;
 use tudelft_quadrupel::fixed::types::I16F16;
 use tudelft_quadrupel::fixed::{types, FixedI32};
+use tudelft_quadrupel::led::Led::Blue;
 use tudelft_quadrupel::led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::structs::{Accel, Quaternion};
@@ -155,6 +156,7 @@ pub fn control_loop() -> ! {
         //     panic!();
         // }
 
+        Blue.off();
         Yellow.off();
         wait_for_next_tick();
     }
