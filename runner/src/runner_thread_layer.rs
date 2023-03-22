@@ -469,7 +469,7 @@ pub fn user_input(
         //         println!("Message not sent to handler");
         //     }
         // }
-        sleep(Duration::from_millis(25));
+        sleep(Duration::from_millis(30));
     }
 }
 
