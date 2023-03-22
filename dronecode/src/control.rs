@@ -41,21 +41,31 @@ pub fn control_loop() -> ! {
         // update the sensor data
         sensor_data.update_all();
 
-        // the code below is for receiving the message from the host
+        // the code below is an algorithm for receiving the message from the host
+        // first read 'num' bytes from the uart
         let num = receive_bytes(&mut buf);
         // command_buf.extend_from_slice(&buf[0..num]).unwrap();
+        // push what we read into the command buffer
         command_buf.extend_from_slice(&buf[0..num]);
+        // if the command buffer is long enough, then we check if the message is valid
         if command_buf.len() >= 12 {
             let temp = command_buf.clone();
-            let (message, rest) = temp.split_at(12);
-            command_buf.clear();
-            // command_buf.extend_from_slice(rest).unwrap();
-            command_buf.extend_from_slice(rest);
-            nice_received_message = HostProtocol::format_message_not_mut(message);
-            // p = nice_received_message.get_p();
-            // p1 = nice_received_message.get_p1();
-            // p2 = nice_received_message.get_p2();
-            ack = verify_message(&nice_received_message);
+            // due to the fact that the length of the message is already long enough, we can check if the first and last byte are correct
+            if temp[0] != 0x7b || temp[11] != 0x7d {
+                // if the first or last byte is not correct, we directly flush out everything in the command buffer
+                command_buf.clear();
+            } else {
+                // if the first and last byte are correct, we split the command buffer into two parts, the first part is the message, the second part is the rest
+                let (message, rest) = temp.split_at(12);
+                // then we clear the command buffer
+                command_buf.clear();
+                // and push the rest into the command buffer
+                // command_buf.extend_from_slice(rest).unwrap();
+                command_buf.extend_from_slice(rest);
+                // then we form the message and check if it is valid
+                nice_received_message = HostProtocol::format_message_not_mut(message);
+                ack = verify_message(&nice_received_message);
+            }
         }
 
         // if the code received by the drone is acknowledged, then we transition to the next state, and execute corresponding function
