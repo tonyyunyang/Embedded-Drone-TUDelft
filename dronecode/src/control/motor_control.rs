@@ -72,17 +72,17 @@ pub fn map_lift_command_manual(command: u8) -> i16 {
 pub fn map_yaw_command_manual(command: u8) -> i16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, twisting left is negative, turning right is positive
     if command == 90 {
-        40
+        70
     } else if command == 85 {
-        35
+        60
     } else if command == 80 {
-        30
+        50
     } else if command == 75 {
-        25
+        40
     } else if command == 70 {
-        20
+        30
     } else if command == 65 {
-        15
+        20
     } else if command == 60 {
         10
     } else if command == 55 {
@@ -94,17 +94,17 @@ pub fn map_yaw_command_manual(command: u8) -> i16 {
     } else if command == 40 {
         -10
     } else if command == 35 {
-        -15
-    } else if command == 30 {
         -20
-    } else if command == 25 {
-        -25
-    } else if command == 20 {
+    } else if command == 30 {
         -30
-    } else if command == 15 {
-        -35
-    } else if command == 10 {
+    } else if command == 25 {
         -40
+    } else if command == 20 {
+        -50
+    } else if command == 15 {
+        -60
+    } else if command == 10 {
+        -70
     } else {
         // not a valid command, we set motor to 0
         0

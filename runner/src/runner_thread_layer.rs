@@ -296,9 +296,9 @@ pub fn user_input(
                 KeyboardControl::LiftUp => {
                     let temp = lift + 5;
                     if temp > 90 {
-                        println!("Lift is at max");
-                    } else if temp < 10 {
                         println!("Lift is at min");
+                    } else if temp < 10 {
+                        println!("Lift is at max");
                     } else {
                         lift = temp;
                     }
@@ -306,9 +306,9 @@ pub fn user_input(
                 KeyboardControl::LiftDown => {
                     let temp = lift - 5;
                     if temp > 90 {
-                        println!("Lift is at max");
-                    } else if temp < 10 {
                         println!("Lift is at min");
+                    } else if temp < 10 {
+                        println!("Lift is at max");
                     } else {
                         lift = temp;
                     }
@@ -316,9 +316,9 @@ pub fn user_input(
                 KeyboardControl::RollUp => {
                     let temp = roll + 5;
                     if temp > 90 {
-                        println!("Roll is at max");
+                        println!("Roll is at max right");
                     } else if temp < 10 {
-                        println!("Roll is at min");
+                        println!("Roll is at max left");
                     } else {
                         roll = temp;
                     }
@@ -326,9 +326,9 @@ pub fn user_input(
                 KeyboardControl::RollDown => {
                     let temp = roll - 5;
                     if temp > 90 {
-                        println!("Roll is at max");
+                        println!("Roll is at max right");
                     } else if temp < 10 {
-                        println!("Roll is at min");
+                        println!("Roll is at max left");
                     } else {
                         roll = temp;
                     }
@@ -336,9 +336,9 @@ pub fn user_input(
                 KeyboardControl::PitchUp => {
                     let temp = pitch + 5;
                     if temp > 90 {
-                        println!("Pitch is at max");
+                        println!("Pitch is at max front");
                     } else if temp < 10 {
-                        println!("Pitch is at min");
+                        println!("Pitch is at max back");
                     } else {
                         pitch = temp;
                     }
@@ -346,9 +346,9 @@ pub fn user_input(
                 KeyboardControl::PitchDown => {
                     let temp = pitch - 5;
                     if temp > 90 {
-                        println!("Pitch is at max");
+                        println!("Pitch is at max front");
                     } else if temp < 10 {
-                        println!("Pitch is at min");
+                        println!("Pitch is at max back");
                     } else {
                         pitch = temp;
                     }
@@ -356,9 +356,9 @@ pub fn user_input(
                 KeyboardControl::YawUp => {
                     let temp = yaw + 5;
                     if temp > 90 {
-                        println!("Yaw is at max");
+                        println!("Yaw is at max right");
                     } else if temp < 10 {
-                        println!("Yaw is at min");
+                        println!("Yaw is at max left");
                     } else {
                         yaw = temp;
                     }
@@ -366,9 +366,9 @@ pub fn user_input(
                 KeyboardControl::YawDown => {
                     let temp = yaw - 5;
                     if temp > 90 {
-                        println!("Yaw is at max");
+                        println!("Yaw is at max right");
                     } else if temp < 10 {
-                        println!("Yaw is at min");
+                        println!("Yaw is at max left");
                     } else {
                         yaw = temp;
                     }
@@ -469,7 +469,7 @@ pub fn user_input(
         //         println!("Message not sent to handler");
         //     }
         // }
-        sleep(Duration::from_millis(25));
+        sleep(Duration::from_millis(30));
     }
 }
 

@@ -74,6 +74,9 @@ pub struct JoystickControl {
     pub yaw: u8,
     pub pitch: u8,
     pub roll: u8,
+    pub p: u8,
+    pub p1: u8,
+    pub p2: u8,
 }
 
 impl JoystickControl {
@@ -83,6 +86,9 @@ impl JoystickControl {
             yaw: 50,
             pitch: 50,
             roll: 50,
+            p: 50,
+            p1: 50,
+            p2: 50,
         }
     }
 
@@ -100,6 +106,18 @@ impl JoystickControl {
 
     pub fn set_roll(&mut self, roll: u8) {
         self.roll = roll;
+    }
+
+    pub fn set_p(&mut self, p: u8) {
+        self.p = p;
+    }
+
+    pub fn set_p1(&mut self, p1: u8) {
+        self.p1 = p1;
+    }
+
+    pub fn set_p2(&mut self, p2: u8) {
+        self.p2 = p2;
     }
 
     // Check if lift, yaw, pitch and roll are all neutral on the controller.
@@ -411,10 +429,10 @@ fn calibrate_mode() {
 
 #[allow(unused_variables)]
 fn yaw_mode(lift: u8, yaw: u8, pitch: u8, roll: u8) {
-    let lift: u16 = 200; // this should be the value that keeps the drone in the air stable
+    let lift: i16 = map_lift_command_manual(lift); // this should be the value that keeps the drone in the air stable
     let yaw: I16F16 = map_yaw_command(yaw);
-    let pitch: u16 = 0;
-    let roll: u16 = 0;
+    let pitch: i16 = map_pitch_command_manual(pitch);
+    let roll: i16 = map_roll_command_manual(roll);
 }
 
 #[allow(unused_variables)]
