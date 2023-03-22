@@ -267,6 +267,7 @@ name = "drone-goes-brrr"
 version = "0.1.0"
 dependencies = [
  "fixed_trigonometry",
+ "heapless",
  "micromath",
  "protocol",
  "tudelft-quadrupel",
