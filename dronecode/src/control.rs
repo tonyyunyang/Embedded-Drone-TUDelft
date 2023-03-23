@@ -41,7 +41,7 @@ pub fn control_loop() -> ! {
 
     // initialize the struct for stable controls
     let yaw_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0));
-    let pitch_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(5));
+    let pitch_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0));
     let roll_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(5));
     let yaw_control = pid_controller::YawController::new(yaw_pid);
     let pitch_control = pid_controller::PitchController::new(pitch_pid);

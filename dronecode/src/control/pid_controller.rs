@@ -19,9 +19,9 @@ impl GeneralController {
     }
 }
 pub struct PIDController {
-    pub kp: I16F16,
-    pub kp1: I16F16,
-    pub kp2: I16F16,
+    pub kp: I16F16, // yaw control P
+    pub kp1: I16F16, // cascaded roll/pitch control P1
+    pub kp2: I16F16, // cascaded roll/pitch control P2
     pub ki: I16F16,
     pub kd: I16F16,
 }
@@ -29,42 +29,58 @@ pub struct PIDController {
 impl PIDController {
     pub fn new(kp: I16F16, kp1: I16F16, kp2:I16F16, ki: I16F16, kd: I16F16) -> PIDController {
         PIDController {
-            kp: kp,
-            kp1: kp1,
-            kp2: kp2,
+            kp: kp, // yaw control P
+            kp1: kp1, // cascaded roll/pitch control P1
+            kp2: kp2, // cascaded roll/pitch control P2
             ki: ki,
             kd: kd,
         }
     }
 
-    pub fn increment_kp(&mut self, increment: I16F16) {
-        self.kp += increment;
+    pub fn set_kp(&mut self, kp: I16F16) {
+        self.kp = kp;
     }
 
-    pub fn increment_ki(&mut self, increment: I16F16) {
-        self.ki += increment;
+    pub fn set_kp1(&mut self, kp1: I16F16) {
+        self.kp1 = kp1;
     }
 
-    pub fn increment_kd(&mut self, increment: I16F16) {
-        self.kd += increment;
+    pub fn set_kp2(&mut self, kp2: I16F16) {
+        self.kp2 = kp2;
     }
 
-    pub fn decrement_kp(&mut self, decrement: I16F16) {
-        self.kp -= decrement;
+    pub fn set_ki(&mut self, ki: I16F16) {
+        self.ki = ki;
     }
 
-    pub fn decrement_ki(&mut self, decrement: I16F16) {
-        self.ki -= decrement;
+    pub fn set_kd(&mut self, kd: I16F16) {
+        self.kd = kd;
     }
 
-    pub fn decrement_kd(&mut self, decrement: I16F16) {
-        self.kd -= decrement;
+    pub fn get_kp(&self) -> I16F16 {
+        self.kp
+    }
+
+    pub fn get_kp1(&self) -> I16F16 {
+        self.kp1
+    }
+
+    pub fn get_kp2(&self) -> I16F16 {
+        self.kp2
+    }
+
+    pub fn get_ki(&self) -> I16F16 {
+        self.ki
+    }
+
+    pub fn get_kd(&self) -> I16F16 {
+        self.kd
     }
 }
 
 pub struct YawController {
     pub pid: PIDController,
-    pub proportioanl: I16F16,
+    pub proportional: I16F16,
     pub integral: I16F16,
     pub derivative: I16F16,
     pub yaw: I16F16,
@@ -81,7 +97,7 @@ impl YawController {
     pub fn new(pid: PIDController) -> YawController {
         YawController {
             pid,
-            proportioanl: I16F16::from_num(0),
+            proportional: I16F16::from_num(0),
             integral: I16F16::from_num(0),
             derivative: I16F16::from_num(0),
             yaw: I16F16::from_num(0),
@@ -96,7 +112,7 @@ impl YawController {
     }
 
     pub fn reset_values(&mut self) {
-        self.proportioanl = I16F16::from_num(0);
+        self.proportional = I16F16::from_num(0);
         self.integral = I16F16::from_num(0);
         self.derivative = I16F16::from_num(0);
         self.yaw = I16F16::from_num(0);
@@ -138,25 +154,28 @@ impl YawController {
     }
 
     pub fn update_proportional(&mut self) {
-        self.proportioanl = self.pid.kp * self.error;
+        self.proportional = self.pid.get_kp() * self.error;
     }
 
+    /// This function is not used in the current implementation
     pub fn update_integral(&mut self) {
-        self.integral = self.integral + self.pid.ki * self.error * self.dt;
+        self.integral = self.integral + self.pid.get_ki() * self.error * self.dt;
     }
 
+    /// This function is not used in the current implementation
     pub fn update_derivative(&mut self) {
-        self.derivative = self.pid.kd * (self.error - self.prev_error) / self.dt;
+        self.derivative = self.pid.get_kd() * (self.error - self.prev_error) / self.dt;
     }
 
     pub fn update_new_yaw(&mut self) {
-        self.new_yaw = self.proportioanl + self.integral + self.derivative;
+        self.new_yaw = self.proportional + self.integral + self.derivative;
     }
 }
 
 pub struct PitchController {
     pub pid: PIDController,
-    pub proportioanl: I16F16,
+    pub proportional1: I16F16,
+    pub proportional2: I16F16,
     pub integral: I16F16,
     pub derivative: I16F16,
     pub pitch: I16F16,
@@ -172,7 +191,8 @@ impl PitchController {
     pub fn new(pid: PIDController) -> PitchController {
         PitchController {
             pid,
-            proportioanl: I16F16::from_num(0),
+            proportional1: I16F16::from_num(0),
+            proportional2: I16F16::from_num(0),
             integral: I16F16::from_num(0),
             derivative: I16F16::from_num(0),
             pitch: I16F16::from_num(0),
@@ -186,7 +206,8 @@ impl PitchController {
     }
 
     pub fn reset_values(&mut self) {
-        self.proportioanl = I16F16::from_num(0);
+        self.proportional1 = I16F16::from_num(0);
+        self.proportional2 = I16F16::from_num(0);
         self.integral = I16F16::from_num(0);
         self.derivative = I16F16::from_num(0);
         self.pitch = I16F16::from_num(0);
@@ -222,26 +243,33 @@ impl PitchController {
         self.prev_error = self.error;
     }
 
-    pub fn update_proportional(&mut self) {
-        self.proportioanl = self.pid.kp * self.error;
+    pub fn update_proportional1(&mut self) {
+        self.proportional1 = self.pid.get_kp1() * self.error;
     }
 
+    pub fn update_proportional2(&mut self) {
+        self.proportional2 = self.pid.get_kp2() * self.prev_error;
+    }
+
+    /// This function is not used in the current implementation
     pub fn update_integral(&mut self) {
-        self.integral = self.integral + self.pid.ki * self.error * self.dt;
+        self.integral = self.integral + self.pid.get_ki() * self.error * self.dt;
     }
 
+    /// This function is not used in the current implementation
     pub fn update_derivative(&mut self) {
-        self.derivative = self.pid.kd * (self.error - self.prev_error) / self.dt;
+        self.derivative = self.pid.get_kd() * (self.error - self.prev_error) / self.dt;
     }
 
     pub fn update_new_pitch(&mut self) {
-        self.new_pitch = self.proportioanl + self.integral + self.derivative;
+        self.new_pitch = self.proportional1 + self.proportional2 + self.integral + self.derivative;
     }
 }
 
 pub struct RollController {
     pub pid: PIDController,
-    pub proportioanl: I16F16,
+    pub proportional1: I16F16,
+    pub proportional2: I16F16,
     pub integral: I16F16,
     pub derivative: I16F16,
     pub roll: I16F16,
@@ -257,7 +285,8 @@ impl RollController {
     pub fn new(pid: PIDController) -> RollController {
         RollController {
             pid,
-            proportioanl: I16F16::from_num(0),
+            proportional1: I16F16::from_num(0),
+            proportional2: I16F16::from_num(0),
             integral: I16F16::from_num(0),
             derivative: I16F16::from_num(0),
             roll: I16F16::from_num(0),
@@ -271,7 +300,8 @@ impl RollController {
     }
 
     pub fn reset_values(&mut self) {
-        self.proportioanl = I16F16::from_num(0);
+        self.proportional1 = I16F16::from_num(0);
+        self.proportional2 = I16F16::from_num(0);
         self.integral = I16F16::from_num(0);
         self.derivative = I16F16::from_num(0);
         self.roll = I16F16::from_num(0);
@@ -307,19 +337,25 @@ impl RollController {
         self.prev_error = self.error;
     }
 
-    pub fn update_proportional(&mut self) {
-        self.proportioanl = self.pid.kp * self.error;
+    pub fn update_proportional1(&mut self) {
+        self.proportional1 = self.pid.get_kp1() * self.error;
     }
 
+    pub fn update_proportional2(&mut self) {
+        self.proportional2 = self.pid.get_kp2() * self.prev_error;
+    }
+
+    /// This function is not used in the current implementation
     pub fn update_integral(&mut self) {
-        self.integral = self.integral + self.pid.ki * self.error * self.dt;
+        self.integral = self.integral + self.pid.get_ki() * self.error * self.dt;
     }
 
+    /// This function is not used in the current implementation
     pub fn update_derivative(&mut self) {
-        self.derivative = self.pid.kd * (self.error - self.prev_error) / self.dt;
+        self.derivative = self.pid.get_kd() * (self.error - self.prev_error) / self.dt;
     }
 
     pub fn update_new_roll(&mut self) {
-        self.new_roll = self.proportioanl + self.integral + self.derivative;
+        self.new_roll = self.proportional1 + self.proportional2  + self.integral + self.derivative;
     }
 }
