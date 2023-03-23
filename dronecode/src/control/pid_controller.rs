@@ -4,15 +4,15 @@ use super::SensorData;
 
 
 pub struct GeneralController {
-    pub thetaaw_control: YawController,
+    pub yaw_control: YawController,
     pub pitch_control: PitchController,
     pub roll_control: RollController,
 }
 
 impl GeneralController {
-    pub fn new(thetaaw_control: YawController, pitch_control: PitchController, roll_control: RollController) -> GeneralController {
+    pub fn new(yaw_control: YawController, pitch_control: PitchController, roll_control: RollController) -> GeneralController {
         GeneralController {
-            thetaaw_control,
+            yaw_control,
             pitch_control,
             roll_control,
         }
@@ -71,10 +71,10 @@ pub struct YawController {
     pub prev_phi: I16F16,
     pub phi: I16F16,
     pub dt: I16F16,
-    pub current_thetaaw: I16F16,
+    pub current_yaw: I16F16,
     pub prev_error: I16F16,
     pub error: I16F16,
-    pub new_thetaaw: I16F16,
+    pub new_yaw: I16F16,
 }
 
 impl YawController {
@@ -88,10 +88,10 @@ impl YawController {
             prev_phi: I16F16::from_num(0),
             phi: I16F16::from_num(0),
             dt: I16F16::from_num(0),
-            current_thetaaw: I16F16::from_num(0),
+            current_yaw: I16F16::from_num(0),
             prev_error: I16F16::from_num(0),
             error: I16F16::from_num(0),
-            new_thetaaw: I16F16::from_num(0),
+            new_yaw: I16F16::from_num(0),
         }
     }
 
@@ -103,10 +103,10 @@ impl YawController {
         self.prev_phi = I16F16::from_num(0);
         self.phi = I16F16::from_num(0);
         self.dt = I16F16::from_num(0);
-        self.current_thetaaw = I16F16::from_num(0);
+        self.current_yaw = I16F16::from_num(0);
         self.prev_error = I16F16::from_num(0);
         self.error = I16F16::from_num(0);
-        self.new_thetaaw = I16F16::from_num(0);
+        self.new_yaw = I16F16::from_num(0);
     }
 
     pub fn update_yaw(&mut self, command: I16F16) {
@@ -125,12 +125,12 @@ impl YawController {
         self.dt = I16F16::from_num(sensor_data.dt.as_secs_f32());
     }
 
-    pub fn update_current_thetaaw(&mut self) {
-        self.current_thetaaw = (self.phi - self.prev_phi) / self.dt;
+    pub fn update_current_yaw(&mut self) {
+        self.current_yaw = (self.phi - self.prev_phi) / self.dt;
     }
 
     pub fn error(&mut self) {
-        self.error = self.yaw - self.current_thetaaw;
+        self.error = self.yaw - self.current_yaw;
     }
 
     pub fn update_prev_error(&mut self) {
@@ -149,8 +149,8 @@ impl YawController {
         self.derivative = self.pid.kd * (self.error - self.prev_error) / self.dt;
     }
 
-    pub fn update_new_thetaaw(&mut self) {
-        self.new_thetaaw = self.proportioanl + self.integral + self.derivative;
+    pub fn update_new_yaw(&mut self) {
+        self.new_yaw = self.proportioanl + self.integral + self.derivative;
     }
 }
 
