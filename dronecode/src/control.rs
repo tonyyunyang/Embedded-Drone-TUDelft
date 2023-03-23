@@ -1,5 +1,6 @@
 use core::time::Duration;
 
+use crate::control::pid_controller::PIDController;
 use crate::control::state_machine::{execute_state_function, JoystickControl, StateMachine};
 use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::vec::Vec;
@@ -21,6 +22,7 @@ use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 use self::state_machine::State;
 mod motor_control;
 mod state_machine;
+mod pid_controller;
 
 #[allow(unused_assignments)]
 pub fn control_loop() -> ! {
@@ -36,6 +38,15 @@ pub fn control_loop() -> ! {
     // let mut command_buf: HVec<u8, 1024> = HVec::new();
     let mut command_buf: Vec<u8> = Vec::new();
     let mut mode = 0b0000_0000;
+
+    // initialize the struct for stable controls
+    let yaw_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0));
+    let pitch_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(5));
+    let roll_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(5));
+    let yaw_control = pid_controller::YawController::new(yaw_pid);
+    let pitch_control = pid_controller::PitchController::new(pitch_pid);
+    let roll_control = pid_controller::RollController::new(roll_pid);
+    let mut general_controllers = pid_controller::GeneralController::new(yaw_control, pitch_control, roll_control);
 
     for i in 0.. {
         // update the sensor data

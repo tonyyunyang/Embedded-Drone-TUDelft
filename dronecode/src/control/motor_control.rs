@@ -5,15 +5,6 @@ use tudelft_quadrupel::{
 };
 
 pub fn set_motor_speeds_manual(lift: i16, yaw: i16, pitch: i16, roll: i16) {
-    // if lift > roll + yaw {
-    //     let ae1: u16 = lift + yaw - pitch;
-    //     let ae2: u16 = lift + roll - yaw;
-    //     let ae3: u16 = lift + yaw + pitch;
-    //     let ae4: u16 = lift - roll - yaw;
-    //     set_motors([ae1, ae2, ae3, ae4]);
-    // } else {
-    //     set_motors([lift; 4]);
-    // }
     if lift == 200 {
         let ae1_safe: u16 = 0;
         let ae2_safe: u16 = 0;
@@ -34,38 +25,38 @@ pub fn map_lift_command_manual(command: u8) -> i16 {
     if command == 90 {
         200
     } else if command == 85 {
-        210
+        200
     } else if command == 80 {
-        220
+        210
     } else if command == 75 {
-        230
+        220
     } else if command == 70 {
-        240
+        230
     } else if command == 65 {
-        250
+        240
     } else if command == 60 {
-        260
+        250
     } else if command == 55 {
-        270
+        260
     } else if command == 50 {
-        280
+        270
     } else if command == 45 {
-        290
+        280
     } else if command == 40 {
-        300
+        290
     } else if command == 35 {
-        310
+        300
     } else if command == 30 {
-        320
+        310
     } else if command == 25 {
-        330
+        320
     } else if command == 20 {
-        340
+        330
     } else if command == 15 {
-        350
+        340
     } else {
         // either 10? Or an invalid value, we set motor to 0 under both situations
-        360
+        350
     }
 }
 
