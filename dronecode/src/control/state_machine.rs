@@ -10,7 +10,7 @@ use tudelft_quadrupel::{
 use crate::control::state_machine::State::Safety;
 use core::clone::Clone;
 
-use super::motor_control::*;
+use super::{motor_control::*, pid_controller::GeneralController};
 
 // Define the possible states of the state machine.
 #[derive(Clone, PartialEq)]
@@ -162,7 +162,7 @@ impl StateMachine {
     // Transition the state machine to a new state.
     // Returns true for a proper transition and false for an illegal transition.
     // This value can then be communicated back to the PC.
-    pub fn transition(&mut self, next_state: State, joystick: &mut JoystickControl) -> (bool, u8) {
+    pub fn transition(&mut self, next_state: State, joystick: &mut JoystickControl, general_controllers: &mut GeneralController) -> (bool, u8) {
         joystick.joystick_neutral_check(self);
         if self.state() != next_state {
             match next_state {
@@ -359,7 +359,7 @@ impl StateMachine {
     }
 }
 
-pub fn execute_state_function(current_state: &State, command: &HostProtocol) {
+pub fn execute_state_function(current_state: &State, command: &HostProtocol, general_controllers: &mut GeneralController) {
     match current_state {
         State::Safety => {
             safety_mode();

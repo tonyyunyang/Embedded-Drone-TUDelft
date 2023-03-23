@@ -40,9 +40,9 @@ pub fn control_loop() -> ! {
     let mut mode = 0b0000_0000;
 
     // initialize the struct for stable controls
-    let yaw_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0));
-    let pitch_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(5));
-    let roll_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(5));
+    let yaw_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0));
+    let pitch_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(5));
+    let roll_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(5));
     let yaw_control = pid_controller::YawController::new(yaw_pid);
     let pitch_control = pid_controller::PitchController::new(pitch_pid);
     let roll_control = pid_controller::RollController::new(roll_pid);
@@ -97,14 +97,14 @@ pub fn control_loop() -> ! {
             let mut transition_result = false;
             // After updating, check if the stick is in a neutral state before transition.
             // The OR statement is added for panic state, since drone should always be able to panic.
-            (transition_result, ack) = state_machine.transition(next_state, &mut joystick_control);
+            (transition_result, ack) = state_machine.transition(next_state, &mut joystick_control, &mut general_controllers);
 
             let current_state = state_machine.state();
             mode = map_to_mode(&current_state);
             // Reset time out counter, since message was received successfully.
             safety_counter.reset_command_timeout();
             if transition_result && ack != 0b0000_1111 {
-                execute_state_function(&current_state, &nice_received_message);
+                execute_state_function(&current_state, &nice_received_message, &mut general_controllers);
             }
         }
 
@@ -131,7 +131,7 @@ pub fn control_loop() -> ! {
         // Check if the time limit has been reached for no message received.
         if safety_counter.is_command_timeout() {
             // Panic because connection timed out.
-            state_machine.transition(State::Panic, &mut joystick_control);
+            state_machine.transition(State::Panic, &mut joystick_control, &mut general_controllers);
             // Reset the timeout counter, since it's going to go back to safe mode.
             safety_counter.reset_command_timeout();
         }
@@ -140,7 +140,7 @@ pub fn control_loop() -> ! {
             safety_counter.increment_battery_danger();
         }
         if safety_counter.is_battery_danger() {
-            state_machine.transition(State::Panic, &mut joystick_control);
+            state_machine.transition(State::Panic, &mut joystick_control, &mut general_controllers);
             // then end the function
             panic!();
         }

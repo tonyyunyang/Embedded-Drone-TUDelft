@@ -4,15 +4,15 @@ use super::SensorData;
 
 
 pub struct GeneralController {
-    pub yaw_control: YawController,
+    pub thetaaw_control: YawController,
     pub pitch_control: PitchController,
     pub roll_control: RollController,
 }
 
 impl GeneralController {
-    pub fn new(yaw_control: YawController, pitch_control: PitchController, roll_control: RollController) -> GeneralController {
+    pub fn new(thetaaw_control: YawController, pitch_control: PitchController, roll_control: RollController) -> GeneralController {
         GeneralController {
-            yaw_control,
+            thetaaw_control,
             pitch_control,
             roll_control,
         }
@@ -20,14 +20,18 @@ impl GeneralController {
 }
 pub struct PIDController {
     pub kp: I16F16,
+    pub kp1: I16F16,
+    pub kp2: I16F16,
     pub ki: I16F16,
     pub kd: I16F16,
 }
 
 impl PIDController {
-    pub fn new(kp: I16F16, ki: I16F16, kd: I16F16) -> PIDController {
+    pub fn new(kp: I16F16, kp1: I16F16, kp2:I16F16, ki: I16F16, kd: I16F16) -> PIDController {
         PIDController {
             kp: kp,
+            kp1: kp1,
+            kp2: kp2,
             ki: ki,
             kd: kd,
         }
@@ -64,13 +68,13 @@ pub struct YawController {
     pub integral: I16F16,
     pub derivative: I16F16,
     pub yaw: I16F16,
-    pub prev_x: I16F16,
-    pub x: I16F16,
+    pub prev_phi: I16F16,
+    pub phi: I16F16,
     pub dt: I16F16,
-    pub current_yaw: I16F16,
+    pub current_thetaaw: I16F16,
     pub prev_error: I16F16,
     pub error: I16F16,
-    pub new_yaw: I16F16,
+    pub new_thetaaw: I16F16,
 }
 
 impl YawController {
@@ -81,13 +85,13 @@ impl YawController {
             integral: I16F16::from_num(0),
             derivative: I16F16::from_num(0),
             yaw: I16F16::from_num(0),
-            prev_x: I16F16::from_num(0),
-            x: I16F16::from_num(0),
+            prev_phi: I16F16::from_num(0),
+            phi: I16F16::from_num(0),
             dt: I16F16::from_num(0),
-            current_yaw: I16F16::from_num(0),
+            current_thetaaw: I16F16::from_num(0),
             prev_error: I16F16::from_num(0),
             error: I16F16::from_num(0),
-            new_yaw: I16F16::from_num(0),
+            new_thetaaw: I16F16::from_num(0),
         }
     }
 
@@ -96,37 +100,37 @@ impl YawController {
         self.integral = I16F16::from_num(0);
         self.derivative = I16F16::from_num(0);
         self.yaw = I16F16::from_num(0);
-        self.prev_x = I16F16::from_num(0);
-        self.x = I16F16::from_num(0);
+        self.prev_phi = I16F16::from_num(0);
+        self.phi = I16F16::from_num(0);
         self.dt = I16F16::from_num(0);
-        self.current_yaw = I16F16::from_num(0);
+        self.current_thetaaw = I16F16::from_num(0);
         self.prev_error = I16F16::from_num(0);
         self.error = I16F16::from_num(0);
-        self.new_yaw = I16F16::from_num(0);
+        self.new_thetaaw = I16F16::from_num(0);
     }
 
     pub fn update_yaw(&mut self, command: I16F16) {
         self.yaw = command;
     }
 
-    pub fn update_x(&mut self, sensor_data: SensorData) {
-        self.x = sensor_data.ypr.yaw;
+    pub fn update_phi(&mut self, sensor_data: SensorData) {
+        self.phi = sensor_data.ypr.yaw;
     }
 
-    pub fn update_prev_x(&mut self) {
-        self.prev_x = self.x;
+    pub fn update_prev_phi(&mut self) {
+        self.prev_phi = self.phi;
     }
 
     pub fn update_dt(&mut self, sensor_data: SensorData) {
         self.dt = I16F16::from_num(sensor_data.dt.as_secs_f32());
     }
 
-    pub fn update_current_yaw(&mut self) {
-        self.current_yaw = (self.x - self.prev_x) / self.dt;
+    pub fn update_current_thetaaw(&mut self) {
+        self.current_thetaaw = (self.phi - self.prev_phi) / self.dt;
     }
 
     pub fn error(&mut self) {
-        self.error = self.yaw - self.current_yaw;
+        self.error = self.yaw - self.current_thetaaw;
     }
 
     pub fn update_prev_error(&mut self) {
@@ -145,8 +149,8 @@ impl YawController {
         self.derivative = self.pid.kd * (self.error - self.prev_error) / self.dt;
     }
 
-    pub fn update_new_yaw(&mut self) {
-        self.new_yaw = self.proportioanl + self.integral + self.derivative;
+    pub fn update_new_thetaaw(&mut self) {
+        self.new_thetaaw = self.proportioanl + self.integral + self.derivative;
     }
 }
 
@@ -156,8 +160,8 @@ pub struct PitchController {
     pub integral: I16F16,
     pub derivative: I16F16,
     pub pitch: I16F16,
-    pub prev_y: I16F16,
-    pub y: I16F16,
+    pub prev_theta: I16F16,
+    pub theta: I16F16,
     pub dt: I16F16,
     pub prev_error: I16F16,
     pub error: I16F16,
@@ -172,8 +176,8 @@ impl PitchController {
             integral: I16F16::from_num(0),
             derivative: I16F16::from_num(0),
             pitch: I16F16::from_num(0),
-            prev_y: I16F16::from_num(0),
-            y: I16F16::from_num(0),
+            prev_theta: I16F16::from_num(0),
+            theta: I16F16::from_num(0),
             dt: I16F16::from_num(0),
             prev_error: I16F16::from_num(0),
             error: I16F16::from_num(0),
@@ -186,8 +190,8 @@ impl PitchController {
         self.integral = I16F16::from_num(0);
         self.derivative = I16F16::from_num(0);
         self.pitch = I16F16::from_num(0);
-        self.prev_y = I16F16::from_num(0);
-        self.y = I16F16::from_num(0);
+        self.prev_theta = I16F16::from_num(0);
+        self.theta = I16F16::from_num(0);
         self.dt = I16F16::from_num(0);
         self.prev_error = I16F16::from_num(0);
         self.error = I16F16::from_num(0);
@@ -198,12 +202,12 @@ impl PitchController {
         self.pitch = command;
     }
 
-    pub fn update_y(&mut self, sensor_data: SensorData) {
-        self.y = sensor_data.ypr.pitch;
+    pub fn update_theta(&mut self, sensor_data: SensorData) {
+        self.theta = sensor_data.ypr.pitch;
     }
 
-    pub fn update_prev_y(&mut self) {
-        self.prev_y = self.y;
+    pub fn update_prev_theta(&mut self) {
+        self.prev_theta = self.theta;
     }
 
     pub fn update_dt(&mut self, sensor_data: SensorData) {
@@ -211,7 +215,7 @@ impl PitchController {
     }
 
     pub fn error(&mut self) {
-        self.error = self.pitch - self.y;
+        self.error = self.pitch - self.theta;
     }
 
     pub fn update_prev_error(&mut self) {
@@ -241,8 +245,8 @@ pub struct RollController {
     pub integral: I16F16,
     pub derivative: I16F16,
     pub roll: I16F16,
-    pub prev_z: I16F16,
-    pub z: I16F16,
+    pub prev_psi: I16F16,
+    pub psi: I16F16,
     pub dt: I16F16,
     pub prev_error: I16F16,
     pub error: I16F16,
@@ -257,8 +261,8 @@ impl RollController {
             integral: I16F16::from_num(0),
             derivative: I16F16::from_num(0),
             roll: I16F16::from_num(0),
-            prev_z: I16F16::from_num(0),
-            z: I16F16::from_num(0),
+            prev_psi: I16F16::from_num(0),
+            psi: I16F16::from_num(0),
             dt: I16F16::from_num(0),
             prev_error: I16F16::from_num(0),
             error: I16F16::from_num(0),
@@ -271,8 +275,8 @@ impl RollController {
         self.integral = I16F16::from_num(0);
         self.derivative = I16F16::from_num(0);
         self.roll = I16F16::from_num(0);
-        self.prev_z = I16F16::from_num(0);
-        self.z = I16F16::from_num(0);
+        self.prev_psi = I16F16::from_num(0);
+        self.psi = I16F16::from_num(0);
         self.dt = I16F16::from_num(0);
         self.prev_error = I16F16::from_num(0);
         self.error = I16F16::from_num(0);
@@ -283,12 +287,12 @@ impl RollController {
         self.roll = command;
     }
 
-    pub fn update_z(&mut self, sensor_data: SensorData) {
-        self.z = sensor_data.ypr.roll;
+    pub fn update_psi(&mut self, sensor_data: SensorData) {
+        self.psi = sensor_data.ypr.roll;
     }
 
-    pub fn update_prev_z(&mut self) {
-        self.prev_z = self.z;
+    pub fn update_prev_psi(&mut self) {
+        self.prev_psi = self.psi;
     }
 
     pub fn update_dt(&mut self, sensor_data: SensorData) {
@@ -296,7 +300,7 @@ impl RollController {
     }
 
     pub fn error(&mut self) {
-        self.error = self.roll - self.z;
+        self.error = self.roll - self.psi;
     }
 
     pub fn update_prev_error(&mut self) {
