@@ -1,7 +1,8 @@
+use core::u8;
+
 use tudelft_quadrupel::fixed::types::I16F16;
 
 use super::SensorData;
-
 
 pub struct GeneralController {
     pub yaw_control: YawController,
@@ -10,7 +11,11 @@ pub struct GeneralController {
 }
 
 impl GeneralController {
-    pub fn new(yaw_control: YawController, pitch_control: PitchController, roll_control: RollController) -> GeneralController {
+    pub fn new(
+        yaw_control: YawController,
+        pitch_control: PitchController,
+        roll_control: RollController,
+    ) -> GeneralController {
         GeneralController {
             yaw_control,
             pitch_control,
@@ -19,7 +24,7 @@ impl GeneralController {
     }
 }
 pub struct PIDController {
-    pub kp: I16F16, // yaw control P
+    pub kp: I16F16,  // yaw control P
     pub kp1: I16F16, // cascaded roll/pitch control P1
     pub kp2: I16F16, // cascaded roll/pitch control P2
     pub ki: I16F16,
@@ -27,13 +32,13 @@ pub struct PIDController {
 }
 
 impl PIDController {
-    pub fn new(kp: I16F16, kp1: I16F16, kp2:I16F16, ki: I16F16, kd: I16F16) -> PIDController {
+    pub fn new(kp: I16F16, kp1: I16F16, kp2: I16F16, ki: I16F16, kd: I16F16) -> PIDController {
         PIDController {
-            kp: kp, // yaw control P
-            kp1: kp1, // cascaded roll/pitch control P1
-            kp2: kp2, // cascaded roll/pitch control P2
-            ki: ki,
-            kd: kd,
+            kp,  // yaw control P
+            kp1, // cascaded roll/pitch control P1
+            kp2, // cascaded roll/pitch control P2
+            ki,
+            kd,
         }
     }
 
@@ -125,11 +130,15 @@ impl YawController {
         self.new_yaw = I16F16::from_num(0);
     }
 
+    pub fn set_kp(&mut self, kp: I16F16) {
+        self.pid.set_kp(kp);
+    }
+
     pub fn update_yaw(&mut self, command: I16F16) {
         self.yaw = command;
     }
 
-    pub fn update_phi(&mut self, sensor_data: SensorData) {
+    pub fn update_phi(&mut self, sensor_data: &SensorData) {
         self.phi = sensor_data.ypr.yaw;
     }
 
@@ -137,7 +146,7 @@ impl YawController {
         self.prev_phi = self.phi;
     }
 
-    pub fn update_dt(&mut self, sensor_data: SensorData) {
+    pub fn update_dt(&mut self, sensor_data: &SensorData) {
         self.dt = I16F16::from_num(sensor_data.dt.as_secs_f32());
     }
 
@@ -159,7 +168,7 @@ impl YawController {
 
     /// This function is not used in the current implementation
     pub fn update_integral(&mut self) {
-        self.integral = self.integral + self.pid.get_ki() * self.error * self.dt;
+        self.integral += self.pid.get_ki() * self.error * self.dt;
     }
 
     /// This function is not used in the current implementation
@@ -169,6 +178,20 @@ impl YawController {
 
     pub fn update_new_yaw(&mut self) {
         self.new_yaw = self.proportional + self.integral + self.derivative;
+    }
+
+    pub fn go_through_process(&mut self, command: I16F16, sensor_data: &SensorData) {
+        self.update_yaw(command);
+        self.update_phi(sensor_data);
+        self.update_dt(sensor_data);
+        self.update_current_yaw();
+        self.error();
+        self.update_prev_error();
+        self.update_proportional();
+        self.update_integral();
+        self.update_derivative();
+        self.update_prev_phi();
+        self.update_new_yaw();
     }
 }
 
@@ -219,6 +242,14 @@ impl PitchController {
         self.new_pitch = I16F16::from_num(0);
     }
 
+    pub fn set_kp1(&mut self, kp1: I16F16) {
+        self.pid.set_kp1(kp1);
+    }
+
+    pub fn set_kp2(&mut self, kp2: I16F16) {
+        self.pid.set_kp2(kp2);
+    }
+
     pub fn update_pitch(&mut self, command: I16F16) {
         self.pitch = command;
     }
@@ -253,7 +284,7 @@ impl PitchController {
 
     /// This function is not used in the current implementation
     pub fn update_integral(&mut self) {
-        self.integral = self.integral + self.pid.get_ki() * self.error * self.dt;
+        self.integral += self.pid.get_ki() * self.error * self.dt;
     }
 
     /// This function is not used in the current implementation
@@ -313,6 +344,14 @@ impl RollController {
         self.new_roll = I16F16::from_num(0);
     }
 
+    pub fn set_kp1(&mut self, kp1: I16F16) {
+        self.pid.set_kp1(kp1);
+    }
+
+    pub fn set_kp2(&mut self, kp2: I16F16) {
+        self.pid.set_kp2(kp2);
+    }
+
     pub fn update_roll(&mut self, command: I16F16) {
         self.roll = command;
     }
@@ -347,7 +386,7 @@ impl RollController {
 
     /// This function is not used in the current implementation
     pub fn update_integral(&mut self) {
-        self.integral = self.integral + self.pid.get_ki() * self.error * self.dt;
+        self.integral += self.pid.get_ki() * self.error * self.dt;
     }
 
     /// This function is not used in the current implementation
@@ -356,6 +395,16 @@ impl RollController {
     }
 
     pub fn update_new_roll(&mut self) {
-        self.new_roll = self.proportional1 + self.proportional2  + self.integral + self.derivative;
+        self.new_roll = self.proportional1 + self.proportional2 + self.integral + self.derivative;
     }
+}
+
+pub fn map_p_to_fixed(p: u8) -> I16F16 {
+    let max_new: I16F16 = I16F16::from_num(5);
+    let min_new: I16F16 = I16F16::from_num(1);
+    let max_old: I16F16 = I16F16::from_num(90);
+    let min_old: I16F16 = I16F16::from_num(10);
+    let p_old: I16F16 = I16F16::from_num(p);
+
+    (max_new - min_new) / (max_old - min_old) * (p_old - min_old) + min_new
 }

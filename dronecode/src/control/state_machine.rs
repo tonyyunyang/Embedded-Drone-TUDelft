@@ -10,7 +10,7 @@ use tudelft_quadrupel::{
 use crate::control::state_machine::State::Safety;
 use core::clone::Clone;
 
-use super::{motor_control::*, pid_controller::GeneralController};
+use super::{motor_control::*, pid_controller::GeneralController, SensorData};
 
 // Define the possible states of the state machine.
 #[derive(Clone, PartialEq)]
@@ -74,9 +74,9 @@ pub struct JoystickControl {
     pub yaw: u8,
     pub pitch: u8,
     pub roll: u8,
-    pub p: u8,
-    pub p1: u8,
-    pub p2: u8,
+    pub p: I16F16,
+    pub p1: I16F16,
+    pub p2: I16F16,
 }
 
 impl JoystickControl {
@@ -86,9 +86,9 @@ impl JoystickControl {
             yaw: 50,
             pitch: 50,
             roll: 50,
-            p: 50,
-            p1: 50,
-            p2: 50,
+            p: I16F16::from_num(50),
+            p1: I16F16::from_num(50),
+            p2: I16F16::from_num(50),
         }
     }
 
@@ -108,16 +108,44 @@ impl JoystickControl {
         self.roll = roll;
     }
 
-    pub fn set_p(&mut self, p: u8) {
+    pub fn set_p(&mut self, p: I16F16) {
         self.p = p;
     }
 
-    pub fn set_p1(&mut self, p1: u8) {
+    pub fn set_p1(&mut self, p1: I16F16) {
         self.p1 = p1;
     }
 
-    pub fn set_p2(&mut self, p2: u8) {
+    pub fn set_p2(&mut self, p2: I16F16) {
         self.p2 = p2;
+    }
+
+    pub fn get_lift(&self) -> u8 {
+        self.lift
+    }
+
+    pub fn get_yaw(&self) -> u8 {
+        self.yaw
+    }
+
+    pub fn get_pitch(&self) -> u8 {
+        self.pitch
+    }
+
+    pub fn get_roll(&self) -> u8 {
+        self.roll
+    }
+
+    pub fn get_p(&self) -> I16F16 {
+        self.p
+    }
+
+    pub fn get_p1(&self) -> I16F16 {
+        self.p1
+    }
+
+    pub fn get_p2(&self) -> I16F16 {
+        self.p2
     }
 
     // Check if lift, yaw, pitch and roll are all neutral on the controller.
@@ -162,12 +190,17 @@ impl StateMachine {
     // Transition the state machine to a new state.
     // Returns true for a proper transition and false for an illegal transition.
     // This value can then be communicated back to the PC.
-    pub fn transition(&mut self, next_state: State, joystick: &mut JoystickControl, general_controllers: &mut GeneralController) -> (bool, u8) {
+    pub fn transition(
+        &mut self,
+        next_state: State,
+        joystick: &mut JoystickControl,
+        general_controllers: &mut GeneralController,
+    ) -> (bool, u8) {
         joystick.joystick_neutral_check(self);
         if self.state() != next_state {
             match next_state {
                 State::Safety => self.transition_safe(false),
-                State::Panic => self.transition_panic(),
+                State::Panic => self.transition_panic(general_controllers),
                 State::Manual => self.transition_manual(),
                 State::Calibrate => self.transition_calibrate(),
                 State::Yaw | State::Full | State::Raw | State::Height | State::Wireless => {
@@ -199,7 +232,7 @@ impl StateMachine {
         self.permissions.height_control = false;
         self.permissions.wireless = false;
         self.permissions.sensors = false;
-        self.operation_ready = false;
+        self.operation_ready = true; // TODO: this line should be commented out, and then after the calibration, it should be put to true (btw, it was originally false)
         if through_panic {
             (true, 0b0000_0010)
         } else {
@@ -208,7 +241,7 @@ impl StateMachine {
     }
 
     // Panic mode should also do nothing from the controller, might need the sensors (for now false).
-    fn transition_panic(&mut self) -> (bool, u8) {
+    fn transition_panic(&mut self, general_controllers: &mut GeneralController) -> (bool, u8) {
         self.state = State::Panic;
         Blue.on();
         self.permissions.controller = false;
@@ -220,9 +253,12 @@ impl StateMachine {
         self.permissions.sensors = false;
         // Reset the calibration flag if there was a panic.
         self.operation_ready = false;
-        // TODO Proper power down instead of instantly stopping the motors.
         // Power down motors, due to panic.
         gradually_slow_down_motors();
+        // Reset all the values in the general PID controllers
+        general_controllers.yaw_control.reset_values();
+        general_controllers.pitch_control.reset_values();
+        general_controllers.roll_control.reset_values();
         // Automatically go back to safe mode.
         self.transition_safe(true)
     }
@@ -359,37 +395,27 @@ impl StateMachine {
     }
 }
 
-pub fn execute_state_function(current_state: &State, command: &HostProtocol, general_controllers: &mut GeneralController) {
+pub fn execute_state_function(
+    current_state: &State,
+    command: &HostProtocol,
+    general_controllers: &mut GeneralController,
+    sensor_data: &SensorData,
+) {
     match current_state {
         State::Safety => {
             safety_mode();
         }
         State::Manual => {
-            manual_mode(
-                command.get_lift(),
-                command.get_yaw(),
-                command.get_pitch(),
-                command.get_roll(),
-            );
+            manual_mode(command);
         }
         State::Calibrate => {
             calibrate_mode();
         }
         State::Yaw => {
-            yaw_mode(
-                command.get_lift(),
-                command.get_yaw(),
-                command.get_pitch(),
-                command.get_roll(),
-            );
+            yaw_mode(command, general_controllers, sensor_data);
         }
         State::Full => {
-            full_mode(
-                command.get_lift(),
-                command.get_yaw(),
-                command.get_pitch(),
-                command.get_roll(),
-            );
+            full_mode(command, general_controllers, sensor_data);
         }
         State::Raw => {
             raw_mode(
@@ -415,11 +441,11 @@ fn safety_mode() {
     // TODO
 }
 
-fn manual_mode(lift: u8, yaw: u8, pitch: u8, roll: u8) {
-    let lift: i16 = map_lift_command_manual(lift);
-    let yaw: i16 = map_yaw_command_manual(yaw);
-    let pitch: i16 = map_pitch_command_manual(pitch);
-    let roll: i16 = map_roll_command_manual(roll);
+fn manual_mode(command: &HostProtocol) {
+    let lift: i16 = map_lift_command_manual(command.get_lift());
+    let yaw: i16 = map_yaw_command_manual(command.get_yaw());
+    let pitch: i16 = map_pitch_command_manual(command.get_pitch());
+    let roll: i16 = map_roll_command_manual(command.get_roll());
     set_motor_speeds_manual(lift, yaw, pitch, roll);
 }
 
@@ -427,22 +453,36 @@ fn calibrate_mode() {
     // TODO
 }
 
-#[allow(unused_variables)]
-fn yaw_mode(lift: u8, yaw: u8, pitch: u8, roll: u8) {
-    let lift: i16 = map_lift_command_manual(lift); // this should be the value that keeps the drone in the air stable
-    let yaw: I16F16 = map_yaw_command(yaw);
-    let pitch: i16 = map_pitch_command_manual(pitch);
-    let roll: i16 = map_roll_command_manual(roll);
+fn yaw_mode(
+    command: &HostProtocol,
+    general_controllers: &mut GeneralController,
+    sensor_data: &SensorData,
+) {
+    let lift: i16 = map_lift_command_manual(command.get_lift()); // this should be the value that keeps the drone in the air stable
+    let yaw: i16 = map_yaw_command_manual(command.get_yaw());
+    let yaw_rate: I16F16 = map_yaw_command(command.get_yaw());
+    let pitch: i16 = map_pitch_command_manual(command.get_pitch());
+    let roll: i16 = map_roll_command_manual(command.get_roll());
+    general_controllers
+        .yaw_control
+        .go_through_process(yaw_rate, sensor_data);
+    let yaw_compensate: i16 =
+        determine_yaw_compensate(yaw_rate, general_controllers.yaw_control.new_yaw);
+    set_motor_speeds_yaw(lift, yaw, pitch, roll, yaw_compensate);
 }
 
 #[allow(unused_variables)]
-fn full_mode(lift: u8, yaw: u8, pitch: u8, roll: u8) {
+fn full_mode(
+    command: &HostProtocol,
+    general_controllers: &mut GeneralController,
+    sensor_data: &SensorData,
+) {
     // directly map the lift to the motor speeds
-    let lift = map_lift_command(lift);
-    // map roll and pitch to angles, map yaw to angular velocity
-    let yaw = map_yaw_command(yaw);
-    let pitch = map_pitch_command(pitch);
-    let roll = map_roll_command(roll);
+    let lift: i16 = map_lift_command_manual(command.get_lift()); // this should be the value that keeps the drone in the air stable
+                                                                 // map roll and pitch to angles, map yaw to angular velocity
+    let yaw: I16F16 = map_yaw_command(command.get_yaw());
+    let pitch: I16F16 = map_pitch_command(command.get_pitch());
+    let roll: I16F16 = map_roll_command(command.get_roll());
 }
 
 #[allow(unused_variables)]

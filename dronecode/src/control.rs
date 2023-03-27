@@ -1,6 +1,6 @@
 use core::time::Duration;
 
-use crate::control::pid_controller::PIDController;
+use crate::control::pid_controller::{map_p_to_fixed, PIDController};
 use crate::control::state_machine::{execute_state_function, JoystickControl, StateMachine};
 use crate::yaw_pitch_roll::YawPitchRoll;
 use alloc::vec::Vec;
@@ -19,10 +19,11 @@ use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
+use self::pid_controller::GeneralController;
 use self::state_machine::State;
 mod motor_control;
-mod state_machine;
 mod pid_controller;
+mod state_machine;
 
 #[allow(unused_assignments)]
 pub fn control_loop() -> ! {
@@ -30,6 +31,7 @@ pub fn control_loop() -> ! {
     set_tick_frequency(100);
     let mut safety_counter = SafetyCounter::new();
     let mut sensor_data = SensorData::new();
+    let mut sensor_data_calibration_offset = SensorOffset::new();
     let mut state_machine = StateMachine::new();
     let mut joystick_control = JoystickControl::new();
     let mut nice_received_message = HostProtocol::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -40,13 +42,32 @@ pub fn control_loop() -> ! {
     let mut mode = 0b0000_0000;
 
     // initialize the struct for stable controls
-    let yaw_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0));
-    let pitch_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0));
-    let roll_pid = PIDController::new(I16F16::from_num(5), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(0), I16F16::from_num(5));
+    let yaw_pid = PIDController::new(
+        I16F16::from_num(1.1),
+        I16F16::from_num(0),
+        I16F16::from_num(0),
+        I16F16::from_num(0),
+        I16F16::from_num(0),
+    );
+    let pitch_pid = PIDController::new(
+        I16F16::from_num(1.1),
+        I16F16::from_num(0),
+        I16F16::from_num(0),
+        I16F16::from_num(0),
+        I16F16::from_num(0),
+    );
+    let roll_pid = PIDController::new(
+        I16F16::from_num(1.1),
+        I16F16::from_num(0),
+        I16F16::from_num(0),
+        I16F16::from_num(0),
+        I16F16::from_num(1.1),
+    );
     let yaw_control = pid_controller::YawController::new(yaw_pid);
     let pitch_control = pid_controller::PitchController::new(pitch_pid);
     let roll_control = pid_controller::RollController::new(roll_pid);
-    let mut general_controllers = pid_controller::GeneralController::new(yaw_control, pitch_control, roll_control);
+    let mut general_controllers =
+        pid_controller::GeneralController::new(yaw_control, pitch_control, roll_control);
 
     for i in 0.. {
         // update the sensor data
@@ -85,30 +106,37 @@ pub fn control_loop() -> ! {
             // Update global struct.
             mode = nice_received_message.get_mode();
             let next_state = map_to_state(mode);
-            joystick_control.set_lift(nice_received_message.get_lift());
-            joystick_control.set_yaw(nice_received_message.get_yaw());
-            joystick_control.set_pitch(nice_received_message.get_pitch());
-            joystick_control.set_roll(nice_received_message.get_roll());
-            joystick_control.set_p(nice_received_message.get_p());
-            joystick_control.set_p1(nice_received_message.get_p1());
-            joystick_control.set_p2(nice_received_message.get_p2());
-
+            update_joystick_control_and_controller(
+                &mut joystick_control,
+                &mut general_controllers,
+                &nice_received_message,
+            );
             // Assume that transition is false before transition, will become true if transition is successful.
             let mut transition_result = false;
             // After updating, check if the stick is in a neutral state before transition.
             // The OR statement is added for panic state, since drone should always be able to panic.
-            (transition_result, ack) = state_machine.transition(next_state, &mut joystick_control, &mut general_controllers);
+            (transition_result, ack) = state_machine.transition(
+                next_state,
+                &mut joystick_control,
+                &mut general_controllers,
+            );
 
             let current_state = state_machine.state();
             mode = map_to_mode(&current_state);
             // Reset time out counter, since message was received successfully.
             safety_counter.reset_command_timeout();
             if transition_result && ack != 0b0000_1111 {
-                execute_state_function(&current_state, &nice_received_message, &mut general_controllers);
+                execute_state_function(
+                    &current_state,
+                    &nice_received_message,
+                    &mut general_controllers,
+                    &sensor_data,
+                );
             }
+            Yellow.off();
         }
 
-        if i % 20 == 0 {
+        if i % 30 == 0 {
             // Create an instance of the Drone Protocol struct
             let message_to_host = DeviceProtocol::new(
                 mode,
@@ -131,7 +159,11 @@ pub fn control_loop() -> ! {
         // Check if the time limit has been reached for no message received.
         if safety_counter.is_command_timeout() {
             // Panic because connection timed out.
-            state_machine.transition(State::Panic, &mut joystick_control, &mut general_controllers);
+            state_machine.transition(
+                State::Panic,
+                &mut joystick_control,
+                &mut general_controllers,
+            );
             // Reset the timeout counter, since it's going to go back to safe mode.
             safety_counter.reset_command_timeout();
         }
@@ -140,16 +172,40 @@ pub fn control_loop() -> ! {
             safety_counter.increment_battery_danger();
         }
         if safety_counter.is_battery_danger() {
-            state_machine.transition(State::Panic, &mut joystick_control, &mut general_controllers);
+            state_machine.transition(
+                State::Panic,
+                &mut joystick_control,
+                &mut general_controllers,
+            );
             // then end the function
             panic!();
         }
 
         Blue.off();
-        Yellow.off();
+
         wait_for_next_tick();
     }
     unreachable!();
+}
+
+fn update_joystick_control_and_controller(
+    joystick_control: &mut JoystickControl,
+    controller: &mut GeneralController,
+    nice_received_message: &HostProtocol,
+) {
+    joystick_control.set_lift(nice_received_message.get_lift());
+    joystick_control.set_yaw(nice_received_message.get_yaw());
+    joystick_control.set_pitch(nice_received_message.get_pitch());
+    joystick_control.set_roll(nice_received_message.get_roll());
+    joystick_control.set_p(map_p_to_fixed(nice_received_message.get_p()));
+    joystick_control.set_p1(map_p_to_fixed(nice_received_message.get_p1()));
+    joystick_control.set_p2(map_p_to_fixed(nice_received_message.get_p2()));
+
+    controller.yaw_control.set_kp(joystick_control.get_p());
+    controller.pitch_control.set_kp1(joystick_control.get_p1());
+    controller.pitch_control.set_kp2(joystick_control.get_p1());
+    controller.roll_control.set_kp1(joystick_control.get_p1());
+    controller.roll_control.set_kp2(joystick_control.get_p1());
 }
 
 /// verify the message received from the host
@@ -328,33 +384,33 @@ impl SensorData {
         self.motors
     }
 
-    // pub fn get_quaternion(&self) -> Quaternion {
-    //     self.quaternion
-    // }
+    pub fn get_quaternion(&self) -> Quaternion {
+        self.quaternion
+    }
 
-    // pub fn get_ypr(&self) -> YawPitchRoll {
-    //     self.ypr
-    // }
+    pub fn get_ypr(&self) -> YawPitchRoll {
+        self.ypr
+    }
 
     pub fn get_ypr_data(&self) -> [I16F16; 3] {
         [self.ypr.yaw, self.ypr.pitch, self.ypr.roll]
     }
 
-    // pub fn get_accel(&self) -> Accel {
-    //     self.accel
-    // }
+    pub fn get_accel(&self) -> Accel {
+        self.accel
+    }
 
     pub fn get_accel_data(&self) -> [i16; 3] {
         [self.accel.x, self.accel.y, self.accel.z]
     }
 
-    // pub fn get_gyro(&self) -> Gyro {
-    //     self.gyro
-    // }
+    pub fn get_gyro(&self) -> Gyro {
+        self.gyro
+    }
 
-    // pub fn get_gyro_data(&self) -> [i16; 3] {
-    //     [self.gyro.x, self.gyro.y, self.gyro.z]
-    // }
+    pub fn get_gyro_data(&self) -> [i16; 3] {
+        [self.gyro.x, self.gyro.y, self.gyro.z]
+    }
 
     pub fn get_bat(&self) -> u16 {
         self.bat
@@ -372,5 +428,46 @@ impl SensorData {
         self.update_accel_gyro();
         self.update_bat();
         self.update_pres();
+    }
+}
+
+pub struct SensorOffset {
+    yaw_offset: I16F16,
+    pitch_offset: I16F16,
+    roll_offset: I16F16,
+    lift_offset: u32,
+}
+
+impl SensorOffset {
+    pub fn new() -> Self {
+        SensorOffset {
+            yaw_offset: I16F16::from_num(0.0),
+            pitch_offset: I16F16::from_num(0.0),
+            roll_offset: I16F16::from_num(0.0),
+            lift_offset: 0,
+        }
+    }
+
+    pub fn reset_offset(&mut self) {
+        self.yaw_offset = I16F16::from_num(0.0);
+        self.pitch_offset = I16F16::from_num(0.0);
+        self.roll_offset = I16F16::from_num(0.0);
+        self.lift_offset = 0;
+    }
+
+    pub fn update_yaw_offset(&mut self, yaw_offset: I16F16) {
+        self.yaw_offset = yaw_offset;
+    }
+
+    pub fn update_pitch_offset(&mut self, pitch_offset: I16F16) {
+        self.pitch_offset = pitch_offset;
+    }
+
+    pub fn update_roll_offset(&mut self, roll_offset: I16F16) {
+        self.roll_offset = roll_offset;
+    }
+
+    pub fn update_lift_offset(&mut self, lift_offset: u32) {
+        self.lift_offset = lift_offset;
     }
 }
