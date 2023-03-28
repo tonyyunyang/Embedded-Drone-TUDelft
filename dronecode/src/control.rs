@@ -19,7 +19,7 @@ use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
-use self::pid_controller::GeneralController;
+use self::pid_controller::{GeneralController, map_p1_to_fixed, map_p2_to_fixed};
 use self::state_machine::State;
 mod motor_control;
 mod pid_controller;
@@ -28,7 +28,7 @@ mod state_machine;
 #[allow(unused_assignments)]
 pub fn control_loop() -> ! {
     // Initialize the variables for the control loop
-    set_tick_frequency(100);
+    set_tick_frequency(120);
     let mut safety_counter = SafetyCounter::new();
     let mut sensor_data = SensorData::new();
     let mut sensor_data_calibration_offset = SensorOffset::new();
@@ -198,8 +198,8 @@ fn update_joystick_control_and_controller(
     joystick_control.set_pitch(nice_received_message.get_pitch());
     joystick_control.set_roll(nice_received_message.get_roll());
     joystick_control.set_p(map_p_to_fixed(nice_received_message.get_p()));
-    joystick_control.set_p1(map_p_to_fixed(nice_received_message.get_p1()));
-    joystick_control.set_p2(map_p_to_fixed(nice_received_message.get_p2()));
+    joystick_control.set_p1(map_p1_to_fixed(nice_received_message.get_p1()));
+    joystick_control.set_p2(map_p2_to_fixed(nice_received_message.get_p2()));
 
     controller.yaw_control.set_kp(joystick_control.get_p());
     controller.pitch_control.set_kp1(joystick_control.get_p1());

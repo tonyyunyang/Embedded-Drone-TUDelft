@@ -394,7 +394,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::RollPitchP1Up => {
-                    let temp = p1 + 1;
+                    let temp = p1 + 5;
                     if temp > 90 {
                         println!("Roll Pitch P1 Control is at max");
                     } else if temp < 10 {
@@ -404,7 +404,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::RollPitchP1Down => {
-                    let temp = p1 - 1;
+                    let temp = p1 - 5;
                     if temp > 90 {
                         println!("Roll Pitch P1 Control is at max");
                     } else if temp < 10 {
@@ -414,7 +414,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::RollPitchP2Up => {
-                    let temp = p2 + 1;
+                    let temp = p2 + 5;
                     if temp > 90 {
                         println!("Roll Pitch P2 Control is at max");
                     } else if temp < 10 {
@@ -424,7 +424,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::RollPitchP2Down => {
-                    let temp = p2 - 1;
+                    let temp = p2 - 5;
                     if temp > 90 {
                         println!("Roll Pitch P2 Control is at max");
                     } else if temp < 10 {

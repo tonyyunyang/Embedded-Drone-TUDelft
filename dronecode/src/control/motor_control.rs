@@ -1,6 +1,6 @@
 use tudelft_quadrupel::{
     fixed::types::I16F16,
-    motor::{get_motors, set_motors, set_motor_max},
+    motor::{get_motors, set_motor_max, set_motors},
     time::delay_us_assembly,
 };
 
@@ -33,6 +33,32 @@ pub fn determine_yaw_compensate(old: I16F16, new: I16F16) -> i16 {
     }
 }
 
+pub fn determine_pitch_compensate(old: I16F16, new: I16F16) -> i16 {
+    let difference: I16F16 = new - old;
+    let percentage: I16F16 = difference / I16F16::from_num(0.5235987);
+    let result: i16 = I16F16::to_num(percentage * 40);
+    if result > 100 {
+        100
+    } else if result < -100 {
+        -100
+    } else {
+        result
+    }
+}
+
+pub fn determine_roll_compensate(old: I16F16, new: I16F16) -> i16 {
+    let difference: I16F16 = new - old;
+    let percentage: I16F16 = difference / I16F16::from_num(0.5235987);
+    let result: i16 = I16F16::to_num(percentage * 40);
+    if result > 100 {
+        100
+    } else if result < -100 {
+        -100
+    } else {
+        result
+    }
+}
+
 pub fn set_motor_speeds_yaw(lift: i16, yaw: i16, pitch: i16, roll: i16, yaw_compensate: i16) {
     if lift == 200 {
         let ae1_safe: u16 = 0;
@@ -45,8 +71,7 @@ pub fn set_motor_speeds_yaw(lift: i16, yaw: i16, pitch: i16, roll: i16, yaw_comp
         let mut ae2: u16 = (lift - roll + yaw + yaw_compensate) as u16;
         let mut ae3: u16 = (lift + pitch - yaw - yaw_compensate) as u16;
         let mut ae4: u16 = (lift + roll + yaw + yaw_compensate) as u16;
-        
-        set_motor_max(600);
+
         let motor_minimum = 220;
         if ae1 < motor_minimum {
             ae1 = motor_minimum;
@@ -60,6 +85,38 @@ pub fn set_motor_speeds_yaw(lift: i16, yaw: i16, pitch: i16, roll: i16, yaw_comp
         if ae4 < motor_minimum {
             ae4 = motor_minimum;
         }
+        set_motor_max(600);
+        set_motors([ae1, ae2, ae3, ae4]);
+    }
+}
+
+pub fn set_motor_speeds_full(lift: i16, yaw: i16, pitch: i16, roll: i16, yaw_compensate: i16, pitch_compensate: i16, roll_compensate: i16) {
+    if lift == 200 {
+        let ae1_safe: u16 = 0;
+        let ae2_safe: u16 = 0;
+        let ae3_safe: u16 = 0;
+        let ae4_safe: u16 = 0;
+        set_motors([ae1_safe, ae2_safe, ae3_safe, ae4_safe]);
+    } else {
+        let mut ae1: u16 = (lift - pitch + pitch_compensate - yaw - yaw_compensate) as u16;
+        let mut ae2: u16 = (lift - roll - roll_compensate + yaw + yaw_compensate) as u16;
+        let mut ae3: u16 = (lift + pitch - pitch_compensate - yaw - yaw_compensate) as u16;
+        let mut ae4: u16 = (lift + roll + roll_compensate + yaw + yaw_compensate) as u16;
+
+        let motor_minimum = 220;
+        if ae1 < motor_minimum {
+            ae1 = motor_minimum;
+        }
+        if ae2 < motor_minimum {
+            ae2 = motor_minimum;
+        }
+        if ae3 < motor_minimum {
+            ae3 = motor_minimum;
+        }
+        if ae4 < motor_minimum {
+            ae4 = motor_minimum;
+        }
+        set_motor_max(600);
         set_motors([ae1, ae2, ae3, ae4]);
     }
 }

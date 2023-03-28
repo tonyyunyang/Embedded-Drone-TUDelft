@@ -254,7 +254,7 @@ impl PitchController {
         self.pitch = command;
     }
 
-    pub fn update_theta(&mut self, sensor_data: SensorData) {
+    pub fn update_theta(&mut self, sensor_data: &SensorData) {
         self.theta = sensor_data.ypr.pitch;
     }
 
@@ -262,7 +262,7 @@ impl PitchController {
         self.prev_theta = self.theta;
     }
 
-    pub fn update_dt(&mut self, sensor_data: SensorData) {
+    pub fn update_dt(&mut self, sensor_data: &SensorData) {
         self.dt = I16F16::from_num(sensor_data.dt.as_secs_f32());
     }
 
@@ -294,6 +294,18 @@ impl PitchController {
 
     pub fn update_new_pitch(&mut self) {
         self.new_pitch = self.proportional1 + self.proportional2 + self.integral + self.derivative;
+    }
+    
+    pub fn go_through_process(&mut self, command: I16F16, sensor_data: &SensorData) {
+        self.update_pitch(command);
+        self.update_theta(sensor_data);
+        self.update_dt(sensor_data);
+        self.error();
+        self.update_proportional1();
+        self.update_proportional2();
+        self.update_new_pitch();
+        self.update_prev_theta();
+        self.update_prev_error();
     }
 }
 
@@ -356,7 +368,7 @@ impl RollController {
         self.roll = command;
     }
 
-    pub fn update_psi(&mut self, sensor_data: SensorData) {
+    pub fn update_psi(&mut self, sensor_data: &SensorData) {
         self.psi = sensor_data.ypr.roll;
     }
 
@@ -364,7 +376,7 @@ impl RollController {
         self.prev_psi = self.psi;
     }
 
-    pub fn update_dt(&mut self, sensor_data: SensorData) {
+    pub fn update_dt(&mut self, sensor_data: &SensorData) {
         self.dt = I16F16::from_num(sensor_data.dt.as_secs_f32());
     }
 
@@ -397,11 +409,43 @@ impl RollController {
     pub fn update_new_roll(&mut self) {
         self.new_roll = self.proportional1 + self.proportional2 + self.integral + self.derivative;
     }
+
+    pub fn go_through_process(&mut self, command: I16F16, sensor_data: &SensorData) {
+        self.update_roll(command);
+        self.update_psi(sensor_data);
+        self.update_dt(sensor_data);
+        self.error();
+        self.update_proportional1();
+        self.update_prev_error();
+        self.update_proportional2();
+        self.update_new_roll();
+        self.update_prev_psi();
+    }
 }
 
 pub fn map_p_to_fixed(p: u8) -> I16F16 {
     let max_new: I16F16 = I16F16::from_num(10);
     let min_new: I16F16 = I16F16::from_num(5);
+    let max_old: I16F16 = I16F16::from_num(90);
+    let min_old: I16F16 = I16F16::from_num(10);
+    let p_old: I16F16 = I16F16::from_num(p);
+
+    (max_new - min_new) / (max_old - min_old) * (p_old - min_old) + min_new
+}
+
+pub fn map_p1_to_fixed(p: u8) -> I16F16 {
+    let max_new: I16F16 = I16F16::from_num(3);
+    let min_new: I16F16 = I16F16::from_num(1);
+    let max_old: I16F16 = I16F16::from_num(90);
+    let min_old: I16F16 = I16F16::from_num(10);
+    let p_old: I16F16 = I16F16::from_num(p);
+
+    (max_new - min_new) / (max_old - min_old) * (p_old - min_old) + min_new
+}
+
+pub fn map_p2_to_fixed(p: u8) -> I16F16 {
+    let max_new: I16F16 = I16F16::from_num(20);
+    let min_new: I16F16 = I16F16::from_num(1);
     let max_old: I16F16 = I16F16::from_num(90);
     let min_old: I16F16 = I16F16::from_num(10);
     let p_old: I16F16 = I16F16::from_num(p);
