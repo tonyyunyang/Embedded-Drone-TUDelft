@@ -232,7 +232,7 @@ impl StateMachine {
         self.permissions.height_control = false;
         self.permissions.wireless = false;
         self.permissions.sensors = false;
-        self.operation_ready = true; // TODO: this line should be commented out, and then after the calibration, it should be put to true (btw, it was originally false)
+        // self.operation_ready = true; // TODO: this line should be commented out, and then after the calibration, it should be put to true (btw, it was originally false)
         if through_panic {
             (true, 0b0000_0010)
         } else {
@@ -298,6 +298,9 @@ impl StateMachine {
             self.permissions.height_control = false;
             self.permissions.wireless = false;
             self.permissions.sensors = true;
+            if calibrate_mode() {
+                self.operation_ready = true;
+            }
             (true, 0b0011_1100)
         } else {
             (false, 0b0000_1111)
@@ -449,8 +452,9 @@ fn manual_mode(command: &HostProtocol) {
     set_motor_speeds_manual(lift, yaw, pitch, roll);
 }
 
-fn calibrate_mode() {
+fn calibrate_mode() -> bool {
     // TODO
+    true
 }
 
 fn yaw_mode(
