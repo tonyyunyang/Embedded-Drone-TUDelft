@@ -374,7 +374,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::YawPUp => {
-                    let temp = p + 1;
+                    let temp = p + 5;
                     if temp > 90 {
                         println!("Yaw P Control is at max");
                     } else if temp < 10 {
@@ -384,7 +384,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::YawPDown => {
-                    let temp = p - 1;
+                    let temp = p - 5;
                     if temp > 90 {
                         println!("Yaw P Control is at max");
                     } else if temp < 10 {

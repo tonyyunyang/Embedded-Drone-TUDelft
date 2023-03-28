@@ -400,8 +400,8 @@ impl RollController {
 }
 
 pub fn map_p_to_fixed(p: u8) -> I16F16 {
-    let max_new: I16F16 = I16F16::from_num(5);
-    let min_new: I16F16 = I16F16::from_num(1);
+    let max_new: I16F16 = I16F16::from_num(10);
+    let min_new: I16F16 = I16F16::from_num(5);
     let max_old: I16F16 = I16F16::from_num(90);
     let min_old: I16F16 = I16F16::from_num(10);
     let p_old: I16F16 = I16F16::from_num(p);

@@ -1,6 +1,6 @@
 use tudelft_quadrupel::{
     fixed::types::I16F16,
-    motor::{get_motors, set_motors},
+    motor::{get_motors, set_motors, set_motor_max},
     time::delay_us_assembly,
 };
 
@@ -24,7 +24,13 @@ pub fn determine_yaw_compensate(old: I16F16, new: I16F16) -> i16 {
     let difference: I16F16 = new - old;
     let percentage: I16F16 = difference / I16F16::from_num(3.1415926);
     let result: i16 = I16F16::to_num(percentage * 70);
-    result
+    if result > 200 {
+        200
+    } else if result < -200 {
+        -200
+    } else {
+        result
+    }
 }
 
 pub fn set_motor_speeds_yaw(lift: i16, yaw: i16, pitch: i16, roll: i16, yaw_compensate: i16) {
@@ -35,10 +41,25 @@ pub fn set_motor_speeds_yaw(lift: i16, yaw: i16, pitch: i16, roll: i16, yaw_comp
         let ae4_safe: u16 = 0;
         set_motors([ae1_safe, ae2_safe, ae3_safe, ae4_safe]);
     } else {
-        let ae1: u16 = (lift - pitch - yaw + yaw_compensate) as u16;
-        let ae2: u16 = (lift - roll + yaw - yaw_compensate) as u16;
-        let ae3: u16 = (lift + pitch - yaw + yaw_compensate) as u16;
-        let ae4: u16 = (lift + roll + yaw - yaw_compensate) as u16;
+        let mut ae1: u16 = (lift - pitch - yaw - yaw_compensate) as u16;
+        let mut ae2: u16 = (lift - roll + yaw + yaw_compensate) as u16;
+        let mut ae3: u16 = (lift + pitch - yaw - yaw_compensate) as u16;
+        let mut ae4: u16 = (lift + roll + yaw + yaw_compensate) as u16;
+        
+        set_motor_max(600);
+        let motor_minimum = 220;
+        if ae1 < motor_minimum {
+            ae1 = motor_minimum;
+        }
+        if ae2 < motor_minimum {
+            ae2 = motor_minimum;
+        }
+        if ae3 < motor_minimum {
+            ae3 = motor_minimum;
+        }
+        if ae4 < motor_minimum {
+            ae4 = motor_minimum;
+        }
         set_motors([ae1, ae2, ae3, ae4]);
     }
 }
@@ -80,6 +101,46 @@ pub fn map_lift_command_manual(command: u8) -> i16 {
     } else {
         // either 10? Or an invalid value, we set motor to 0 under both situations
         350
+    }
+}
+
+pub fn map_lift_command_control(command: u8) -> i16 {
+    // the mapping might be wrong, for now, I will assume the lift from the joystick starts at -1, and goes to 1
+    if command == 90 {
+        200
+    } else if command == 85 {
+        230
+    } else if command == 80 {
+        260
+    } else if command == 75 {
+        290
+    } else if command == 70 {
+        320
+    } else if command == 65 {
+        350
+    } else if command == 60 {
+        380
+    } else if command == 55 {
+        410
+    } else if command == 50 {
+        440
+    } else if command == 45 {
+        470
+    } else if command == 40 {
+        500
+    } else if command == 35 {
+        520
+    } else if command == 30 {
+        540
+    } else if command == 25 {
+        560
+    } else if command == 20 {
+        580
+    } else if command == 15 {
+        590
+    } else {
+        // either 10? Or an invalid value, we set motor to 0 under both situations
+        600
     }
 }
 

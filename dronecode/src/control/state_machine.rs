@@ -462,7 +462,7 @@ fn yaw_mode(
     general_controllers: &mut GeneralController,
     sensor_data: &SensorData,
 ) {
-    let lift: i16 = map_lift_command_manual(command.get_lift()); // this should be the value that keeps the drone in the air stable
+    let lift: i16 = map_lift_command_control(command.get_lift()); // this should be the value that keeps the drone in the air stable
     let yaw: i16 = map_yaw_command_manual(command.get_yaw());
     let yaw_rate: I16F16 = map_yaw_command(command.get_yaw());
     let pitch: i16 = map_pitch_command_manual(command.get_pitch());
