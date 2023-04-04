@@ -19,7 +19,7 @@ use tudelft_quadrupel::mpu::{read_dmp_bytes, read_raw};
 use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
-use self::pid_controller::{GeneralController, map_p1_to_fixed, map_p2_to_fixed};
+use self::pid_controller::{map_p1_to_fixed, map_p2_to_fixed, GeneralController};
 use self::state_machine::State;
 mod motor_control;
 mod pid_controller;
@@ -28,7 +28,7 @@ mod state_machine;
 #[allow(unused_assignments)]
 pub fn control_loop() -> ! {
     // Initialize the variables for the control loop
-    set_tick_frequency(120);
+    set_tick_frequency(100);
     let mut safety_counter = SafetyCounter::new();
     let mut sensor_data = SensorData::new();
     let mut sensor_data_calibration_offset = SensorOffset::new();
@@ -43,25 +43,25 @@ pub fn control_loop() -> ! {
 
     // initialize the struct for stable controls
     let yaw_pid = PIDController::new(
-        I16F16::from_num(1.1),
+        I16F16::from_num(1),
         I16F16::from_num(0),
         I16F16::from_num(0),
         I16F16::from_num(0),
         I16F16::from_num(0),
     );
     let pitch_pid = PIDController::new(
-        I16F16::from_num(1.1),
+        I16F16::from_num(1),
         I16F16::from_num(0),
         I16F16::from_num(0),
         I16F16::from_num(0),
         I16F16::from_num(0),
     );
     let roll_pid = PIDController::new(
-        I16F16::from_num(1.1),
+        I16F16::from_num(1),
         I16F16::from_num(0),
         I16F16::from_num(0),
         I16F16::from_num(0),
-        I16F16::from_num(1.1),
+        I16F16::from_num(1),
     );
     let yaw_control = pid_controller::YawController::new(yaw_pid);
     let pitch_control = pid_controller::PitchController::new(pitch_pid);
@@ -71,7 +71,7 @@ pub fn control_loop() -> ! {
 
     for i in 0.. {
         // update the sensor data
-        sensor_data.update_all();
+        sensor_data.update_all(&sensor_data_calibration_offset);
 
         // the code below is an algorithm for receiving the message from the host
         // first read 'num' bytes from the uart
@@ -119,6 +119,7 @@ pub fn control_loop() -> ! {
                 next_state,
                 &mut joystick_control,
                 &mut general_controllers,
+                &mut sensor_data_calibration_offset,
             );
 
             let current_state = state_machine.state();
@@ -128,15 +129,15 @@ pub fn control_loop() -> ! {
             if transition_result && ack != 0b0000_1111 {
                 execute_state_function(
                     &current_state,
-                    &nice_received_message,
+                    &joystick_control,
                     &mut general_controllers,
                     &sensor_data,
+                    &mut sensor_data_calibration_offset,
                 );
             }
-            Yellow.off();
         }
 
-        if i % 30 == 0 {
+        if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
             let message_to_host = DeviceProtocol::new(
                 mode,
@@ -163,6 +164,7 @@ pub fn control_loop() -> ! {
                 State::Panic,
                 &mut joystick_control,
                 &mut general_controllers,
+                &mut sensor_data_calibration_offset,
             );
             // Reset the timeout counter, since it's going to go back to safe mode.
             safety_counter.reset_command_timeout();
@@ -176,13 +178,14 @@ pub fn control_loop() -> ! {
                 State::Panic,
                 &mut joystick_control,
                 &mut general_controllers,
+                &mut sensor_data_calibration_offset,
             );
             // then end the function
             panic!();
         }
 
         Blue.off();
-
+        Yellow.off();
         wait_for_next_tick();
     }
     unreachable!();
@@ -203,9 +206,9 @@ fn update_joystick_control_and_controller(
 
     controller.yaw_control.set_kp(joystick_control.get_p());
     controller.pitch_control.set_kp1(joystick_control.get_p1());
-    controller.pitch_control.set_kp2(joystick_control.get_p1());
+    controller.pitch_control.set_kp2(joystick_control.get_p2());
     controller.roll_control.set_kp1(joystick_control.get_p1());
-    controller.roll_control.set_kp2(joystick_control.get_p1());
+    controller.roll_control.set_kp2(joystick_control.get_p2());
 }
 
 /// verify the message received from the host
@@ -287,11 +290,11 @@ impl SafetyCounter {
     }
 
     pub fn is_command_timeout(&self) -> bool {
-        self.command_timeout > 300
+        self.command_timeout > 100
     }
 
     pub fn is_battery_danger(&self) -> bool {
-        self.battery_danger > 500
+        self.battery_danger > 100
     }
 }
 
@@ -308,6 +311,7 @@ pub struct SensorData {
     dt: Duration,
 }
 
+#[allow(dead_code)]
 impl SensorData {
     pub fn new() -> Self {
         let zero_u30 = FixedI32::<types::extra::U30>::from_num(0.0);
@@ -359,8 +363,11 @@ impl SensorData {
         self.quaternion = block!(read_dmp_bytes()).unwrap();
     }
 
-    pub fn update_ypr(&mut self) {
-        self.ypr = YawPitchRoll::from(self.quaternion);
+    pub fn update_ypr(&mut self, sensor_data_offset: &SensorOffset) {
+        self.ypr = YawPitchRoll::from(self.get_quaternion());
+        self.ypr.yaw -= sensor_data_offset.yaw_offset;
+        self.ypr.pitch -= sensor_data_offset.pitch_offset;
+        self.ypr.roll -= sensor_data_offset.roll_offset;
     }
 
     pub fn update_accel_gyro(&mut self) {
@@ -372,8 +379,9 @@ impl SensorData {
         self.bat = 500;
     }
 
-    pub fn update_pres(&mut self) {
+    pub fn update_pres(&mut self, sensor_data_offset: &SensorOffset) {
         self.pres = read_pressure();
+        self.pres -= sensor_data_offset.lift_offset;
     }
 
     pub fn get_dt(&self) -> Duration {
@@ -393,7 +401,11 @@ impl SensorData {
     }
 
     pub fn get_ypr_data(&self) -> [I16F16; 3] {
-        [self.ypr.yaw, self.ypr.pitch, self.ypr.roll]
+        [
+            self.get_ypr().yaw,
+            self.get_ypr().pitch,
+            self.get_ypr().roll,
+        ]
     }
 
     pub fn get_accel(&self) -> Accel {
@@ -401,7 +413,7 @@ impl SensorData {
     }
 
     pub fn get_accel_data(&self) -> [i16; 3] {
-        [self.accel.x, self.accel.y, self.accel.z]
+        [self.get_accel().x, self.get_accel().y, self.get_accel().z]
     }
 
     pub fn get_gyro(&self) -> Gyro {
@@ -409,7 +421,7 @@ impl SensorData {
     }
 
     pub fn get_gyro_data(&self) -> [i16; 3] {
-        [self.gyro.x, self.gyro.y, self.gyro.z]
+        [self.get_gyro().x, self.get_gyro().y, self.get_gyro().z]
     }
 
     pub fn get_bat(&self) -> u16 {
@@ -420,14 +432,14 @@ impl SensorData {
         self.pres
     }
 
-    pub fn update_all(&mut self) {
+    pub fn update_all(&mut self, sensor_data_offset: &SensorOffset) {
         self.update_dt();
         self.update_motors();
         self.update_quaternion();
-        self.update_ypr();
+        self.update_ypr(sensor_data_offset);
         self.update_accel_gyro();
         self.update_bat();
-        self.update_pres();
+        self.update_pres(sensor_data_offset);
     }
 }
 

@@ -20,14 +20,18 @@ pub fn set_motor_speeds_manual(lift: i16, yaw: i16, pitch: i16, roll: i16) {
     }
 }
 
+#[allow(clippy::approx_constant)]
 pub fn determine_yaw_compensate(old: I16F16, new: I16F16) -> i16 {
     let difference: I16F16 = new - old;
     let percentage: I16F16 = difference / I16F16::from_num(3.1415926);
-    let result: i16 = I16F16::to_num(percentage * 70);
-    if result > 200 {
-        200
-    } else if result < -200 {
-        -200
+    let result: i16 = I16F16::to_num(percentage * 80);
+    let mut result_max = get_motors();
+    result_max.sort();
+    let max = (result_max[3] as i16) / 4;
+    if result > max {
+        max
+    } else if result < -max {
+        -max
     } else {
         result
     }
@@ -35,12 +39,15 @@ pub fn determine_yaw_compensate(old: I16F16, new: I16F16) -> i16 {
 
 pub fn determine_pitch_compensate(old: I16F16, new: I16F16) -> i16 {
     let difference: I16F16 = new - old;
-    let percentage: I16F16 = difference / I16F16::from_num(0.5235987);
-    let result: i16 = I16F16::to_num(percentage * 40);
-    if result > 100 {
-        100
-    } else if result < -100 {
-        -100
+    let percentage: I16F16 = difference / I16F16::from_num(0.27925268);
+    let result: i16 = I16F16::to_num(percentage * 10);
+    let mut result_max = get_motors();
+    result_max.sort();
+    let max = (result_max[3] as i16) / 20;
+    if result > max {
+        max
+    } else if result < -max {
+        -max
     } else {
         result
     }
@@ -48,12 +55,15 @@ pub fn determine_pitch_compensate(old: I16F16, new: I16F16) -> i16 {
 
 pub fn determine_roll_compensate(old: I16F16, new: I16F16) -> i16 {
     let difference: I16F16 = new - old;
-    let percentage: I16F16 = difference / I16F16::from_num(0.5235987);
-    let result: i16 = I16F16::to_num(percentage * 40);
-    if result > 100 {
-        100
-    } else if result < -100 {
-        -100
+    let percentage: I16F16 = difference / I16F16::from_num(0.27925268);
+    let result: i16 = I16F16::to_num(percentage * 10);
+    let mut result_max = get_motors();
+    result_max.sort();
+    let max = (result_max[3] as i16) / 20;
+    if result > max {
+        max
+    } else if result < -max {
+        -max
     } else {
         result
     }
@@ -90,7 +100,15 @@ pub fn set_motor_speeds_yaw(lift: i16, yaw: i16, pitch: i16, roll: i16, yaw_comp
     }
 }
 
-pub fn set_motor_speeds_full(lift: i16, yaw: i16, pitch: i16, roll: i16, yaw_compensate: i16, pitch_compensate: i16, roll_compensate: i16) {
+pub fn set_motor_speeds_full(
+    lift: i16,
+    yaw: i16,
+    pitch: i16,
+    roll: i16,
+    yaw_compensate: i16,
+    pitch_compensate: i16,
+    roll_compensate: i16,
+) {
     if lift == 200 {
         let ae1_safe: u16 = 0;
         let ae2_safe: u16 = 0;
@@ -116,7 +134,7 @@ pub fn set_motor_speeds_full(lift: i16, yaw: i16, pitch: i16, roll: i16, yaw_com
         if ae4 < motor_minimum {
             ae4 = motor_minimum;
         }
-        set_motor_max(600);
+        set_motor_max(800);
         set_motors([ae1, ae2, ae3, ae4]);
     }
 }
@@ -204,39 +222,39 @@ pub fn map_lift_command_control(command: u8) -> i16 {
 pub fn map_yaw_command_manual(command: u8) -> i16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, twisting left is negative, turning right is positive
     if command == 90 {
-        70
+        80
     } else if command == 85 {
-        60
+        70
     } else if command == 80 {
-        50
+        60
     } else if command == 75 {
-        40
+        50
     } else if command == 70 {
-        30
+        40
     } else if command == 65 {
-        20
+        30
     } else if command == 60 {
-        10
+        20
     } else if command == 55 {
-        5
+        10
     } else if command == 50 {
         0
     } else if command == 45 {
-        -5
-    } else if command == 40 {
         -10
-    } else if command == 35 {
+    } else if command == 40 {
         -20
-    } else if command == 30 {
+    } else if command == 35 {
         -30
-    } else if command == 25 {
+    } else if command == 30 {
         -40
-    } else if command == 20 {
+    } else if command == 25 {
         -50
-    } else if command == 15 {
+    } else if command == 20 {
         -60
-    } else if command == 10 {
+    } else if command == 15 {
         -70
+    } else if command == 10 {
+        -80
     } else {
         // not a valid command, we set motor to 0
         0
@@ -246,39 +264,39 @@ pub fn map_yaw_command_manual(command: u8) -> i16 {
 pub fn map_pitch_command_manual(command: u8) -> i16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, pushing forward is positive, pushing backward is negative
     if command == 90 {
-        40
+        24
     } else if command == 85 {
-        35
+        21
     } else if command == 80 {
-        30
+        18
     } else if command == 75 {
-        25
-    } else if command == 70 {
-        20
-    } else if command == 65 {
         15
+    } else if command == 70 {
+        12
+    } else if command == 65 {
+        9
     } else if command == 60 {
-        10
+        6
     } else if command == 55 {
-        5
+        3
     } else if command == 50 {
         0
     } else if command == 45 {
-        -5
+        -3
     } else if command == 40 {
-        -10
+        -6
     } else if command == 35 {
-        -15
+        -9
     } else if command == 30 {
-        -20
+        -12
     } else if command == 25 {
-        -25
+        -15
     } else if command == 20 {
-        -30
+        -18
     } else if command == 15 {
-        -35
+        -21
     } else if command == 10 {
-        -40
+        -24
     } else {
         // not a valid command, we set motor to 0
         0
@@ -286,84 +304,44 @@ pub fn map_pitch_command_manual(command: u8) -> i16 {
 }
 
 pub fn map_roll_command_manual(command: u8) -> i16 {
-    // the mapping might be wrong, for now, I will assume the initial value is 0, pushing left is negative, pushing right is positive
+    // the mapping might be wrong, for now, I will assume the initial value is 0, pushing forward is positive, pushing backward is negative
     if command == 90 {
-        40
+        24
     } else if command == 85 {
-        35
+        21
     } else if command == 80 {
-        30
+        18
     } else if command == 75 {
-        25
-    } else if command == 70 {
-        20
-    } else if command == 65 {
         15
-    } else if command == 60 {
-        10
-    } else if command == 55 {
-        5
-    } else if command == 50 {
-        0
-    } else if command == 45 {
-        -5
-    } else if command == 40 {
-        -10
-    } else if command == 35 {
-        -15
-    } else if command == 30 {
-        -20
-    } else if command == 25 {
-        -25
-    } else if command == 20 {
-        -30
-    } else if command == 15 {
-        -35
-    } else if command == 10 {
-        -40
-    } else {
-        //not a valid command, we set motor to 0
-        0
-    }
-}
-
-pub fn map_lift_command(command: u8) -> u16 {
-    // the mapping might be wrong, for now, I will assume the lift from the joystick starts at -1, and goes to 1
-    if command == 90 {
-        200
-    } else if command == 85 {
-        210
-    } else if command == 80 {
-        220
-    } else if command == 75 {
-        230
     } else if command == 70 {
-        240
+        12
     } else if command == 65 {
-        250
+        9
     } else if command == 60 {
-        260
+        6
     } else if command == 55 {
-        270
+        3
     } else if command == 50 {
-        280
+        0
     } else if command == 45 {
-        290
+        -3
     } else if command == 40 {
-        300
+        -6
     } else if command == 35 {
-        310
+        -9
     } else if command == 30 {
-        320
+        -12
     } else if command == 25 {
-        330
+        -15
     } else if command == 20 {
-        340
+        -18
     } else if command == 15 {
-        350
+        -21
+    } else if command == 10 {
+        -24
     } else {
-        // either 10? Or an invalid value, we set motor to 0 under both situations
-        360
+        // not a valid command, we set motor to 0
+        0
     }
 }
 
@@ -415,40 +393,79 @@ pub fn map_yaw_command(command: u8) -> I16F16 {
 pub fn map_pitch_command(command: u8) -> I16F16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, pushing forward is positive, pushing backward is negative
     // this is the pitch angle below, this is not the angular velocity
+    // if command == 90 {
+    //     I16F16::from_num(0.5235987) // 30 degrees in radians
+    // } else if command == 85 {
+    //     I16F16::from_num(0.4581489) // 26.25 degrees in radians
+    // } else if command == 80 {
+    //     I16F16::from_num(0.3926991) // 22.5 degrees in radians
+    // } else if command == 75 {
+    //     I16F16::from_num(0.3272492) // 18.75 degrees in radians
+    // } else if command == 70 {
+    //     I16F16::from_num(0.2617993) // 15 degrees in radians
+    // } else if command == 65 {
+    //     I16F16::from_num(0.1963495) // 11.25 degrees in radians
+    // } else if command == 60 {
+    //     I16F16::from_num(0.1308996) // 7.5 degrees in radians
+    // } else if command == 55 {
+    //     I16F16::from_num(0.0654498) // 3.75 degrees in radians
+    // } else if command == 50 {
+    //     I16F16::from_num(0.0) // 0 degrees in radians
+    // } else if command == 45 {
+    //     I16F16::from_num(-0.0654498) // 3.75 degrees in radians
+    // } else if command == 40 {
+    //     I16F16::from_num(-0.1308996) // 7.5 degrees in radians
+    // } else if command == 35 {
+    //     I16F16::from_num(-0.1963495) // 11.25 degrees in radians
+    // } else if command == 30 {
+    //     I16F16::from_num(-0.2617993) // 15 degrees in radians
+    // } else if command == 25 {
+    //     I16F16::from_num(-0.3272492) // 18.75 degrees in radians
+    // } else if command == 20 {
+    //     I16F16::from_num(-0.3926991) // 22.5 degrees in radians
+    // } else if command == 15 {
+    //     I16F16::from_num(-0.4581489) // 26.25 degrees in radians
+    // } else if command == 10 {
+    //     I16F16::from_num(-0.5235987) // 30 degrees in radians
+    // } else {
+    //     // not a valid command, we set motor to 0
+    //     I16F16::from_num(0.0) // 0 degrees in radians
+    // }
+
     if command == 90 {
-        I16F16::from_num(0.5235987) // 30 degrees in radians
+        I16F16::from_num(0.27925268) // 16 degrees in radians
     } else if command == 85 {
-        I16F16::from_num(0.4581489) // 26.25 degrees in radians
+        I16F16::from_num(0.244346095) // 14 degrees in radians
     } else if command == 80 {
-        I16F16::from_num(0.3926991) // 22.5 degrees in radians
+        I16F16::from_num(0.20943951) // 12 degrees in radians
     } else if command == 75 {
-        I16F16::from_num(0.3272492) // 18.75 degrees in radians
+        I16F16::from_num(0.174532925) // 10 degrees in radians
     } else if command == 70 {
-        I16F16::from_num(0.2617993) // 15 degrees in radians
+        I16F16::from_num(0.13962634) // 8 degrees in radians
     } else if command == 65 {
-        I16F16::from_num(0.1963495) // 11.25 degrees in radians
+        I16F16::from_num(0.104719755) // 6 degrees in radians
     } else if command == 60 {
-        I16F16::from_num(0.1308996) // 7.5 degrees in radians
+        I16F16::from_num(0.06981317) // 4 degrees in radians
     } else if command == 55 {
-        I16F16::from_num(0.0654498) // 3.75 degrees in radians
+        I16F16::from_num(0.034906585) // 2 degrees in radians
     } else if command == 50 {
         I16F16::from_num(0.0) // 0 degrees in radians
     } else if command == 45 {
-        I16F16::from_num(-0.0654498) // 3.75 degrees in radians
+        I16F16::from_num(-0.034906585) // 2 degrees in radians
     } else if command == 40 {
-        I16F16::from_num(-0.1308996) // 7.5 degrees in radians
+        I16F16::from_num(-0.06981317) // 4 degrees in radians
     } else if command == 35 {
-        I16F16::from_num(-0.1963495) // 11.25 degrees in radians
+        I16F16::from_num(-0.104719755) // 6 degrees in radians
     } else if command == 30 {
-        I16F16::from_num(-0.2617993) // 15 degrees in radians
+        I16F16::from_num(-0.13962634) // 8 degrees in radians
     } else if command == 25 {
-        I16F16::from_num(-0.3272492) // 18.75 degrees in radians
+        I16F16::from_num(-0.174532925) // 10 degrees in radians
     } else if command == 20 {
-        I16F16::from_num(-0.3926991) // 22.5 degrees in radians
+        I16F16::from_num(-0.20943951) // 12 degrees in radians
     } else if command == 15 {
-        I16F16::from_num(-0.4581489) // 26.25 degrees in radians
+        I16F16::from_num(-0.244346095) // 14 degrees in radians
     } else if command == 10 {
-        I16F16::from_num(-0.5235987) // 30 degrees in radians
+        I16F16::from_num(-0.27925268) // 16 degrees in radians
     } else {
         // not a valid command, we set motor to 0
         I16F16::from_num(0.0) // 0 degrees in radians
@@ -459,40 +476,79 @@ pub fn map_pitch_command(command: u8) -> I16F16 {
 pub fn map_roll_command(command: u8) -> I16F16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, pushing forward is positive, pushing backward is negative
     // this is the roll angle below, this is not the angular velocity
+    // if command == 90 {
+    //     I16F16::from_num(0.5235987) // 30 degrees in radians
+    // } else if command == 85 {
+    //     I16F16::from_num(0.4581489) // 26.25 degrees in radians
+    // } else if command == 80 {
+    //     I16F16::from_num(0.3926991) // 22.5 degrees in radians
+    // } else if command == 75 {
+    //     I16F16::from_num(0.3272492) // 18.75 degrees in radians
+    // } else if command == 70 {
+    //     I16F16::from_num(0.2617993) // 15 degrees in radians
+    // } else if command == 65 {
+    //     I16F16::from_num(0.1963495) // 11.25 degrees in radians
+    // } else if command == 60 {
+    //     I16F16::from_num(0.1308996) // 7.5 degrees in radians
+    // } else if command == 55 {
+    //     I16F16::from_num(0.0654498) // 3.75 degrees in radians
+    // } else if command == 50 {
+    //     I16F16::from_num(0.0) // 0 degrees in radians
+    // } else if command == 45 {
+    //     I16F16::from_num(-0.0654498) // 3.75 degrees in radians
+    // } else if command == 40 {
+    //     I16F16::from_num(-0.1308996) // 7.5 degrees in radians
+    // } else if command == 35 {
+    //     I16F16::from_num(-0.1963495) // 11.25 degrees in radians
+    // } else if command == 30 {
+    //     I16F16::from_num(-0.2617993) // 15 degrees in radians
+    // } else if command == 25 {
+    //     I16F16::from_num(-0.3272492) // 18.75 degrees in radians
+    // } else if command == 20 {
+    //     I16F16::from_num(-0.3926991) // 22.5 degrees in radians
+    // } else if command == 15 {
+    //     I16F16::from_num(-0.4581489) // 26.25 degrees in radians
+    // } else if command == 10 {
+    //     I16F16::from_num(-0.5235987) // 30 degrees in radians
+    // } else {
+    //     // not a valid command, we set motor to 0
+    //     I16F16::from_num(0.0) // 0 degrees in radians
+    // }
+
     if command == 90 {
-        I16F16::from_num(0.5235987) // 30 degrees in radians
+        I16F16::from_num(0.27925268) // 16 degrees in radians
     } else if command == 85 {
-        I16F16::from_num(0.4581489) // 26.25 degrees in radians
+        I16F16::from_num(0.244346095) // 14 degrees in radians
     } else if command == 80 {
-        I16F16::from_num(0.3926991) // 22.5 degrees in radians
+        I16F16::from_num(0.20943951) // 12 degrees in radians
     } else if command == 75 {
-        I16F16::from_num(0.3272492) // 18.75 degrees in radians
+        I16F16::from_num(0.174532925) // 10 degrees in radians
     } else if command == 70 {
-        I16F16::from_num(0.2617993) // 15 degrees in radians
+        I16F16::from_num(0.13962634) // 8 degrees in radians
     } else if command == 65 {
-        I16F16::from_num(0.1963495) // 11.25 degrees in radians
+        I16F16::from_num(0.104719755) // 6 degrees in radians
     } else if command == 60 {
-        I16F16::from_num(0.1308996) // 7.5 degrees in radians
+        I16F16::from_num(0.06981317) // 4 degrees in radians
     } else if command == 55 {
-        I16F16::from_num(0.0654498) // 3.75 degrees in radians
+        I16F16::from_num(0.034906585) // 2 degrees in radians
     } else if command == 50 {
         I16F16::from_num(0.0) // 0 degrees in radians
     } else if command == 45 {
-        I16F16::from_num(-0.0654498) // 3.75 degrees in radians
+        I16F16::from_num(-0.034906585) // 2 degrees in radians
     } else if command == 40 {
-        I16F16::from_num(-0.1308996) // 7.5 degrees in radians
+        I16F16::from_num(-0.06981317) // 4 degrees in radians
     } else if command == 35 {
-        I16F16::from_num(-0.1963495) // 11.25 degrees in radians
+        I16F16::from_num(-0.104719755) // 6 degrees in radians
     } else if command == 30 {
-        I16F16::from_num(-0.2617993) // 15 degrees in radians
+        I16F16::from_num(-0.13962634) // 8 degrees in radians
     } else if command == 25 {
-        I16F16::from_num(-0.3272492) // 18.75 degrees in radians
+        I16F16::from_num(-0.174532925) // 10 degrees in radians
     } else if command == 20 {
-        I16F16::from_num(-0.3926991) // 22.5 degrees in radians
+        I16F16::from_num(-0.20943951) // 12 degrees in radians
     } else if command == 15 {
-        I16F16::from_num(-0.4581489) // 26.25 degrees in radians
+        I16F16::from_num(-0.244346095) // 14 degrees in radians
     } else if command == 10 {
-        I16F16::from_num(-0.5235987) // 30 degrees in radians
+        I16F16::from_num(-0.27925268) // 16 degrees in radians
     } else {
         // not a valid command, we set motor to 0
         I16F16::from_num(0.0) // 0 degrees in radians
@@ -512,7 +568,7 @@ pub fn gradually_slow_down_motors() {
         motor2 = motor2.saturating_sub(1);
         motor3 = motor3.saturating_sub(1);
 
-        delay_us_assembly(2500);
+        delay_us_assembly(5000);
 
         set_motors([motor0, motor1, motor2, motor3]);
     }

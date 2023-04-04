@@ -1,16 +1,18 @@
 // This file implements the state machine for the drone's control module.
 // The state machine is a finite state machine (FSM) that is used to control the drone.
 
-use protocol::format::HostProtocol;
 use tudelft_quadrupel::{
+    barometer::read_pressure,
+    block,
     fixed::types::I16F16,
     led::Led::{Blue, Red},
+    mpu::read_dmp_bytes,
 };
 
-use crate::control::state_machine::State::Safety;
+use crate::{control::state_machine::State::Safety, yaw_pitch_roll::YawPitchRoll};
 use core::clone::Clone;
 
-use super::{motor_control::*, pid_controller::GeneralController, SensorData};
+use super::{motor_control::*, pid_controller::GeneralController, SensorData, SensorOffset};
 
 // Define the possible states of the state machine.
 #[derive(Clone, PartialEq)]
@@ -150,10 +152,10 @@ impl JoystickControl {
 
     // Check if lift, yaw, pitch and roll are all neutral on the controller.
     pub fn joystick_neutral_check(&mut self, state_machine: &mut StateMachine) {
-        let flag = (self.lift <= 90 && self.lift >= 75)
-            && (self.yaw >= 40 && self.yaw <= 60)
-            && (self.pitch >= 40 && self.pitch <= 60)
-            && (self.roll >= 40 && self.roll <= 60);
+        let flag = (self.get_lift() <= 90 && self.get_lift() >= 75)
+            && (self.get_yaw() >= 40 && self.get_yaw() <= 60)
+            && (self.get_pitch() >= 40 && self.get_pitch() <= 60)
+            && (self.get_roll() >= 40 && self.get_roll() <= 60);
         if flag {
             state_machine.controller_ready = true;
         } else {
@@ -195,6 +197,7 @@ impl StateMachine {
         next_state: State,
         joystick: &mut JoystickControl,
         general_controllers: &mut GeneralController,
+        sensor_data_offset: &mut SensorOffset,
     ) -> (bool, u8) {
         joystick.joystick_neutral_check(self);
         if self.state() != next_state {
@@ -202,7 +205,7 @@ impl StateMachine {
                 State::Safety => self.transition_safe(false),
                 State::Panic => self.transition_panic(general_controllers),
                 State::Manual => self.transition_manual(),
-                State::Calibrate => self.transition_calibrate(),
+                State::Calibrate => self.transition_calibrate(sensor_data_offset),
                 State::Yaw | State::Full | State::Raw | State::Height | State::Wireless => {
                     self.transition_operation(next_state)
                 } // | State::Manual => self.transition_operation(next_state, joystick),
@@ -232,7 +235,7 @@ impl StateMachine {
         self.permissions.height_control = false;
         self.permissions.wireless = false;
         self.permissions.sensors = false;
-        // self.operation_ready = true; // TODO: this line should be commented out, and then after the calibration, it should be put to true (btw, it was originally false)
+        // self.operation_ready = false; // TODO: this line should be commented out, and then after the calibration, it should be put to true (btw, it was originally false)
         if through_panic {
             (true, 0b0000_0010)
         } else {
@@ -287,7 +290,7 @@ impl StateMachine {
     }
 
     // Calibration mode should only accept sensor data, no controller movements.
-    fn transition_calibrate(&mut self) -> (bool, u8) {
+    fn transition_calibrate(&mut self, sensor_data_offset: &mut SensorOffset) -> (bool, u8) {
         // Can only go into calibration mode from safe mode.
         if self.state == State::Safety {
             self.state = State::Calibrate;
@@ -298,11 +301,15 @@ impl StateMachine {
             self.permissions.height_control = false;
             self.permissions.wireless = false;
             self.permissions.sensors = true;
-            if calibrate_mode() {
+            if calibrate_mode(sensor_data_offset) {
                 self.operation_ready = true;
             }
-            (true, 0b0011_1100)
+            // Automatically go back to safe mode.
+            self.transition_safe(false)
+            // The code below is the original code
+            // (true, 0b0011_1100)
         } else {
+            Red.on();
             (false, 0b0000_1111)
         }
     }
@@ -324,7 +331,8 @@ impl StateMachine {
                 }
             } else {
                 Red.on();
-                (false, 0b1111_0000)
+                self.state = State::Safety;
+                (false, 0b0000_1111)
             }
         } else {
             (false, 0b0000_1111)
@@ -400,9 +408,10 @@ impl StateMachine {
 
 pub fn execute_state_function(
     current_state: &State,
-    command: &HostProtocol,
+    command: &JoystickControl,
     general_controllers: &mut GeneralController,
     sensor_data: &SensorData,
+    sensor_data_offset: &mut SensorOffset,
 ) {
     match current_state {
         State::Safety => {
@@ -412,7 +421,7 @@ pub fn execute_state_function(
             manual_mode(command);
         }
         State::Calibrate => {
-            calibrate_mode();
+            calibrate_mode(sensor_data_offset);
         }
         State::Yaw => {
             yaw_mode(command, general_controllers, sensor_data);
@@ -440,11 +449,12 @@ pub fn execute_state_function(
     }
 }
 
+#[allow(unused_variables)]
 fn safety_mode() {
-    // TODO
+    // TODO: Nothing to implement in safety mode
 }
 
-fn manual_mode(command: &HostProtocol) {
+fn manual_mode(command: &JoystickControl) {
     let lift: i16 = map_lift_command_manual(command.get_lift());
     let yaw: i16 = map_yaw_command_manual(command.get_yaw());
     let pitch: i16 = map_pitch_command_manual(command.get_pitch());
@@ -452,13 +462,29 @@ fn manual_mode(command: &HostProtocol) {
     set_motor_speeds_manual(lift, yaw, pitch, roll);
 }
 
-fn calibrate_mode() -> bool {
-    // TODO
+fn calibrate_mode(sensor_data_offset: &mut SensorOffset) -> bool {
+    sensor_data_offset.reset_offset();
+    let mut yaw_offset: I16F16 = I16F16::from_num(0);
+    let mut pitch_offset: I16F16 = I16F16::from_num(0);
+    let mut roll_offset: I16F16 = I16F16::from_num(0);
+    let mut lift_offset: u32 = 0;
+    for _ in 0..10 {
+        let quaternion = block!(read_dmp_bytes()).unwrap();
+        let ypr = YawPitchRoll::from(quaternion);
+        yaw_offset += ypr.yaw;
+        pitch_offset += ypr.pitch;
+        roll_offset += ypr.roll;
+        lift_offset += read_pressure();
+    }
+    sensor_data_offset.update_yaw_offset(yaw_offset / 10);
+    sensor_data_offset.update_pitch_offset(pitch_offset / 10);
+    sensor_data_offset.update_roll_offset(roll_offset / 10);
+    sensor_data_offset.update_lift_offset(lift_offset / 10);
     true
 }
 
 fn yaw_mode(
-    command: &HostProtocol,
+    command: &JoystickControl,
     general_controllers: &mut GeneralController,
     sensor_data: &SensorData,
 ) {
@@ -475,9 +501,8 @@ fn yaw_mode(
     set_motor_speeds_yaw(lift, yaw, pitch, roll, yaw_compensate);
 }
 
-#[allow(unused_variables)]
 fn full_mode(
-    command: &HostProtocol,
+    command: &JoystickControl,
     general_controllers: &mut GeneralController,
     sensor_data: &SensorData,
 ) {
@@ -493,10 +518,9 @@ fn full_mode(
     general_controllers
         .yaw_control
         .go_through_process(yaw_rate, sensor_data);
-    // let yaw_compensate: i16 =
-    //     determine_yaw_compensate(yaw_rate, general_controllers.yaw_control.new_yaw);
-    let yaw_compensate: i16 = 0;
-        
+    let yaw_compensate: i16 =
+        determine_yaw_compensate(yaw_rate, general_controllers.yaw_control.new_yaw);
+    // let yaw_compensate: i16 = 0;
 
     general_controllers
         .pitch_control
@@ -504,12 +528,22 @@ fn full_mode(
     let pitch_compensate: i16 =
         determine_pitch_compensate(pitch_angle, general_controllers.pitch_control.new_pitch);
 
-    // general_controllers
-    //     .roll_control
-    //     .go_through_process(roll_angle, sensor_data);
-    let roll_compensate: i16 = 0;
+    general_controllers
+        .roll_control
+        .go_through_process(roll_angle, sensor_data);
+    let roll_compensate: i16 =
+        determine_roll_compensate(roll_angle, general_controllers.roll_control.new_roll);
+    // let roll_compensate: i16 = 0;
 
-    set_motor_speeds_full(lift, yaw, pitch, roll, yaw_compensate, pitch_compensate, roll_compensate);
+    set_motor_speeds_full(
+        lift,
+        yaw,
+        pitch,
+        roll,
+        yaw_compensate,
+        pitch_compensate,
+        roll_compensate,
+    );
 }
 
 #[allow(unused_variables)]
@@ -517,10 +551,12 @@ fn raw_mode(lift: u8, yaw: u8, pitch: u8, roll: u8) {
     // TODO
 }
 
+#[allow(unused_variables)]
 fn height_mode() {
     // TODO
 }
 
+#[allow(unused_variables)]
 fn wireless_mode() {
     // TODO
 }
