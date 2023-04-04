@@ -365,9 +365,15 @@ impl SensorData {
 
     pub fn update_ypr(&mut self, sensor_data_offset: &SensorOffset) {
         self.ypr = YawPitchRoll::from(self.get_quaternion());
-        self.ypr.yaw -= sensor_data_offset.yaw_offset;
-        self.ypr.pitch -= sensor_data_offset.pitch_offset;
-        self.ypr.roll -= sensor_data_offset.roll_offset;
+        self.ypr.yaw = self.ypr.yaw.saturating_sub(sensor_data_offset.yaw_offset);
+        self.ypr.pitch = self
+            .ypr
+            .pitch
+            .saturating_sub(sensor_data_offset.pitch_offset);
+        self.ypr.roll = self.ypr.roll.saturating_sub(sensor_data_offset.roll_offset);
+        // self.ypr.yaw -= sensor_data_offset.yaw_offset;
+        // self.ypr.pitch -= sensor_data_offset.pitch_offset;
+        // self.ypr.roll -= sensor_data_offset.roll_offset;
     }
 
     pub fn update_accel_gyro(&mut self) {
@@ -380,8 +386,7 @@ impl SensorData {
     }
 
     pub fn update_pres(&mut self, sensor_data_offset: &SensorOffset) {
-        self.pres = read_pressure();
-        self.pres -= sensor_data_offset.lift_offset;
+        self.pres = read_pressure().saturating_sub(sensor_data_offset.lift_offset);
     }
 
     pub fn get_dt(&self) -> Duration {
