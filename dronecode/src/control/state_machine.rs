@@ -41,6 +41,9 @@ pub enum State {
 
     /// Mode 8: Wireless communication with ground station.
     Wireless,
+
+    // Mode extra: Read logs from the Flash
+    ReadLogs,
 }
 
 // Define the state machine.
@@ -170,6 +173,7 @@ impl StateMachine {
                 State::Panic => self.transition_panic(),
                 State::Manual => self.transition_manual(),
                 State::Calibrate => self.transition_calibrate(),
+                State::ReadLogs => self.transition_read_logs(),
                 State::Yaw | State::Full | State::Raw | State::Height | State::Wireless => {
                     self.transition_operation(next_state)
                 } // | State::Manual => self.transition_operation(next_state, joystick),
@@ -262,6 +266,24 @@ impl StateMachine {
             self.permissions.height_control = false;
             self.permissions.wireless = false;
             self.permissions.sensors = true;
+            (true, 0b0011_1100)
+        } else {
+            (false, 0b0000_1111)
+        }
+    }
+
+    fn transition_read_logs(&mut self) -> (bool, u8) {
+        // Can only go into read logs mode from safe mode.
+        // Return back to safe mode after reading logs.
+        if self.state == State::Safety {
+            self.state = State::ReadLogs;
+            self.permissions.controller = false;
+            self.permissions.calibration = false;
+            self.permissions.yaw_control = false;
+            self.permissions.pitch_roll_control = false;
+            self.permissions.height_control = false;
+            self.permissions.wireless = false;
+            self.permissions.sensors = false;
             (true, 0b0011_1100)
         } else {
             (false, 0b0000_1111)
@@ -375,6 +397,9 @@ pub fn execute_state_function(current_state: &State, command: &HostProtocol) {
         State::Calibrate => {
             calibrate_mode();
         }
+        State::ReadLogs => {
+            read_logs_mode();
+        }
         State::Yaw => {
             yaw_mode(
                 command.get_lift(),
@@ -425,6 +450,10 @@ fn manual_mode(lift: u8, yaw: u8, pitch: u8, roll: u8) {
 
 fn calibrate_mode() {
     // TODO
+}
+
+fn read_logs_mode() {
+    // log_sending = true;
 }
 
 #[allow(unused_variables)]

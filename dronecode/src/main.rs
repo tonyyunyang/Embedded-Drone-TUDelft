@@ -17,6 +17,7 @@ use tudelft_quadrupel::uart::send_bytes;
 use tudelft_quadrupel::{entry, uart};
 
 mod control;
+mod storage;
 mod yaw_pitch_roll;
 
 /// The heap size of your drone code in bytes.

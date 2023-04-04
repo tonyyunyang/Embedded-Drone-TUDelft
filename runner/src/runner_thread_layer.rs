@@ -11,6 +11,8 @@ use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 
+use crate::file_writer::FileWriter;
+
 pub struct JoystickControl {
     lift: u8,
     yaw: u8,
@@ -67,6 +69,7 @@ pub enum KeyboardControl {
     RollPitchP1Down,
     RollPitchP2Up,
     RollPitchP2Down,
+    ReadLogs,
 }
 
 pub enum AckByteCorespondingState {
@@ -77,6 +80,7 @@ pub enum AckByteCorespondingState {
     StateTransitionAllowed,  // 0b0011_1100, 60
     RemainingOnTheSameMode,  // 0b0000_0001, 1
     FromPanic,               // 0b0000_0010, 2
+    FromReadLogs,            // 0b0000_0011, 3
     NotDefined,
 }
 
@@ -84,6 +88,14 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack:
     let mut buf = [0u8; 255];
     let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
     let mut message_buffer = Vec::new();
+    let mut file_writer = match FileWriter::new("log_file.csv") {
+        Ok(writer) => writer,
+        Err(e) => {
+            eprintln!("Error creating FileWriter: {}", e);
+            return;
+        }
+    };
+
     let mut start_receiving = false;
     // let mut command_ready = true;
     let mut repeat_flag = false;
@@ -96,6 +108,7 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack:
                     'inner: for i in buf.iter().take(num) {
                         let received_byte = *i;
                         if received_byte == 0x7b && !start_receiving {
+                            println!("Start receiving");
                             message_buffer.clear();
                             start_receiving = true;
                         }
@@ -129,7 +142,16 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack:
                                 if no_transition {
                                     let _tmp = ack.send(no_transition);
                                 }
-                                // clean everything, initialize everything and start receiving again
+
+                                if nice_received_message.get_mode() >= 10 {
+                                    match file_writer
+                                        .write_record(&mut nice_received_message.to_csv_record())
+                                    {
+                                        Ok(_) => (),
+                                        Err(e) => println!("Error writing record: {}", e),
+                                    }
+                                }
+
                                 message_buffer.clear();
                                 received_bytes_count = 0;
                                 start_receiving = false;
@@ -433,6 +455,10 @@ pub fn user_input(
                         p2 = temp;
                     }
                 }
+                KeyboardControl::ReadLogs => {
+                    // read logs
+                    mode = 0b0000_1010;
+                }
             },
             Err(_) => {
                 // println!("Nothing on the keyboard pressed")
@@ -605,6 +631,12 @@ pub fn keyboard_monitor(keyboard_input: Sender<KeyboardControl>) {
                 }
                 Key::Char('L') => {
                     roll_pitch_p2_down(keyboard_input.clone());
+                }
+                Key::Char('b') => {
+                    read_logs(keyboard_input.clone());
+                }
+                Key::Char('B') => {
+                    read_logs(keyboard_input.clone());
                 }
                 /*PLEASE READ THIS! ALWAYS REMEMBER THAT THE WAY TO EXIT IS: CTRL + Q */
                 Key::Ctrl('q') => break,
@@ -1084,6 +1116,14 @@ fn roll_pitch_p2_down(keyboard_input: Sender<KeyboardControl>) {
     }
 }
 
+fn read_logs(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::ReadLogs).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
 fn verify_message(message: &DeviceProtocol) -> bool {
     // we check the start bit and the end bit first
     if message.get_start_flag() != 0x7b || message.get_end_flag() != 0x7d {
@@ -1178,6 +1218,7 @@ fn print_ack(ack: &u8) {
         0b0011_1100 => information = AckByteCorespondingState::StateTransitionAllowed,
         0b0000_0001 => information = AckByteCorespondingState::RemainingOnTheSameMode,
         0b0000_0010 => information = AckByteCorespondingState::FromPanic,
+        0b0000_0011 => information = AckByteCorespondingState::FromReadLogs,
         _ => information = AckByteCorespondingState::NotDefined,
     }
     match information {
@@ -1195,5 +1236,6 @@ fn print_ack(ack: &u8) {
             println!("ACK: Remaining on the same mode\r")
         }
         AckByteCorespondingState::FromPanic => println!("ACK: Panicked\r"),
+        AckByteCorespondingState::FromReadLogs => println!("ACK: Read logs\r"),
     }
 }
