@@ -1,3 +1,5 @@
+use crate::alloc::string::ToString;
+use alloc::string::String;
 use crc16::{State, XMODEM};
 use crc_any::CRCu8;
 
@@ -295,25 +297,25 @@ impl DeviceProtocol {
 
     // Form the message to be sent to the drone in bytes, namely form an array of bytes
     pub fn form_message(&self, message: &mut vec::Vec<u8>) {
-        message.push(self.start_flag);
-        message.push(self.mode);
-        message.extend_from_slice(&self.duration.to_be_bytes());
-        message.extend_from_slice(&self.motor[0].to_be_bytes());
-        message.extend_from_slice(&self.motor[1].to_be_bytes());
-        message.extend_from_slice(&self.motor[2].to_be_bytes());
-        message.extend_from_slice(&self.motor[3].to_be_bytes());
-        message.extend_from_slice(&self.ypr[0].to_be_bytes());
-        message.extend_from_slice(&self.ypr[1].to_be_bytes());
-        message.extend_from_slice(&self.ypr[2].to_be_bytes());
-        message.extend_from_slice(&self.acc[0].to_be_bytes());
-        message.extend_from_slice(&self.acc[1].to_be_bytes());
-        message.extend_from_slice(&self.acc[2].to_be_bytes());
-        message.extend_from_slice(&self.bat.to_be_bytes());
-        message.extend_from_slice(&self.pres.to_be_bytes());
-        message.push(self.ack);
+        message.push(self.start_flag); // 1 byte
+        message.push(self.mode); // 1 byte
+        message.extend_from_slice(&self.duration.to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.motor[0].to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.motor[1].to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.motor[2].to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.motor[3].to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.ypr[0].to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.ypr[1].to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.ypr[2].to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.acc[0].to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.acc[1].to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.acc[2].to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.bat.to_be_bytes()); // 2 bytes
+        message.extend_from_slice(&self.pres.to_be_bytes()); // 4 bytes
+        message.push(self.ack); // 1 byte
         let crc = self.calculate_crc16();
-        message.extend_from_slice(&crc.to_be_bytes());
-        message.push(self.end_flag);
+        message.extend_from_slice(&crc.to_be_bytes()); // 2 bytes
+        message.push(self.end_flag); // 1 byte
     }
 
     pub fn format_message(message: &mut [u8]) -> DeviceProtocol {
@@ -475,5 +477,83 @@ impl DeviceProtocol {
 
     pub fn get_end_flag(&self) -> u8 {
         self.end_flag
+    }
+
+    pub fn to_csv_record(&self) -> CsvRecordIter {
+        CsvRecordIter {
+            device_protocol: self,
+            index: 0,
+        }
+    }
+}
+
+pub struct CsvRecordIter<'a> {
+    device_protocol: &'a DeviceProtocol,
+    index: usize,
+}
+
+impl<'a> Iterator for CsvRecordIter<'a> {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let dp = &self.device_protocol;
+
+        match self.index {
+            0 => {
+                // start_flag
+                self.index += 1;
+                Some(dp.start_flag.to_string())
+            }
+            1 => {
+                // mode
+                self.index += 1;
+                Some(dp.mode.to_string())
+            }
+            2 => {
+                // duration
+                self.index += 1;
+                Some(dp.duration.to_string())
+            }
+            3..=6 => {
+                // motor 1-4
+                let value = dp.motor[self.index - 3].to_string();
+                self.index += 1;
+                Some(value)
+            }
+            7..=9 => {
+                // ypr 1-3
+                let value = dp.ypr[self.index - 7].to_string();
+                self.index += 1;
+                Some(value)
+            }
+            10..=12 => {
+                // acc 1-3
+                let value = dp.acc[self.index - 10].to_string();
+                self.index += 1;
+                Some(value)
+            }
+            13 => {
+                // bat
+                self.index += 1;
+                Some(dp.bat.to_string())
+            }
+            14 => {
+                self.index += 1;
+                Some(dp.pres.to_string())
+            }
+            15 => {
+                self.index += 1;
+                Some(dp.ack.to_string())
+            }
+            16 => {
+                self.index += 1;
+                Some(dp.crc.to_string())
+            }
+            17 => {
+                self.index += 1;
+                Some(dp.end_flag.to_string())
+            }
+            _ => None,
+        }
     }
 }

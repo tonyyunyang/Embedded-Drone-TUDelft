@@ -1,3 +1,4 @@
+mod file_writer;
 mod runner_thread_layer;
 use gilrs::Gilrs;
 use protocol::format::HostProtocol;

@@ -1,7 +1,9 @@
 use core::time::Duration;
 
 use crate::control::state_machine::{execute_state_function, JoystickControl, StateMachine};
+use crate::storage::Storage;
 use crate::yaw_pitch_roll::YawPitchRoll;
+use alloc::vec;
 use alloc::vec::Vec;
 // use heapless::Vec as HVec;
 use protocol::format::{DeviceProtocol, HostProtocol};
@@ -10,7 +12,8 @@ use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::block;
 use tudelft_quadrupel::fixed::types::I16F16;
 use tudelft_quadrupel::fixed::{types, FixedI32};
-use tudelft_quadrupel::led::Led::Blue;
+use tudelft_quadrupel::flash::FlashError;
+use tudelft_quadrupel::led::Led::{Blue, Green};
 use tudelft_quadrupel::led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::structs::{Accel, Gyro, Quaternion};
@@ -19,6 +22,7 @@ use tudelft_quadrupel::time::{set_tick_frequency, wait_for_next_tick, Instant};
 use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
 use self::state_machine::State;
+
 mod motor_control;
 mod state_machine;
 
@@ -27,6 +31,11 @@ pub fn control_loop() -> ! {
     // Initialize the variables for the control loop
     set_tick_frequency(100);
     let mut safety_counter = SafetyCounter::new();
+    let mut log_data = LogData::new();
+    Green.on();
+    if log_data.storage.erase_flash().is_ok() {
+        Green.off();
+    }
     let mut sensor_data = SensorData::new();
     let mut state_machine = StateMachine::new();
     let mut joystick_control = JoystickControl::new();
@@ -98,21 +107,49 @@ pub fn control_loop() -> ! {
         }
 
         if i % 20 == 0 {
-            // Create an instance of the Drone Protocol struct
-            let message_to_host = DeviceProtocol::new(
-                mode,
-                sensor_data.get_dt().as_millis() as u16,
-                sensor_data.get_motors(),
-                sensor_data.get_ypr_data(),
-                sensor_data.get_accel_data(),
-                sensor_data.get_bat(),
-                sensor_data.get_pres(),
-                ack,
-            );
-            // Form the message waiting to be sent to the host
-            let mut message: Vec<u8> = Vec::new();
-            message_to_host.form_message(&mut message);
-            send_bytes(&message);
+            // 5 Hz
+            if mode < 10 {
+                // Create an instance of the Drone Protocol struct
+                let message_to_host = DeviceProtocol::new(
+                    mode,
+                    sensor_data.get_dt().as_millis() as u16,
+                    sensor_data.get_motors(),
+                    sensor_data.get_ypr_data(),
+                    sensor_data.get_accel_data(),
+                    sensor_data.get_bat(),
+                    sensor_data.get_pres(),
+                    ack,
+                );
+
+                let message_to_log = DeviceProtocol::new(
+                    10 + mode,
+                    sensor_data.get_dt().as_millis() as u16,
+                    sensor_data.get_motors(),
+                    sensor_data.get_ypr_data(),
+                    sensor_data.get_accel_data(),
+                    sensor_data.get_bat(),
+                    sensor_data.get_pres(),
+                    ack,
+                );
+
+                let mut message: Vec<u8> = Vec::new();
+                message_to_host.form_message(&mut message);
+
+                let mut log_message: Vec<u8> = Vec::new();
+                message_to_log.form_message(&mut log_message);
+                Green.on();
+                if log_data.storage.write(&log_message).is_ok() {
+                    Green.off();
+                }
+                send_bytes(&message);
+            } else {
+                Green.on();
+                let data = log_data.load_data();
+                if let Ok(data) = data {
+                    send_bytes(&data);
+                    Green.off();
+                }
+            }
         }
 
         // safety checks
@@ -175,6 +212,7 @@ fn map_to_state(mode_received: u8) -> State {
         0b0000_0110 => State::Raw,
         0b0000_0111 => State::Height,
         0b0000_1000 => State::Wireless,
+        0b0000_1010 => State::ReadLogs,
         _ => State::Panic,
     }
 }
@@ -191,6 +229,7 @@ fn map_to_mode(current_state: &State) -> u8 {
         State::Raw => 0b0000_0110,
         State::Height => 0b0000_0111,
         State::Wireless => 0b0000_1000,
+        State::ReadLogs => 0b0000_1010,
     }
 }
 
@@ -361,5 +400,32 @@ impl SensorData {
         self.update_accel_gyro();
         self.update_bat();
         self.update_pres();
+    }
+}
+
+pub struct LogData {
+    storage: Storage,
+}
+
+impl LogData {
+    pub fn new() -> Self {
+        LogData {
+            storage: Storage::new(0x000000, 0x01FFFF),
+        }
+    }
+
+    pub fn save_data(&mut self, message: &[u8]) -> Result<(), FlashError> {
+        self.storage.write(message)
+    }
+
+    pub fn load_data(&mut self) -> Result<Vec<u8>, FlashError> {
+        let mut message: Vec<u8> = vec![0; 40]; // Pre-allocate the buffer with an arbitrary size
+        match self.storage.read(&mut message) {
+            Ok(_bytes_read) => {
+                // message.truncate(bytes_read);
+                Ok(message)
+            }
+            Err(e) => Err(e),
+        }
     }
 }
