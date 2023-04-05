@@ -45,17 +45,17 @@ impl Storage {
         Ok(length)
     }
 
-    pub fn start_address(&self) -> u32 {
-        self.start_address
-    }
+    // pub fn start_address(&self) -> u32 {
+    //     self.start_address
+    // }
 
-    pub fn end_address(&self) -> u32 {
-        self.end_address
-    }
+    // pub fn end_address(&self) -> u32 {
+    //     self.end_address
+    // }
 
-    pub fn current_address(&self) -> u32 {
-        self.current_address
-    }
+    // pub fn current_address(&self) -> u32 {
+    //     self.current_address
+    // }
 
     fn update_current_address(&mut self, length: usize) -> Result<(), FlashError> {
         let new_address = self.current_address + length as u32;
