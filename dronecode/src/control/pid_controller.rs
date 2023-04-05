@@ -1,6 +1,6 @@
 use core::u8;
-
-use tudelft_quadrupel::fixed::types::I16F16;
+use micromath::F32;
+use tudelft_quadrupel::{fixed::types::I16F16, nrf51_hal::temp};
 
 use super::SensorData;
 
@@ -8,6 +8,7 @@ pub struct GeneralController {
     pub yaw_control: YawController,
     pub pitch_control: PitchController,
     pub roll_control: RollController,
+    pub height_control: HeightController,
 }
 
 impl GeneralController {
@@ -15,11 +16,13 @@ impl GeneralController {
         yaw_control: YawController,
         pitch_control: PitchController,
         roll_control: RollController,
+        height_control: HeightController,
     ) -> GeneralController {
         GeneralController {
             yaw_control,
             pitch_control,
             roll_control,
+            height_control,
         }
     }
 }
@@ -425,6 +428,108 @@ impl RollController {
         self.update_prev_psi();
     }
 }
+
+pub struct HeightController {
+    pub pid: PIDController,
+    pub pressure: I16F16,
+    pub target_altitude: I16F16,
+    pub proportional: I16F16,
+    pub integral: I16F16,
+    pub derivative: I16F16,
+    pub dt: I16F16,
+    pub prev_error: I16F16,
+    pub error: I16F16,
+    pub new_throttle: I16F16,
+}
+
+impl HeightController {
+    pub fn new(pid: PIDController) -> HeightController {
+        HeightController {
+            pid,
+            pressure: I16F16::from_num(0),
+            target_altitude: I16F16::from_num(0),
+            proportional: I16F16::from_num(0),
+            integral: I16F16::from_num(0),
+            derivative: I16F16::from_num(0),
+            dt: I16F16::from_num(0),
+            prev_error: I16F16::from_num(0),
+            error: I16F16::from_num(0),
+            new_throttle: I16F16::from_num(0),
+        }
+    }
+
+    pub fn reset_values(&mut self) {
+        self.pressure = I16F16::from_num(0);
+        self.target_altitude = I16F16::from_num(0);
+        self.proportional = I16F16::from_num(0);
+        self.integral = I16F16::from_num(0);
+        self.derivative = I16F16::from_num(0);
+        self.dt = I16F16::from_num(0);
+        self.prev_error = I16F16::from_num(0);
+        self.error = I16F16::from_num(0);
+        self.new_throttle = I16F16::from_num(0);
+    }
+
+    pub fn update_target_altitude(&mut self, target_pressure: I16F16) {
+        let pressure: u32 = I16F16::to_num(target_pressure);
+        let mut pressure_temp = F32::from_bits(pressure);
+        pressure_temp = micromath::F32::powf(pressure_temp, micromath::F32(0.1903));
+        let altitude = (1.0 - pressure_temp) * 44330.0;
+        let altitude_temp = F32::to_bits(altitude) as i32;
+        let altitude_fixed = I16F16::from_bits(altitude_temp);
+        self.target_altitude = altitude_fixed;
+    }
+
+    pub fn update_pressure(&mut self, sensor_data: &SensorData) {
+        self.pressure = I16F16::from_num(sensor_data.get_pres());
+    }
+
+    pub fn update_dt(&mut self, sensor_data: &SensorData) {
+        self.dt = I16F16::from_num(sensor_data.dt.as_secs_f32());
+    }
+
+    pub fn error(&mut self) {
+        let pressure: u32 = I16F16::to_num(self.pressure);
+        let mut pressure_temp = F32::from_bits(pressure);
+        pressure_temp = micromath::F32::powf(pressure_temp, micromath::F32(0.1903));
+        let altitude = (1.0 - pressure_temp) * 44330.0;
+        let altitude_temp = F32::to_bits(altitude) as i32;
+        let altitude_fixed = I16F16::from_bits(altitude_temp);
+        self.error = self.target_altitude - altitude_fixed;
+    }
+
+    pub fn update_prev_error(&mut self) {
+        self.prev_error = self.error;
+    }
+
+    pub fn update_proportional(&mut self) {
+        self.proportional = self.pid.get_kp() * self.error;
+    }
+
+    pub fn update_integral(&mut self) {
+        self.integral += self.pid.get_ki() * self.error * self.dt;
+    }
+
+    pub fn update_derivative(&mut self) {
+        self.derivative = self.pid.get_kd() * (self.error - self.prev_error) / self.dt;
+    }
+
+    pub fn update_new_throttle(&mut self) {
+        self.new_throttle = self.proportional + self.integral + self.derivative;
+    }
+
+    pub fn go_through_process(&mut self, command: I16F16, sensor_data: &SensorData) {
+        self.update_pressure(sensor_data);
+        self.update_dt(sensor_data);
+        self.error();
+        self.update_proportional();
+        self.update_prev_error();
+        self.update_integral();
+        self.update_derivative();
+        self.update_new_throttle();
+    }
+}
+
 
 pub fn map_p_to_fixed(p: u8) -> I16F16 {
     let max_new: I16F16 = I16F16::from_num(10);
