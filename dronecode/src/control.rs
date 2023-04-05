@@ -308,8 +308,8 @@ pub struct SensorData {
     accel: Accel,
     gyro: Gyro,
     bat: u16,
-    pres: u32,
-    non_offset_pres: u32,
+    pres: i32,
+    non_offset_pres: i32,
     last: Instant,
     now: Instant,
     dt: Duration,
@@ -334,7 +334,7 @@ impl SensorData {
         let accel = Accel { x: 0, y: 0, z: 0 };
         let gyro = Gyro { x: 0, y: 0, z: 0 };
         let bat: u16 = 0;
-        let pres: u32 = 0;
+        let pres: i32 = 0;
         let motors: [u16; 4] = [0; 4];
         let last = Instant::now();
         let now = Instant::now();
@@ -389,11 +389,11 @@ impl SensorData {
 
     pub fn update_bat(&mut self) {
         self.bat = read_battery();
-        self.bat = 500;
+        // self.bat = 500;
     }
 
     pub fn update_pres(&mut self, sensor_data_offset: &SensorOffset) {
-        self.non_offset_pres = read_pressure();
+        self.non_offset_pres = read_pressure() as i32;
         self.pres = self
             .non_offset_pres
             .saturating_sub(sensor_data_offset.lift_offset);
@@ -443,7 +443,7 @@ impl SensorData {
         self.bat
     }
 
-    pub fn get_pres(&self) -> u32 {
+    pub fn get_pres(&self) -> i32 {
         self.pres
     }
 
@@ -467,7 +467,7 @@ pub struct SensorOffset {
     yaw_offset: I16F16,
     pitch_offset: I16F16,
     roll_offset: I16F16,
-    lift_offset: u32,
+    lift_offset: i32,
     sample_count: u32,
 }
 
@@ -514,7 +514,7 @@ impl SensorOffset {
         self.roll_offset += roll_offset;
     }
 
-    pub fn update_lift_offset(&mut self, lift_offset: u32) {
+    pub fn update_lift_offset(&mut self, lift_offset: i32) {
         self.lift_offset += lift_offset;
     }
 
@@ -522,6 +522,6 @@ impl SensorOffset {
         self.yaw_offset /= I16F16::from_num(self.sample_count);
         self.pitch_offset /= I16F16::from_num(self.sample_count);
         self.roll_offset /= I16F16::from_num(self.sample_count);
-        self.lift_offset /= self.sample_count;
+        self.lift_offset /= self.sample_count as i32;
     }
 }

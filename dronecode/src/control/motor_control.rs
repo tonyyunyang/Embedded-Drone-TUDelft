@@ -40,7 +40,8 @@ pub fn determine_yaw_compensate(old: I16F16, new: I16F16) -> i16 {
 pub fn determine_pitch_compensate(old: I16F16, new: I16F16) -> i16 {
     let difference: I16F16 = new - old;
     let percentage: I16F16 = difference / I16F16::from_num(0.27925268);
-    let result: i16 = I16F16::to_num(percentage * 1);
+    // the magic factor below might need to be adjusted
+    let result: i16 = I16F16::to_num(percentage * I16F16::from_num(0.5));
     let mut result_max = get_motors();
     result_max.sort();
     let max = (result_max[3] as i16) / 10;
@@ -56,7 +57,8 @@ pub fn determine_pitch_compensate(old: I16F16, new: I16F16) -> i16 {
 pub fn determine_roll_compensate(old: I16F16, new: I16F16) -> i16 {
     let difference: I16F16 = new - old;
     let percentage: I16F16 = difference / I16F16::from_num(0.27925268);
-    let result: i16 = I16F16::to_num(percentage * 1);
+    // the magic factor below might need to be adjusted
+    let result: i16 = I16F16::to_num(percentage * I16F16::from_num(0.5));
     let mut result_max = get_motors();
     result_max.sort();
     let max = (result_max[3] as i16) / 10;

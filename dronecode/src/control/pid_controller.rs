@@ -437,8 +437,8 @@ pub fn map_p_to_fixed(p: u8) -> I16F16 {
 }
 
 pub fn map_p1_to_fixed(p: u8) -> I16F16 {
-    let max_new: I16F16 = I16F16::from_num(2);
-    let min_new: I16F16 = I16F16::from_num(1);
+    let max_new: I16F16 = I16F16::from_num(10);
+    let min_new: I16F16 = I16F16::from_num(5);
     let max_old: I16F16 = I16F16::from_num(90);
     let min_old: I16F16 = I16F16::from_num(10);
     let p_old: I16F16 = I16F16::from_num(p);
@@ -447,7 +447,7 @@ pub fn map_p1_to_fixed(p: u8) -> I16F16 {
 }
 
 pub fn map_p2_to_fixed(p: u8) -> I16F16 {
-    let max_new: I16F16 = I16F16::from_num(20);
+    let max_new: I16F16 = I16F16::from_num(60);
     let min_new: I16F16 = I16F16::from_num(1);
     let max_old: I16F16 = I16F16::from_num(90);
     let min_old: I16F16 = I16F16::from_num(10);

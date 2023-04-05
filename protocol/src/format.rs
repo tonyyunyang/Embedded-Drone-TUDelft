@@ -33,7 +33,7 @@ pub struct DeviceProtocol {
     ypr: [I16F16; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
     acc: [i16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
     bat: u16,      // This is the data of the battery of the drone, 2 bytes
-    pres: u32,     // This is the data of the pressure of the drone, 4 bytes
+    pres: i32,     // This is the data of the pressure of the drone, 4 bytes
     ack: u8,       // This is the data of the acknowledgement byte, 1 byte
 
     // Footer
@@ -275,7 +275,7 @@ impl DeviceProtocol {
         ypr: [I16F16; 3],
         acc: [i16; 3],
         bat: u16,
-        pres: u32,
+        pres: i32,
         ack: u8,
     ) -> Self {
         Self {
@@ -339,7 +339,7 @@ impl DeviceProtocol {
             i16::from_be_bytes([message[28], message[29]]),
         ]);
         format_message.set_bat(u16::from_be_bytes([message[30], message[31]]));
-        format_message.set_pres(u32::from_be_bytes([
+        format_message.set_pres(i32::from_be_bytes([
             message[32],
             message[33],
             message[34],
@@ -413,7 +413,7 @@ impl DeviceProtocol {
         self.bat = bat;
     }
 
-    pub fn set_pres(&mut self, pres: u32) {
+    pub fn set_pres(&mut self, pres: i32) {
         self.pres = pres;
     }
 
@@ -461,7 +461,7 @@ impl DeviceProtocol {
         self.bat
     }
 
-    pub fn get_pres(&self) -> u32 {
+    pub fn get_pres(&self) -> i32 {
         self.pres
     }
 
