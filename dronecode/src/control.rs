@@ -120,6 +120,7 @@ pub fn control_loop() -> ! {
                 &mut joystick_control,
                 &mut general_controllers,
                 &mut sensor_data_calibration_offset,
+                &mut sensor_data,
             );
 
             let current_state = state_machine.state();
@@ -132,7 +133,6 @@ pub fn control_loop() -> ! {
                     &joystick_control,
                     &mut general_controllers,
                     &sensor_data,
-                    &mut sensor_data_calibration_offset,
                 );
             }
         }
@@ -165,6 +165,7 @@ pub fn control_loop() -> ! {
                 &mut joystick_control,
                 &mut general_controllers,
                 &mut sensor_data_calibration_offset,
+                &mut sensor_data,
             );
             // Reset the timeout counter, since it's going to go back to safe mode.
             safety_counter.reset_command_timeout();
@@ -179,6 +180,7 @@ pub fn control_loop() -> ! {
                 &mut joystick_control,
                 &mut general_controllers,
                 &mut sensor_data_calibration_offset,
+                &mut sensor_data,
             );
             // then end the function
             panic!();
@@ -302,10 +304,12 @@ pub struct SensorData {
     motors: [u16; 4],
     quaternion: Quaternion,
     ypr: YawPitchRoll,
+    non_offset_ypr: YawPitchRoll,
     accel: Accel,
     gyro: Gyro,
     bat: u16,
     pres: u32,
+    non_offset_pres: u32,
     last: Instant,
     now: Instant,
     dt: Duration,
@@ -339,10 +343,12 @@ impl SensorData {
             motors,
             quaternion,
             ypr,
+            non_offset_ypr: ypr,
             accel,
             gyro,
             bat,
             pres,
+            non_offset_pres: pres,
             last,
             now,
             dt,
@@ -365,6 +371,7 @@ impl SensorData {
 
     pub fn update_ypr(&mut self, sensor_data_offset: &SensorOffset) {
         self.ypr = YawPitchRoll::from(self.get_quaternion());
+        self.non_offset_ypr = self.ypr;
         self.ypr.yaw = self.ypr.yaw.saturating_sub(sensor_data_offset.yaw_offset);
         self.ypr.pitch = self
             .ypr
@@ -386,7 +393,10 @@ impl SensorData {
     }
 
     pub fn update_pres(&mut self, sensor_data_offset: &SensorOffset) {
-        self.pres = read_pressure().saturating_sub(sensor_data_offset.lift_offset);
+        self.non_offset_pres = read_pressure();
+        self.pres = self
+            .non_offset_pres
+            .saturating_sub(sensor_data_offset.lift_offset);
     }
 
     pub fn get_dt(&self) -> Duration {
@@ -446,6 +456,11 @@ impl SensorData {
         self.update_bat();
         self.update_pres(sensor_data_offset);
     }
+
+    pub fn resume_non_offset(&mut self) {
+        self.ypr = self.non_offset_ypr;
+        self.pres = self.non_offset_pres;
+    }
 }
 
 pub struct SensorOffset {
@@ -453,6 +468,7 @@ pub struct SensorOffset {
     pitch_offset: I16F16,
     roll_offset: I16F16,
     lift_offset: u32,
+    sample_count: u32,
 }
 
 impl SensorOffset {
@@ -462,6 +478,7 @@ impl SensorOffset {
             pitch_offset: I16F16::from_num(0.0),
             roll_offset: I16F16::from_num(0.0),
             lift_offset: 0,
+            sample_count: 0,
         }
     }
 
@@ -470,21 +487,41 @@ impl SensorOffset {
         self.pitch_offset = I16F16::from_num(0.0);
         self.roll_offset = I16F16::from_num(0.0);
         self.lift_offset = 0;
+        self.sample_count = 0;
+    }
+
+    pub fn reset_sample_count(&mut self) {
+        self.sample_count = 0;
+    }
+
+    pub fn update_sample_count(&mut self) {
+        self.sample_count += 1;
+    }
+
+    pub fn get_sample_count(&self) -> u32 {
+        self.sample_count
     }
 
     pub fn update_yaw_offset(&mut self, yaw_offset: I16F16) {
-        self.yaw_offset = yaw_offset;
+        self.yaw_offset += yaw_offset;
     }
 
     pub fn update_pitch_offset(&mut self, pitch_offset: I16F16) {
-        self.pitch_offset = pitch_offset;
+        self.pitch_offset += pitch_offset;
     }
 
     pub fn update_roll_offset(&mut self, roll_offset: I16F16) {
-        self.roll_offset = roll_offset;
+        self.roll_offset += roll_offset;
     }
 
     pub fn update_lift_offset(&mut self, lift_offset: u32) {
-        self.lift_offset = lift_offset;
+        self.lift_offset += lift_offset;
+    }
+
+    pub fn calculate_offset(&mut self) {
+        self.yaw_offset /= I16F16::from_num(self.sample_count);
+        self.pitch_offset /= I16F16::from_num(self.sample_count);
+        self.roll_offset /= I16F16::from_num(self.sample_count);
+        self.lift_offset /= self.sample_count;
     }
 }

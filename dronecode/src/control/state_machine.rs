@@ -2,14 +2,11 @@
 // The state machine is a finite state machine (FSM) that is used to control the drone.
 
 use tudelft_quadrupel::{
-    barometer::read_pressure,
-    block,
     fixed::types::I16F16,
     led::Led::{Blue, Red},
-    mpu::read_dmp_bytes,
 };
 
-use crate::{control::state_machine::State::Safety, yaw_pitch_roll::YawPitchRoll};
+use crate::control::state_machine::State::Safety;
 use core::clone::Clone;
 
 use super::{motor_control::*, pid_controller::GeneralController, SensorData, SensorOffset};
@@ -198,14 +195,15 @@ impl StateMachine {
         joystick: &mut JoystickControl,
         general_controllers: &mut GeneralController,
         sensor_data_offset: &mut SensorOffset,
+        sensor_data: &mut SensorData,
     ) -> (bool, u8) {
         joystick.joystick_neutral_check(self);
         if self.state() != next_state {
             match next_state {
-                State::Safety => self.transition_safe(false),
-                State::Panic => self.transition_panic(general_controllers),
+                State::Safety => self.transition_safe(false, sensor_data_offset),
+                State::Panic => self.transition_panic(general_controllers, sensor_data_offset),
                 State::Manual => self.transition_manual(),
-                State::Calibrate => self.transition_calibrate(sensor_data_offset),
+                State::Calibrate => self.transition_calibrate(sensor_data_offset, sensor_data),
                 State::Yaw | State::Full | State::Raw | State::Height | State::Wireless => {
                     self.transition_operation(next_state)
                 } // | State::Manual => self.transition_operation(next_state, joystick),
@@ -226,8 +224,16 @@ impl StateMachine {
     }
 
     // Safe mode should do nothing so everything is false.
-    fn transition_safe(&mut self, through_panic: bool) -> (bool, u8) {
+    fn transition_safe(
+        &mut self,
+        through_panic: bool,
+        sensor_data_offset: &mut SensorOffset,
+    ) -> (bool, u8) {
         self.state = State::Safety;
+        if sensor_data_offset.get_sample_count() > 0 {
+            sensor_data_offset.calculate_offset();
+        }
+        sensor_data_offset.reset_sample_count();
         self.permissions.controller = false;
         self.permissions.calibration = false;
         self.permissions.yaw_control = false;
@@ -244,7 +250,11 @@ impl StateMachine {
     }
 
     // Panic mode should also do nothing from the controller, might need the sensors (for now false).
-    fn transition_panic(&mut self, general_controllers: &mut GeneralController) -> (bool, u8) {
+    fn transition_panic(
+        &mut self,
+        general_controllers: &mut GeneralController,
+        sensor_data_offset: &mut SensorOffset,
+    ) -> (bool, u8) {
         self.state = State::Panic;
         Blue.on();
         self.permissions.controller = false;
@@ -263,7 +273,7 @@ impl StateMachine {
         general_controllers.pitch_control.reset_values();
         general_controllers.roll_control.reset_values();
         // Automatically go back to safe mode.
-        self.transition_safe(true)
+        self.transition_safe(true, sensor_data_offset)
     }
 
     // Manual mode should accept all controller movements, but not use any sensor data.
@@ -290,7 +300,11 @@ impl StateMachine {
     }
 
     // Calibration mode should only accept sensor data, no controller movements.
-    fn transition_calibrate(&mut self, sensor_data_offset: &mut SensorOffset) -> (bool, u8) {
+    fn transition_calibrate(
+        &mut self,
+        sensor_data_offset: &mut SensorOffset,
+        sensor_data: &mut SensorData,
+    ) -> (bool, u8) {
         // Can only go into calibration mode from safe mode.
         if self.state == State::Safety {
             self.state = State::Calibrate;
@@ -301,13 +315,11 @@ impl StateMachine {
             self.permissions.height_control = false;
             self.permissions.wireless = false;
             self.permissions.sensors = true;
-            if calibrate_mode(sensor_data_offset) {
+            if calibrate_mode(sensor_data_offset, sensor_data) {
                 self.operation_ready = true;
             }
-            // Automatically go back to safe mode.
-            self.transition_safe(false)
             // The code below is the original code
-            // (true, 0b0011_1100)
+            (true, 0b0011_1100)
         } else {
             Red.on();
             (false, 0b0000_1111)
@@ -411,7 +423,6 @@ pub fn execute_state_function(
     command: &JoystickControl,
     general_controllers: &mut GeneralController,
     sensor_data: &SensorData,
-    sensor_data_offset: &mut SensorOffset,
 ) {
     match current_state {
         State::Safety => {
@@ -420,9 +431,9 @@ pub fn execute_state_function(
         State::Manual => {
             manual_mode(command);
         }
-        State::Calibrate => {
-            calibrate_mode(sensor_data_offset);
-        }
+        // State::Calibrate => {
+        //     calibrate_mode(sensor_data_offset);
+        // }
         State::Yaw => {
             yaw_mode(command, general_controllers, sensor_data);
         }
@@ -462,24 +473,16 @@ fn manual_mode(command: &JoystickControl) {
     set_motor_speeds_manual(lift, yaw, pitch, roll);
 }
 
-fn calibrate_mode(sensor_data_offset: &mut SensorOffset) -> bool {
-    sensor_data_offset.reset_offset();
-    let mut yaw_offset: I16F16 = I16F16::from_num(0);
-    let mut pitch_offset: I16F16 = I16F16::from_num(0);
-    let mut roll_offset: I16F16 = I16F16::from_num(0);
-    let mut lift_offset: u32 = 0;
-    for _ in 0..10 {
-        let quaternion = block!(read_dmp_bytes()).unwrap();
-        let ypr = YawPitchRoll::from(quaternion);
-        yaw_offset += ypr.yaw;
-        pitch_offset += ypr.pitch;
-        roll_offset += ypr.roll;
-        lift_offset += read_pressure();
+fn calibrate_mode(sensor_data_offset: &mut SensorOffset, sensor_data: &mut SensorData) -> bool {
+    if sensor_data_offset.get_sample_count() == 0 {
+        sensor_data.resume_non_offset();
+        sensor_data_offset.reset_offset();
     }
-    sensor_data_offset.update_yaw_offset(yaw_offset / 10);
-    sensor_data_offset.update_pitch_offset(pitch_offset / 10);
-    sensor_data_offset.update_roll_offset(roll_offset / 10);
-    sensor_data_offset.update_lift_offset(lift_offset / 10);
+    sensor_data_offset.update_sample_count();
+    sensor_data_offset.update_yaw_offset(sensor_data.get_ypr().yaw);
+    sensor_data_offset.update_pitch_offset(sensor_data.get_ypr().pitch);
+    sensor_data_offset.update_roll_offset(sensor_data.get_ypr().roll);
+    sensor_data_offset.update_lift_offset(sensor_data.get_pres());
     true
 }
 
