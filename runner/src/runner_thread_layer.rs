@@ -91,7 +91,7 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack:
     let mut file_writer = match FileWriter::new("log_file.csv") {
         Ok(writer) => writer,
         Err(e) => {
-            eprintln!("Error creating FileWriter: {}", e);
+            println!("Error creating FileWriter: {}", e);
             return;
         }
     };
