@@ -138,7 +138,7 @@ pub fn control_loop() -> ! {
                 let mut log_message: Vec<u8> = Vec::new();
                 message_to_log.form_message(&mut log_message);
                 Green.on();
-                if log_data.storage.write(&log_message).is_ok() {
+                if log_data.save_data(&log_message).is_ok() {
                     Green.off();
                 }
                 send_bytes(&message);
