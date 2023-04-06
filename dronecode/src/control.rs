@@ -64,18 +64,22 @@ pub fn control_loop() -> ! {
         I16F16::from_num(1),
     );
     let height_pid = PIDController::new(
-        I16F16::from_num(1),
+        I16F16::from_num(1.5),
         I16F16::from_num(0),
         I16F16::from_num(0),
-        I16F16::from_num(1),
-        I16F16::from_num(1),
+        I16F16::from_num(0),
+        I16F16::from_num(5),
     );
     let yaw_control = pid_controller::YawController::new(yaw_pid);
     let pitch_control = pid_controller::PitchController::new(pitch_pid);
     let roll_control = pid_controller::RollController::new(roll_pid);
     let height_control = pid_controller::HeightController::new(height_pid);
-    let mut general_controllers =
-        pid_controller::GeneralController::new(yaw_control, pitch_control, roll_control, height_control);
+    let mut general_controllers = pid_controller::GeneralController::new(
+        yaw_control,
+        pitch_control,
+        roll_control,
+        height_control,
+    );
 
     for i in 0.. {
         // update the sensor data

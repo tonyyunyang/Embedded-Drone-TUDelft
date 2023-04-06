@@ -1,6 +1,6 @@
 use core::u8;
-use micromath::F32;
-use tudelft_quadrupel::{fixed::types::I16F16, nrf51_hal::temp};
+// use micromath::F32;
+use tudelft_quadrupel::fixed::types::I16F16;
 
 use super::SensorData;
 
@@ -471,13 +471,16 @@ impl HeightController {
     }
 
     pub fn update_target_altitude(&mut self, target_pressure: I16F16) {
-        let pressure: u32 = I16F16::to_num(target_pressure);
-        let mut pressure_temp = F32::from_bits(pressure);
-        pressure_temp = micromath::F32::powf(pressure_temp, micromath::F32(0.1903));
-        let altitude = (1.0 - pressure_temp) * 44330.0;
-        let altitude_temp = F32::to_bits(altitude) as i32;
-        let altitude_fixed = I16F16::from_bits(altitude_temp);
-        self.target_altitude = altitude_fixed;
+        // let pressure: u32 = I16F16::to_num(target_pressure);
+        // let mut pressure_temp = F32::from_bits(pressure);
+        // let sea_level = F32::from_bits(101325);
+        // pressure_temp = micromath::F32::powf(pressure_temp/sea_level, micromath::F32(0.1903));
+        // let altitude = (1.0 - pressure_temp) * 44330.8;
+        // let altitude_temp = F32::to_bits(altitude) as i32;
+        // let altitude_fixed = I16F16::from_bits(altitude_temp);
+        // self.target_altitude = altitude_fixed;
+
+        self.target_altitude = target_pressure;
     }
 
     pub fn update_pressure(&mut self, sensor_data: &SensorData) {
@@ -489,13 +492,16 @@ impl HeightController {
     }
 
     pub fn error(&mut self) {
-        let pressure: u32 = I16F16::to_num(self.pressure);
-        let mut pressure_temp = F32::from_bits(pressure);
-        pressure_temp = micromath::F32::powf(pressure_temp, micromath::F32(0.1903));
-        let altitude = (1.0 - pressure_temp) * 44330.0;
-        let altitude_temp = F32::to_bits(altitude) as i32;
-        let altitude_fixed = I16F16::from_bits(altitude_temp);
-        self.error = self.target_altitude - altitude_fixed;
+        // let pressure: u32 = I16F16::to_num(self.pressure);
+        // let mut pressure_temp = F32::from_bits(pressure);
+        // let sea_level = F32::from_bits(101325);
+        // pressure_temp = micromath::F32::powf(pressure_temp/sea_level, micromath::F32(0.1903));
+        // let altitude = (1.0 - pressure_temp) * 44330.8;
+        // let altitude_temp = F32::to_bits(altitude) as i32;
+        // let altitude_fixed = I16F16::from_bits(altitude_temp);
+        // self.error = self.target_altitude - altitude_fixed;
+
+        self.error = self.target_altitude - self.pressure;
     }
 
     pub fn update_prev_error(&mut self) {
@@ -520,6 +526,7 @@ impl HeightController {
 
     pub fn go_through_process(&mut self, command: I16F16, sensor_data: &SensorData) {
         self.update_pressure(sensor_data);
+        self.update_target_altitude(command);
         self.update_dt(sensor_data);
         self.error();
         self.update_proportional();
@@ -529,7 +536,6 @@ impl HeightController {
         self.update_new_throttle();
     }
 }
-
 
 pub fn map_p_to_fixed(p: u8) -> I16F16 {
     let max_new: I16F16 = I16F16::from_num(10);

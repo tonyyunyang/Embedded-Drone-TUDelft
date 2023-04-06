@@ -39,9 +39,9 @@ pub fn determine_yaw_compensate(old: I16F16, new: I16F16) -> i16 {
 
 pub fn determine_pitch_compensate(old: I16F16, new: I16F16) -> i16 {
     let difference: I16F16 = new - old;
-    let percentage: I16F16 = difference / I16F16::from_num(0.27925268);
+    let percentage: I16F16 = difference / I16F16::from_num(0.27925268 * 30.0);
     // the magic factor below might need to be adjusted
-    let result: i16 = I16F16::to_num(percentage * I16F16::from_num(0.3));
+    let result: i16 = I16F16::to_num(percentage * I16F16::from_num(10));
     let mut result_max = get_motors();
     result_max.sort();
     let max = (result_max[3] as i16) / 10;
@@ -56,9 +56,26 @@ pub fn determine_pitch_compensate(old: I16F16, new: I16F16) -> i16 {
 
 pub fn determine_roll_compensate(old: I16F16, new: I16F16) -> i16 {
     let difference: I16F16 = new - old;
-    let percentage: I16F16 = difference / I16F16::from_num(0.27925268);
+    let percentage: I16F16 = difference / I16F16::from_num(0.27925268 * 30.0);
     // the magic factor below might need to be adjusted
-    let result: i16 = I16F16::to_num(percentage * I16F16::from_num(0.3));
+    let result: i16 = I16F16::to_num(percentage * I16F16::from_num(10));
+    let mut result_max = get_motors();
+    result_max.sort();
+    let max = (result_max[3] as i16) / 10;
+    if result > max {
+        max
+    } else if result < -max {
+        -max
+    } else {
+        result
+    }
+}
+
+pub fn determine_lift_compensate(old: I16F16, new: I16F16) -> i16 {
+    let difference: I16F16 = new - old;
+    let percentage: I16F16 = difference / I16F16::from_num(1.0);
+    // the magic factor below might need to be adjusted
+    let result: i16 = I16F16::to_num(percentage * I16F16::from_num(1.5));
     let mut result_max = get_motors();
     result_max.sort();
     let max = (result_max[3] as i16) / 10;
@@ -136,7 +153,40 @@ pub fn set_motor_speeds_full(
         if ae4 < motor_minimum {
             ae4 = motor_minimum;
         }
-        set_motor_max(800);
+        set_motor_max(1000);
+        set_motors([ae1, ae2, ae3, ae4]);
+    }
+}
+
+pub fn set_motor_speeds_lift(lift: i16, yaw: i16, pitch: i16, roll: i16, lift_compensate: i16) {
+    if lift == 200 {
+        let ae1_safe: u16 = 0;
+        let ae2_safe: u16 = 0;
+        let ae3_safe: u16 = 0;
+        let ae4_safe: u16 = 0;
+        set_motors([ae1_safe, ae2_safe, ae3_safe, ae4_safe]);
+    } else {
+        let lift_temp = lift - lift_compensate;
+
+        let mut ae1: u16 = (lift_temp - pitch - yaw) as u16;
+        let mut ae2: u16 = (lift_temp - roll + yaw) as u16;
+        let mut ae3: u16 = (lift_temp + pitch - yaw) as u16;
+        let mut ae4: u16 = (lift_temp + roll + yaw) as u16;
+
+        let motor_minimum = 220;
+        if ae1 < motor_minimum {
+            ae1 = motor_minimum;
+        }
+        if ae2 < motor_minimum {
+            ae2 = motor_minimum;
+        }
+        if ae3 < motor_minimum {
+            ae3 = motor_minimum;
+        }
+        if ae4 < motor_minimum {
+            ae4 = motor_minimum;
+        }
+        set_motor_max(1000);
         set_motors([ae1, ae2, ae3, ae4]);
     }
 }
@@ -218,6 +268,46 @@ pub fn map_lift_command_control(command: u8) -> i16 {
     } else {
         // either 10? Or an invalid value, we set motor to 0 under both situations
         600
+    }
+}
+
+pub fn map_lift_command_height(command: u8) -> i16 {
+    // the mapping might be wrong, for now, I will assume the lift from the joystick starts at -1, and goes to 1
+    if command == 90 {
+        200
+    } else if command == 85 {
+        240
+    } else if command == 80 {
+        280
+    } else if command == 75 {
+        320
+    } else if command == 70 {
+        360
+    } else if command == 65 {
+        400
+    } else if command == 60 {
+        440
+    } else if command == 55 {
+        480
+    } else if command == 50 {
+        520
+    } else if command == 45 {
+        560
+    } else if command == 40 {
+        600
+    } else if command == 35 {
+        640
+    } else if command == 30 {
+        680
+    } else if command == 25 {
+        720
+    } else if command == 20 {
+        760
+    } else if command == 15 {
+        800
+    } else {
+        // either 10? Or an invalid value, we set motor to 0 under both situations
+        840
     }
 }
 
@@ -554,6 +644,46 @@ pub fn map_roll_command(command: u8) -> I16F16 {
     } else {
         // not a valid command, we set motor to 0
         I16F16::from_num(0.0) // 0 degrees in radians
+    }
+}
+
+pub fn map_lift_command(command: u8) -> I16F16 {
+    if command == 90 {
+        I16F16::from_num(-80)
+    } else if command == 85 {
+        I16F16::from_num(-70)
+    } else if command == 80 {
+        I16F16::from_num(-60)
+    } else if command == 75 {
+        I16F16::from_num(-50)
+    } else if command == 70 {
+        I16F16::from_num(-40)
+    } else if command == 65 {
+        I16F16::from_num(-30)
+    } else if command == 60 {
+        I16F16::from_num(-20)
+    } else if command == 55 {
+        I16F16::from_num(-10)
+    } else if command == 50 {
+        I16F16::from_num(0)
+    } else if command == 45 {
+        I16F16::from_num(10)
+    } else if command == 40 {
+        I16F16::from_num(20)
+    } else if command == 35 {
+        I16F16::from_num(30)
+    } else if command == 30 {
+        I16F16::from_num(40)
+    } else if command == 25 {
+        I16F16::from_num(50)
+    } else if command == 20 {
+        I16F16::from_num(60)
+    } else if command == 15 {
+        I16F16::from_num(70)
+    } else if command == 10 {
+        I16F16::from_num(80)
+    } else {
+        I16F16::from_num(90)
     }
 }
 

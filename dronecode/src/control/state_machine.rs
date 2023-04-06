@@ -272,6 +272,7 @@ impl StateMachine {
         general_controllers.yaw_control.reset_values();
         general_controllers.pitch_control.reset_values();
         general_controllers.roll_control.reset_values();
+        general_controllers.height_control.reset_values();
         // Automatically go back to safe mode.
         self.transition_safe(true, sensor_data_offset)
     }
@@ -560,17 +561,17 @@ fn height_mode(
     general_controllers: &mut GeneralController,
     sensor_data: &SensorData,
 ) {
-    // let lift: i16 = map_lift_command_height(command.get_lift()); // this should be the value that keeps the drone in the air stable
-    // let target_lift: I16F16 = map_lift_command(command.get_lift());
+    let lift: i16 = map_lift_command_height(command.get_lift()); // this should be the value that keeps the drone in the air stable
+    let target_lift: I16F16 = map_lift_command(command.get_lift());
     let yaw: i16 = map_yaw_command_manual(command.get_yaw());
     let pitch: i16 = map_pitch_command_manual(command.get_pitch());
     let roll: i16 = map_roll_command_manual(command.get_roll());
-    // general_controllers
-    //     .height_control
-    //     .go_through_process(target_lift, sensor_data);
-    // let lift_compensate: i16 =
-    //     determine_lift_compensate(target_lift, general_controllers.height_control.new_throttle);
-    // set_motor_speeds_yaw(lift, yaw, pitch, roll, lift_compensate);
+    general_controllers
+        .height_control
+        .go_through_process(target_lift, sensor_data);
+    let lift_compensate: i16 =
+        determine_lift_compensate(target_lift, general_controllers.height_control.new_throttle);
+    set_motor_speeds_lift(lift, yaw, pitch, roll, lift_compensate);
 }
 
 #[allow(unused_variables)]
