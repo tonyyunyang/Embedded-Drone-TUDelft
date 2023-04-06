@@ -64,7 +64,7 @@ pub fn control_loop() -> ! {
         I16F16::from_num(1),
     );
     let height_pid = PIDController::new(
-        I16F16::from_num(1.5),
+        I16F16::from_num(1),
         I16F16::from_num(0),
         I16F16::from_num(0),
         I16F16::from_num(0),
@@ -149,7 +149,7 @@ pub fn control_loop() -> ! {
             }
         }
 
-        if i % 100 == 0 {
+        if i % 30 == 0 {
             // Create an instance of the Drone Protocol struct
             let message_to_host = DeviceProtocol::new(
                 mode,

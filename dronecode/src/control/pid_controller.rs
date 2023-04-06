@@ -442,6 +442,7 @@ pub struct HeightController {
     pub new_throttle: I16F16,
 }
 
+#[allow(dead_code)]
 impl HeightController {
     pub fn new(pid: PIDController) -> HeightController {
         HeightController {
@@ -502,6 +503,9 @@ impl HeightController {
         // self.error = self.target_altitude - altitude_fixed;
 
         self.error = self.target_altitude - self.pressure;
+        if self.error.abs() < I16F16::from_num(15) {
+            self.error = I16F16::from_num(0);
+        }
     }
 
     pub fn update_prev_error(&mut self) {
@@ -531,7 +535,6 @@ impl HeightController {
         self.error();
         self.update_proportional();
         self.update_prev_error();
-        self.update_integral();
         self.update_derivative();
         self.update_new_throttle();
     }
