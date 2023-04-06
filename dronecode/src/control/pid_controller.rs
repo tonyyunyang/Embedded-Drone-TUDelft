@@ -485,7 +485,8 @@ impl HeightController {
     }
 
     pub fn update_pressure(&mut self, sensor_data: &SensorData) {
-        self.pressure = I16F16::from_num(sensor_data.get_pres());
+        // self.pressure = I16F16::from_num(sensor_data.get_pres());
+        self.pressure = sensor_data.height_filter.filter_height;
     }
 
     pub fn update_dt(&mut self, sensor_data: &SensorData) {
@@ -501,11 +502,10 @@ impl HeightController {
         // let altitude_temp = F32::to_bits(altitude) as i32;
         // let altitude_fixed = I16F16::from_bits(altitude_temp);
         // self.error = self.target_altitude - altitude_fixed;
-
         self.error = self.target_altitude - self.pressure;
-        if self.error.abs() < I16F16::from_num(15) {
-            self.error = I16F16::from_num(0);
-        }
+        // if self.error.abs() < I16F16::from_num(5) {
+        //     self.error = I16F16::from_num(0);
+        // }
     }
 
     pub fn update_prev_error(&mut self) {

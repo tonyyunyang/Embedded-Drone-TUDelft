@@ -73,12 +73,12 @@ pub fn determine_roll_compensate(old: I16F16, new: I16F16) -> i16 {
 
 pub fn determine_lift_compensate(old: I16F16, new: I16F16) -> i16 {
     let difference: I16F16 = new - old;
-    let percentage: I16F16 = difference / I16F16::from_num(2.0);
+    let percentage: I16F16 = difference / I16F16::from_num(5);
     // the magic factor below might need to be adjusted
-    let result: i16 = I16F16::to_num(percentage * I16F16::from_num(5.0));
+    let result: i16 = I16F16::to_num(percentage * I16F16::from_num(15.0));
     let mut result_max = get_motors();
     result_max.sort();
-    let max = (result_max[3] as i16) / 10;
+    let max = (result_max[3] as i16) / 5;
     if result > max {
         max
     } else if result < -max {
@@ -647,43 +647,44 @@ pub fn map_roll_command(command: u8) -> I16F16 {
     }
 }
 
+#[allow(clippy::if_same_then_else)]
 pub fn map_lift_command(command: u8) -> I16F16 {
     if command == 90 {
-        I16F16::from_num(-80)
+        I16F16::from_num(0)
     } else if command == 85 {
-        I16F16::from_num(-70)
+        I16F16::from_num(0)
     } else if command == 80 {
-        I16F16::from_num(-60)
+        I16F16::from_num(0)
     } else if command == 75 {
-        I16F16::from_num(-50)
+        I16F16::from_num(0)
     } else if command == 70 {
-        I16F16::from_num(-40)
+        I16F16::from_num(0)
     } else if command == 65 {
-        I16F16::from_num(-30)
+        I16F16::from_num(0)
     } else if command == 60 {
-        I16F16::from_num(-20)
+        I16F16::from_num(0)
     } else if command == 55 {
-        I16F16::from_num(-10)
+        I16F16::from_num(0)
     } else if command == 50 {
         I16F16::from_num(0)
     } else if command == 45 {
-        I16F16::from_num(10)
+        I16F16::from_num(5)
     } else if command == 40 {
-        I16F16::from_num(20)
+        I16F16::from_num(10)
     } else if command == 35 {
-        I16F16::from_num(30)
+        I16F16::from_num(15)
     } else if command == 30 {
-        I16F16::from_num(40)
+        I16F16::from_num(20)
     } else if command == 25 {
-        I16F16::from_num(50)
+        I16F16::from_num(25)
     } else if command == 20 {
-        I16F16::from_num(60)
+        I16F16::from_num(30)
     } else if command == 15 {
-        I16F16::from_num(70)
+        I16F16::from_num(35)
     } else if command == 10 {
-        I16F16::from_num(80)
+        I16F16::from_num(40)
     } else {
-        I16F16::from_num(90)
+        I16F16::from_num(45)
     }
 }
 

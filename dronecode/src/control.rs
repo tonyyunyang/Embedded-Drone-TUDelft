@@ -11,7 +11,7 @@ use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::block;
 use tudelft_quadrupel::fixed::types::I16F16;
 use tudelft_quadrupel::fixed::{types, FixedI32};
-use tudelft_quadrupel::led::Led::Blue;
+use tudelft_quadrupel::led::Led::{Blue, Red};
 use tudelft_quadrupel::led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::structs::{Accel, Gyro, Quaternion};
@@ -64,10 +64,10 @@ pub fn control_loop() -> ! {
         I16F16::from_num(1),
     );
     let height_pid = PIDController::new(
-        I16F16::from_num(1),
+        I16F16::from_num(1.1),
         I16F16::from_num(0),
         I16F16::from_num(0),
-        I16F16::from_num(0),
+        I16F16::from_num(3),
         I16F16::from_num(5),
     );
     let yaw_control = pid_controller::YawController::new(yaw_pid);
@@ -151,6 +151,12 @@ pub fn control_loop() -> ! {
 
         if i % 30 == 0 {
             // Create an instance of the Drone Protocol struct
+            let mut pressure: i32 = 0;
+            if sensor_data_calibration_offset.get_sample_count() != 0 {
+                pressure = I16F16::to_num(sensor_data.height_filter.filter_height);
+            } else {
+                pressure = sensor_data.get_pres();
+            }
             let message_to_host = DeviceProtocol::new(
                 mode,
                 sensor_data.get_dt().as_millis() as u16,
@@ -158,7 +164,7 @@ pub fn control_loop() -> ! {
                 sensor_data.get_ypr_data(),
                 sensor_data.get_accel_data(),
                 sensor_data.get_bat(),
-                sensor_data.get_pres(),
+                pressure,
                 ack,
             );
             // Form the message waiting to be sent to the host
@@ -197,7 +203,7 @@ pub fn control_loop() -> ! {
             // then end the function
             panic!();
         }
-
+        Red.off();
         Blue.off();
         Yellow.off();
         wait_for_next_tick();
@@ -312,6 +318,51 @@ impl SafetyCounter {
     }
 }
 
+const BUFFER_SIZE: usize = 100;
+pub struct HeightMovingAverageFilter {
+    pub buffer: [I16F16; BUFFER_SIZE], // buffer to store the last n samples
+    pub index: usize,                  // index to keep track of the oldest sample in the buffer
+    pub sum: I16F16,                   // sum of the last n samples
+    pub count: usize,                  // number of samples in the sum
+    pub filter_height: I16F16,         // filtered height
+}
+
+impl HeightMovingAverageFilter {
+    pub fn new() -> Self {
+        HeightMovingAverageFilter {
+            buffer: [I16F16::from_num(0.0); BUFFER_SIZE],
+            index: 0,
+            sum: I16F16::from_num(0.0),
+            count: 0,
+            filter_height: I16F16::from_num(0.0),
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.buffer = [I16F16::from_num(0.0); BUFFER_SIZE];
+        self.index = 0;
+        self.sum = I16F16::from_num(0.0);
+        self.count = 0;
+        self.filter_height = I16F16::from_num(0.0);
+    }
+
+    pub fn update(&mut self, value: I16F16) {
+        // subtract the oldest sample from the sum
+        self.sum -= self.buffer[self.index];
+        // add the new sample to the buffer and the sum
+        self.buffer[self.index] = value;
+        self.sum += value;
+        // increment the index and wrap around if necessary
+        self.index = (self.index + 1) % BUFFER_SIZE;
+        // increment the count if it hasn't reached BUFFER_SIZE yet
+        if self.count < BUFFER_SIZE {
+            self.count += 1;
+        }
+        // return the filtered output
+        self.filter_height = self.sum / I16F16::from_num(self.count);
+    }
+}
+
 pub struct SensorData {
     motors: [u16; 4],
     quaternion: Quaternion,
@@ -325,6 +376,7 @@ pub struct SensorData {
     last: Instant,
     now: Instant,
     dt: Duration,
+    height_filter: HeightMovingAverageFilter,
 }
 
 #[allow(dead_code)]
@@ -351,6 +403,7 @@ impl SensorData {
         let last = Instant::now();
         let now = Instant::now();
         let dt = Duration::from_secs(0);
+        let height_filter = HeightMovingAverageFilter::new();
         SensorData {
             motors,
             quaternion,
@@ -364,6 +417,7 @@ impl SensorData {
             last,
             now,
             dt,
+            height_filter,
         }
     }
 
@@ -409,6 +463,10 @@ impl SensorData {
         self.pres = self
             .non_offset_pres
             .saturating_sub(sensor_data_offset.lift_offset);
+    }
+
+    pub fn update_height_filter(&mut self) {
+        self.height_filter.update(I16F16::from_num(self.pres));
     }
 
     pub fn get_dt(&self) -> Duration {
@@ -467,6 +525,9 @@ impl SensorData {
         self.update_accel_gyro();
         self.update_bat();
         self.update_pres(sensor_data_offset);
+        if sensor_data_offset.get_sample_count() != 0 {
+            self.update_height_filter();
+        }
     }
 
     pub fn resume_non_offset(&mut self) {

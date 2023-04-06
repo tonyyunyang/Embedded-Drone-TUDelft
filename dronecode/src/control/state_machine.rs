@@ -201,7 +201,9 @@ impl StateMachine {
         if self.state() != next_state {
             match next_state {
                 State::Safety => self.transition_safe(false, sensor_data_offset),
-                State::Panic => self.transition_panic(general_controllers, sensor_data_offset),
+                State::Panic => {
+                    self.transition_panic(general_controllers, sensor_data_offset, sensor_data)
+                }
                 State::Manual => self.transition_manual(),
                 State::Calibrate => self.transition_calibrate(sensor_data_offset, sensor_data),
                 State::Yaw | State::Full | State::Raw | State::Height | State::Wireless => {
@@ -233,7 +235,6 @@ impl StateMachine {
         if sensor_data_offset.get_sample_count() > 0 {
             sensor_data_offset.calculate_offset();
         }
-        sensor_data_offset.reset_sample_count();
         self.permissions.controller = false;
         self.permissions.calibration = false;
         self.permissions.yaw_control = false;
@@ -254,6 +255,7 @@ impl StateMachine {
         &mut self,
         general_controllers: &mut GeneralController,
         sensor_data_offset: &mut SensorOffset,
+        sensor_data: &mut SensorData,
     ) -> (bool, u8) {
         self.state = State::Panic;
         Blue.on();
@@ -273,6 +275,10 @@ impl StateMachine {
         general_controllers.pitch_control.reset_values();
         general_controllers.roll_control.reset_values();
         general_controllers.height_control.reset_values();
+        sensor_data.height_filter.reset();
+        sensor_data_offset.reset_sample_count();
+        sensor_data_offset.reset_offset();
+        sensor_data.resume_non_offset();
         // Automatically go back to safe mode.
         self.transition_safe(true, sensor_data_offset)
     }
@@ -476,6 +482,7 @@ fn manual_mode(command: &JoystickControl) {
 
 fn calibrate_mode(sensor_data_offset: &mut SensorOffset, sensor_data: &mut SensorData) -> bool {
     if sensor_data_offset.get_sample_count() == 0 {
+        sensor_data.height_filter.reset();
         sensor_data.resume_non_offset();
         sensor_data_offset.reset_offset();
     }
