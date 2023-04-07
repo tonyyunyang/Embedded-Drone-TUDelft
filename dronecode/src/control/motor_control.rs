@@ -10,12 +10,14 @@ pub fn set_motor_speeds_manual(lift: i16, yaw: i16, pitch: i16, roll: i16) {
         let ae2_safe: u16 = 0;
         let ae3_safe: u16 = 0;
         let ae4_safe: u16 = 0;
+        set_motor_max(400);
         set_motors([ae1_safe, ae2_safe, ae3_safe, ae4_safe]);
     } else {
         let ae1: u16 = (lift - pitch - yaw) as u16;
         let ae2: u16 = (lift - roll + yaw) as u16;
         let ae3: u16 = (lift + pitch - yaw) as u16;
         let ae4: u16 = (lift + roll + yaw) as u16;
+        set_motor_max(400);
         set_motors([ae1, ae2, ae3, ae4]);
     }
 }
