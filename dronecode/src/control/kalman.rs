@@ -10,110 +10,110 @@ use tudelft_quadrupel::fixed::types::{I16F16, I32F32};
 use super::SensorOffset;
  
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct LowPass {
-    pub accel_x_in :[I16F16;3],
-    pub accel_y_in :[I16F16;3],
-    pub accel_z_in:[I16F16;3],
-    pub gyro_x_in :[I16F16;3],
-    pub gyro_y_in :[I16F16;3],
-    pub gyro_z_in:[I16F16;3],
-    pub accel_x_out :[I16F16;3],
-    pub accel_y_out :[I16F16;3],
-    pub accel_z_out:[I16F16;3],
-    pub gyro_x_out :[I16F16;3],
-    pub gyro_y_out :[I16F16;3],
-    pub gyro_z_out:[I16F16;3],
-    pub b:[I16F16;3],
-    pub a:[I16F16;2],
+// #[derive(Debug, Clone, Copy)]
+// pub(crate) struct LowPass {
+//     pub accel_x_in :[I16F16;3],
+//     pub accel_y_in :[I16F16;3],
+//     pub accel_z_in:[I16F16;3],
+//     pub gyro_x_in :[I16F16;3],
+//     pub gyro_y_in :[I16F16;3],
+//     pub gyro_z_in:[I16F16;3],
+//     pub accel_x_out :[I16F16;3],
+//     pub accel_y_out :[I16F16;3],
+//     pub accel_z_out:[I16F16;3],
+//     pub gyro_x_out :[I16F16;3],
+//     pub gyro_y_out :[I16F16;3],
+//     pub gyro_z_out:[I16F16;3],
+//     pub b:[I16F16;3],
+//     pub a:[I16F16;2],
     
-}
-impl LowPass
-{
-    pub fn new()-> LowPass{
-        let i16f16_zero= I16F16::from_num(0.0);
-        LowPass { 
-            accel_x_in:[i16f16_zero, i16f16_zero, i16f16_zero],
-            accel_y_in:[i16f16_zero, i16f16_zero, i16f16_zero],
-            accel_z_in:[i16f16_zero, i16f16_zero, i16f16_zero],
-            gyro_x_in: [i16f16_zero, i16f16_zero, i16f16_zero],
-            gyro_y_in: [i16f16_zero, i16f16_zero, i16f16_zero],
-            gyro_z_in: [i16f16_zero, i16f16_zero, i16f16_zero],
-            accel_x_out:[i16f16_zero, i16f16_zero, i16f16_zero],
-            accel_y_out: [i16f16_zero, i16f16_zero, i16f16_zero],
-            accel_z_out: [i16f16_zero, i16f16_zero, i16f16_zero], 
-            gyro_x_out: [i16f16_zero, i16f16_zero, i16f16_zero], 
-            gyro_y_out: [i16f16_zero, i16f16_zero, i16f16_zero], 
-            gyro_z_out: [i16f16_zero, i16f16_zero, i16f16_zero],
-            // b: [I16F16::from_num(0.3625),I16F16::from_num(0.725),I16F16::from_num(0.3625)],
-            // a: [I16F16::from_num(-0.2659),I16F16::from_num(-0.1841)], //40 hz
-            b: [I16F16::from_num(0.2066),I16F16::from_num(0.4131),I16F16::from_num(0.2066)],
-            a: [I16F16::from_num(-0.3695),I16F16::from_num(0.1958)],
-         }
+// }
+// impl LowPass
+// {
+//     pub fn new()-> LowPass{
+//         let i16f16_zero= I16F16::from_num(0.0);
+//         LowPass { 
+//             accel_x_in:[i16f16_zero, i16f16_zero, i16f16_zero],
+//             accel_y_in:[i16f16_zero, i16f16_zero, i16f16_zero],
+//             accel_z_in:[i16f16_zero, i16f16_zero, i16f16_zero],
+//             gyro_x_in: [i16f16_zero, i16f16_zero, i16f16_zero],
+//             gyro_y_in: [i16f16_zero, i16f16_zero, i16f16_zero],
+//             gyro_z_in: [i16f16_zero, i16f16_zero, i16f16_zero],
+//             accel_x_out:[i16f16_zero, i16f16_zero, i16f16_zero],
+//             accel_y_out: [i16f16_zero, i16f16_zero, i16f16_zero],
+//             accel_z_out: [i16f16_zero, i16f16_zero, i16f16_zero], 
+//             gyro_x_out: [i16f16_zero, i16f16_zero, i16f16_zero], 
+//             gyro_y_out: [i16f16_zero, i16f16_zero, i16f16_zero], 
+//             gyro_z_out: [i16f16_zero, i16f16_zero, i16f16_zero],
+//             // b: [I16F16::from_num(0.3625),I16F16::from_num(0.725),I16F16::from_num(0.3625)],
+//             // a: [I16F16::from_num(-0.2659),I16F16::from_num(-0.1841)], //40 hz
+//             b: [I16F16::from_num(0.2066),I16F16::from_num(0.4131),I16F16::from_num(0.2066)],
+//             a: [I16F16::from_num(-0.3695),I16F16::from_num(0.1958)],
+//          }
 
-    }
-    pub fn low_pass(&mut self, gyro: [I16F16;3], acc: [I16F16;3])-> ([I16F16;3], [I16F16;3])    {
-        // self.k =self.k +1;
-        self.accel_x_in[0]= acc[0];
-        self.accel_y_in[0]= acc[1];
-        self.accel_z_in[0]= acc[2];
-        self.gyro_x_in[0]= gyro[0];
-        self.gyro_y_in[0]= gyro[1];
-        self.gyro_z_in[0]= gyro[2];
+//     }
+//     pub fn low_pass(&mut self, gyro: [I16F16;3], acc: [I16F16;3])-> ([I16F16;3], [I16F16;3])    {
+//         // self.k =self.k +1;
+//         self.accel_x_in[0]= acc[0];
+//         self.accel_y_in[0]= acc[1];
+//         self.accel_z_in[0]= acc[2];
+//         self.gyro_x_in[0]= gyro[0];
+//         self.gyro_y_in[0]= gyro[1];
+//         self.gyro_z_in[0]= gyro[2];
 
-        self.accel_x_out[0]= self.a[0]*self.accel_x_out[1] +self.a[1]*self.accel_x_out[2]+ self.b[0]*self.accel_x_in[0] + self.b[1]* self.accel_x_in[1]+ self.b[2]*self.accel_x_in[2];
-        self.accel_y_out[0]= self.a[0]*self.accel_y_out[1] +self.a[1]*self.accel_y_out[2]+ self.b[0]*self.accel_y_in[0] + self.b[1]* self.accel_y_in[1]+ self.b[2]*self.accel_y_in[2];
-        self.accel_z_out[0]= self.a[0]*self.accel_z_out[1] +self.a[1]*self.accel_z_out[2]+ self.b[0]*self.accel_z_in[0] + self.b[1]* self.accel_z_in[1]+ self.b[2]*self.accel_z_in[2];
+//         self.accel_x_out[0]= self.a[0]*self.accel_x_out[1] +self.a[1]*self.accel_x_out[2]+ self.b[0]*self.accel_x_in[0] + self.b[1]* self.accel_x_in[1]+ self.b[2]*self.accel_x_in[2];
+//         self.accel_y_out[0]= self.a[0]*self.accel_y_out[1] +self.a[1]*self.accel_y_out[2]+ self.b[0]*self.accel_y_in[0] + self.b[1]* self.accel_y_in[1]+ self.b[2]*self.accel_y_in[2];
+//         self.accel_z_out[0]= self.a[0]*self.accel_z_out[1] +self.a[1]*self.accel_z_out[2]+ self.b[0]*self.accel_z_in[0] + self.b[1]* self.accel_z_in[1]+ self.b[2]*self.accel_z_in[2];
 
-        self.gyro_x_out[0]= self.a[0]*self.gyro_x_out[1] +self.a[1]*self.gyro_x_out[2]+ self.b[0]*self.gyro_x_in[0] + self.b[1]* self.gyro_x_in[1]+ self.b[2]*self.gyro_x_in[2];
-        self.gyro_y_out[0]= self.a[0]*self.gyro_y_out[1] +self.a[1]*self.gyro_y_out[2]+ self.b[0]*self.gyro_y_in[0] + self.b[1]* self.gyro_y_in[1]+ self.b[2]*self.gyro_y_in[2];
-        self.gyro_z_out[0]= self.a[0]*self.gyro_z_out[1] +self.a[1]*self.gyro_z_out[2]+ self.b[0]*self.gyro_z_in[0] + self.b[1]* self.gyro_z_in[1]+ self.b[2]*self.gyro_z_in[2];
+//         self.gyro_x_out[0]= self.a[0]*self.gyro_x_out[1] +self.a[1]*self.gyro_x_out[2]+ self.b[0]*self.gyro_x_in[0] + self.b[1]* self.gyro_x_in[1]+ self.b[2]*self.gyro_x_in[2];
+//         self.gyro_y_out[0]= self.a[0]*self.gyro_y_out[1] +self.a[1]*self.gyro_y_out[2]+ self.b[0]*self.gyro_y_in[0] + self.b[1]* self.gyro_y_in[1]+ self.b[2]*self.gyro_y_in[2];
+//         self.gyro_z_out[0]= self.a[0]*self.gyro_z_out[1] +self.a[1]*self.gyro_z_out[2]+ self.b[0]*self.gyro_z_in[0] + self.b[1]* self.gyro_z_in[1]+ self.b[2]*self.gyro_z_in[2];
 
-        self.gyro_x_in[1]=self.gyro_x_in[0];
-        self.gyro_x_in[2]=self.gyro_x_in[1];
-        self.gyro_y_in[1]=self.gyro_x_in[0];
-        self.gyro_y_in[2]=self.gyro_x_in[1];
-        self.gyro_z_in[1]=self.gyro_x_in[0];
-        self.gyro_z_in[2]=self.gyro_x_in[1];
+//         self.gyro_x_in[1]=self.gyro_x_in[0];
+//         self.gyro_x_in[2]=self.gyro_x_in[1];
+//         self.gyro_y_in[1]=self.gyro_x_in[0];
+//         self.gyro_y_in[2]=self.gyro_x_in[1];
+//         self.gyro_z_in[1]=self.gyro_x_in[0];
+//         self.gyro_z_in[2]=self.gyro_x_in[1];
 
-        self.accel_x_in[1]=self.accel_x_in[0];
-        self.accel_x_in[2]=self.accel_x_in[1];
-        self.accel_y_in[1]=self.accel_y_in[0];
-        self.accel_y_in[2]=self.accel_y_in[1];
-        self.accel_z_in[1]=self.accel_z_in[0];
-        self.accel_z_in[2]=self.accel_z_in[1];
+//         self.accel_x_in[1]=self.accel_x_in[0];
+//         self.accel_x_in[2]=self.accel_x_in[1];
+//         self.accel_y_in[1]=self.accel_y_in[0];
+//         self.accel_y_in[2]=self.accel_y_in[1];
+//         self.accel_z_in[1]=self.accel_z_in[0];
+//         self.accel_z_in[2]=self.accel_z_in[1];
 
-        self.gyro_x_out[1]=self.gyro_x_out[0];
-        self.gyro_x_out[2]=self.gyro_x_out[1];
-        self.gyro_y_out[1]=self.gyro_y_out[0];
-        self.gyro_y_out[2]=self.gyro_y_out[1];
-        self.gyro_z_out[1]=self.gyro_z_out[0];
-        self.gyro_z_out[2]=self.gyro_z_out[1];
+//         self.gyro_x_out[1]=self.gyro_x_out[0];
+//         self.gyro_x_out[2]=self.gyro_x_out[1];
+//         self.gyro_y_out[1]=self.gyro_y_out[0];
+//         self.gyro_y_out[2]=self.gyro_y_out[1];
+//         self.gyro_z_out[1]=self.gyro_z_out[0];
+//         self.gyro_z_out[2]=self.gyro_z_out[1];
 
-        self.accel_x_out[1]=self.accel_x_out[0];
-        self.accel_x_out[2]=self.accel_x_out[1];
-        self.accel_y_out[1]=self.accel_y_out[0];
-        self.accel_y_out[2]=self.accel_y_out[1];
-        self.accel_z_out[1]=self.accel_z_out[0];
-        self.accel_z_out[2]=self.accel_z_out[1];
-        // let mut accel_ypr :YawPitchRoll = YawPitchRoll { yaw: I16F16::from_num(0.0), pitch: I16F16::from_num(0.0), roll:I16F16::from_num(0.0) };
-        // let mut  gyro_ypr :YawPitchRoll = YawPitchRoll { yaw: I16F16::from_num(0.0), pitch: I16F16::from_num(0.0), roll:I16F16::from_num(0.0) };
+//         self.accel_x_out[1]=self.accel_x_out[0];
+//         self.accel_x_out[2]=self.accel_x_out[1];
+//         self.accel_y_out[1]=self.accel_y_out[0];
+//         self.accel_y_out[2]=self.accel_y_out[1];
+//         self.accel_z_out[1]=self.accel_z_out[0];
+//         self.accel_z_out[2]=self.accel_z_out[1];
+//         // let mut accel_ypr :YawPitchRoll = YawPitchRoll { yaw: I16F16::from_num(0.0), pitch: I16F16::from_num(0.0), roll:I16F16::from_num(0.0) };
+//         // let mut  gyro_ypr :YawPitchRoll = YawPitchRoll { yaw: I16F16::from_num(0.0), pitch: I16F16::from_num(0.0), roll:I16F16::from_num(0.0) };
     
-        // let roll_acc = atan(self.accel_y_out[0]/ (sqrt::niirf(self.accel_x_out[0]* self.accel_x_out[0] + self.accel_z_out[0] * self.accel_z_out[0], 2)));
-        // let pitch_acc = atan(I16F16::from_num(-1) * self.accel_x_out[0] / sqrt::niirf(self.accel_y_out[0] * self.accel_y_out[0]  + self.accel_z_out[0]  * self.accel_z_out[0], 2));
+//         // let roll_acc = atan(self.accel_y_out[0]/ (sqrt::niirf(self.accel_x_out[0]* self.accel_x_out[0] + self.accel_z_out[0] * self.accel_z_out[0], 2)));
+//         // let pitch_acc = atan(I16F16::from_num(-1) * self.accel_x_out[0] / sqrt::niirf(self.accel_y_out[0] * self.accel_y_out[0]  + self.accel_z_out[0]  * self.accel_z_out[0], 2));
 
-        // let roll_gyro = atan(self.gyro_y_out[0]/ (sqrt::niirf(self.gyro_x_out[0]* self.gyro_x_out[0] + self.gyro_z_out[0] * self.gyro_z_out[0], 2)));
-        // let pitch_gyro = atan(I16F16::from_num(-1) * self.gyro_x_out[0] / sqrt::niirf(self.gyro_y_out[0] * self.gyro_y_out[0]  + self.gyro_z_out[0]  * self.gyro_z_out[0], 2));
+//         // let roll_gyro = atan(self.gyro_y_out[0]/ (sqrt::niirf(self.gyro_x_out[0]* self.gyro_x_out[0] + self.gyro_z_out[0] * self.gyro_z_out[0], 2)));
+//         // let pitch_gyro = atan(I16F16::from_num(-1) * self.gyro_x_out[0] / sqrt::niirf(self.gyro_y_out[0] * self.gyro_y_out[0]  + self.gyro_z_out[0]  * self.gyro_z_out[0], 2));
 
-        // accel_ypr = YawPitchRoll { yaw: I16F16::from_num(0.0), pitch: pitch_acc, roll:roll_acc };
-        // gyro_ypr  = YawPitchRoll { yaw: I16F16::from_num(0.0), pitch: pitch_gyro, roll:roll_gyro };
-        return ([self.accel_x_out[0], self.accel_y_out[0], self.accel_z_out[0]], [self.gyro_x_out[0],self.gyro_y_out[0],self.gyro_z_out[0]]);
+//         // accel_ypr = YawPitchRoll { yaw: I16F16::from_num(0.0), pitch: pitch_acc, roll:roll_acc };
+//         // gyro_ypr  = YawPitchRoll { yaw: I16F16::from_num(0.0), pitch: pitch_gyro, roll:roll_gyro };
+//         return ([self.accel_x_out[0], self.accel_y_out[0], self.accel_z_out[0]], [self.gyro_x_out[0],self.gyro_y_out[0],self.gyro_z_out[0]]);
         
-        // return (accel_ypr, gyro_ypr);
+//         // return (accel_ypr, gyro_ypr);
 
-    }
+//     }
     
-}
+// }
 
 pub struct LowPassOne {
     pub accel_x_in :[I16F16;2],
