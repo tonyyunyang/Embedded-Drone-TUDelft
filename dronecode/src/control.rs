@@ -1,5 +1,6 @@
 use core::time::Duration;
 
+use crate::control::kalman::LowPassOne;
 use crate::control::pid_controller::{map_p_to_fixed, PIDController};
 use crate::control::state_machine::{execute_state_function, JoystickControl, StateMachine};
 use crate::yaw_pitch_roll::YawPitchRoll;
@@ -21,6 +22,7 @@ use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
 use self::pid_controller::{map_p1_to_fixed, map_p2_to_fixed, GeneralController};
 use self::state_machine::State;
+mod kalman;
 mod motor_control;
 mod pid_controller;
 mod state_machine;
@@ -70,6 +72,9 @@ pub fn control_loop() -> ! {
         I16F16::from_num(3),
         I16F16::from_num(5),
     );
+    let lp = LowPassOne::new();
+    let kf = kalman::KalmanFilter::new(I16F16::from_num(1.1), I16F16::from_num(5000));
+    let raw_control = pid_controller::RawController::new(lp, kf);
     let yaw_control = pid_controller::YawController::new(yaw_pid);
     let pitch_control = pid_controller::PitchController::new(pitch_pid);
     let roll_control = pid_controller::RollController::new(roll_pid);
@@ -79,12 +84,19 @@ pub fn control_loop() -> ! {
         pitch_control,
         roll_control,
         height_control,
+        raw_control,
     );
-
+    let mut flag = false;
     for i in 0.. {
         // update the sensor data
-        sensor_data.update_all(&sensor_data_calibration_offset);
+        sensor_data.update_all(&mut sensor_data_calibration_offset);
 
+        if !flag {
+            Red.on();
+            sensor_data_calibration_offset.update_gyro_offset(sensor_data.get_gyro_data());
+            sensor_data_calibration_offset.update_acc_offset(sensor_data.get_accel_data());
+            flag = true;
+        }
         // the code below is an algorithm for receiving the message from the host
         // first read 'num' bytes from the uart
         let num = receive_bytes(&mut buf);
@@ -144,12 +156,13 @@ pub fn control_loop() -> ! {
                     &current_state,
                     &joystick_control,
                     &mut general_controllers,
-                    &sensor_data,
+                    &mut sensor_data,
+                    &sensor_data_calibration_offset,
                 );
             }
         }
 
-        if i % 30 == 0 {
+        if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
             let mut pressure: i32 = 0;
             if sensor_data_calibration_offset.get_sample_count() != 0 {
@@ -162,6 +175,7 @@ pub fn control_loop() -> ! {
                 sensor_data.get_dt().as_millis() as u16,
                 sensor_data.get_motors(),
                 sensor_data.get_ypr_data(),
+                sensor_data.get_ypr_filtered_data(),
                 sensor_data.get_accel_data(),
                 sensor_data.get_bat(),
                 pressure,
@@ -363,10 +377,71 @@ impl HeightMovingAverageFilter {
     }
 }
 
+const BUFFER_SIZE2: usize = 20;
+pub struct YprMovingAverageFilter {
+    pub buffer: [(I16F16, I16F16, I16F16); BUFFER_SIZE2], // buffer to store the last n samples
+    pub index: usize, // index to keep track of the oldest sample in the buffer
+    pub sum: (I16F16, I16F16, I16F16), // sum of the last n samples
+    pub count: usize, // number of samples in the sum
+    pub filter_ypr: [I16F16; 3], // filtered ypr
+}
+
+impl YprMovingAverageFilter {
+    pub fn new() -> Self {
+        YprMovingAverageFilter {
+            buffer: [(
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+            ); BUFFER_SIZE2],
+            index: 0,
+            sum: (
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+            ),
+            count: 0,
+            filter_ypr: [
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+            ],
+        }
+    }
+
+    pub fn update(&mut self, yaw: I16F16, pitch: I16F16, roll: I16F16) -> [I16F16; 3] {
+        // Update the buffer with the new sample
+        self.sum.0 -= self.buffer[self.index].0;
+        self.sum.1 -= self.buffer[self.index].1;
+        self.sum.2 -= self.buffer[self.index].2;
+        self.buffer[self.index] = (yaw, pitch, roll);
+        self.sum.0 += yaw;
+        self.sum.1 += pitch;
+        self.sum.2 += roll;
+
+        // Increment the count of the number of samples in the buffer
+        if self.count < BUFFER_SIZE2 {
+            self.count += 1;
+        }
+
+        // Compute the moving average of the last n samples
+        self.filter_ypr[0] = self.sum.0 / I16F16::from_num(self.count as i32);
+        self.filter_ypr[1] = self.sum.1 / I16F16::from_num(self.count as i32);
+        self.filter_ypr[2] = self.sum.2 / I16F16::from_num(self.count as i32);
+
+        // Increment the index to keep track of the oldest sample in the buffer
+        self.index = (self.index + 1) % BUFFER_SIZE2;
+
+        // Return the filtered yaw, pitch, and roll values
+        self.filter_ypr
+    }
+}
+
 pub struct SensorData {
     motors: [u16; 4],
     quaternion: Quaternion,
     ypr: YawPitchRoll,
+    ypr_filter: YawPitchRoll,
     non_offset_ypr: YawPitchRoll,
     accel: Accel,
     gyro: Gyro,
@@ -377,6 +452,7 @@ pub struct SensorData {
     now: Instant,
     dt: Duration,
     height_filter: HeightMovingAverageFilter,
+    ypr_filtered_moving: YprMovingAverageFilter,
 }
 
 #[allow(dead_code)]
@@ -395,6 +471,11 @@ impl SensorData {
             pitch: zero_i6,
             roll: zero_i6,
         };
+        let ypr_filter = YawPitchRoll {
+            yaw: zero_i6,
+            pitch: zero_i6,
+            roll: zero_i6,
+        };
         let accel = Accel { x: 0, y: 0, z: 0 };
         let gyro = Gyro { x: 0, y: 0, z: 0 };
         let bat: u16 = 0;
@@ -404,10 +485,12 @@ impl SensorData {
         let now = Instant::now();
         let dt = Duration::from_secs(0);
         let height_filter = HeightMovingAverageFilter::new();
+        let ypr_filtered_moving = YprMovingAverageFilter::new();
         SensorData {
             motors,
             quaternion,
             ypr,
+            ypr_filter,
             non_offset_ypr: ypr,
             accel,
             gyro,
@@ -418,6 +501,7 @@ impl SensorData {
             now,
             dt,
             height_filter,
+            ypr_filtered_moving,
         }
     }
 
@@ -449,6 +533,10 @@ impl SensorData {
         // self.ypr.roll -= sensor_data_offset.roll_offset;
     }
 
+    pub fn update_ypr_filtered(&mut self, ypr: YawPitchRoll) {
+        self.ypr_filter = ypr;
+    }
+
     pub fn update_accel_gyro(&mut self) {
         (self.accel, self.gyro) = read_raw().unwrap();
     }
@@ -469,6 +557,14 @@ impl SensorData {
         self.height_filter.update(I16F16::from_num(self.pres));
     }
 
+    pub fn update_ypr_filtered_moving_filter(&mut self) {
+        self.ypr_filtered_moving.update(
+            self.ypr_filter.yaw,
+            self.ypr_filter.pitch,
+            self.ypr_filter.roll,
+        );
+    }
+
     pub fn get_dt(&self) -> Duration {
         self.dt
     }
@@ -485,11 +581,23 @@ impl SensorData {
         self.ypr
     }
 
+    pub fn get_ypr_filter(&self) -> YawPitchRoll {
+        self.ypr_filter
+    }
+
     pub fn get_ypr_data(&self) -> [I16F16; 3] {
         [
             self.get_ypr().yaw,
             self.get_ypr().pitch,
             self.get_ypr().roll,
+        ]
+    }
+
+    pub fn get_ypr_filtered_data(&self) -> [I16F16; 3] {
+        [
+            self.get_ypr_filter().yaw,
+            self.get_ypr_filter().pitch,
+            self.get_ypr_filter().roll,
         ]
     }
 
@@ -517,7 +625,7 @@ impl SensorData {
         self.pres
     }
 
-    pub fn update_all(&mut self, sensor_data_offset: &SensorOffset) {
+    pub fn update_all(&mut self, sensor_data_offset: &mut SensorOffset) {
         self.update_dt();
         self.update_motors();
         self.update_quaternion();
@@ -528,11 +636,17 @@ impl SensorData {
         if sensor_data_offset.get_sample_count() != 0 {
             self.update_height_filter();
         }
+        self.update_ypr_filtered_moving_filter();
     }
 
     pub fn resume_non_offset(&mut self) {
         self.ypr = self.non_offset_ypr;
         self.pres = self.non_offset_pres;
+        self.ypr_filter = YawPitchRoll {
+            yaw: I16F16::from_num(0.0),
+            pitch: I16F16::from_num(0.0),
+            roll: I16F16::from_num(0.0),
+        };
     }
 }
 
@@ -542,6 +656,8 @@ pub struct SensorOffset {
     roll_offset: I16F16,
     lift_offset: i32,
     sample_count: u32,
+    gyro_offset: [i64; 3],
+    acc_offset: [i64; 3],
 }
 
 impl SensorOffset {
@@ -552,6 +668,8 @@ impl SensorOffset {
             roll_offset: I16F16::from_num(0.0),
             lift_offset: 0,
             sample_count: 0,
+            gyro_offset: [0; 3],
+            acc_offset: [0; 3],
         }
     }
 
@@ -561,6 +679,8 @@ impl SensorOffset {
         self.roll_offset = I16F16::from_num(0.0);
         self.lift_offset = 0;
         self.sample_count = 0;
+        self.gyro_offset = [0; 3];
+        self.acc_offset = [0; 3];
     }
 
     pub fn reset_sample_count(&mut self) {
@@ -591,10 +711,28 @@ impl SensorOffset {
         self.lift_offset += lift_offset;
     }
 
+    pub fn update_gyro_offset(&mut self, gyro: [i16; 3]) {
+        self.gyro_offset[0] = gyro[0] as i64;
+        self.gyro_offset[1] = gyro[1] as i64;
+        self.gyro_offset[2] = gyro[2] as i64;
+    }
+
+    pub fn update_acc_offset(&mut self, acc: [i16; 3]) {
+        self.acc_offset[0] = acc[0] as i64;
+        self.acc_offset[1] = acc[1] as i64;
+        self.acc_offset[2] = acc[2] as i64;
+    }
+
     pub fn calculate_offset(&mut self) {
         self.yaw_offset /= I16F16::from_num(self.sample_count);
         self.pitch_offset /= I16F16::from_num(self.sample_count);
         self.roll_offset /= I16F16::from_num(self.sample_count);
         self.lift_offset /= self.sample_count as i32;
+        // self.gyro_offset[0] /= self.sample_count as i64;
+        // self.gyro_offset[1] /= self.sample_count as i64;
+        // self.gyro_offset[2] /= self.sample_count as i64;
+        // self.acc_offset[0] /= self.sample_count as i64;
+        // self.acc_offset[1] /= self.sample_count as i64;
+        // self.acc_offset[2] /= self.sample_count as i64;
     }
 }

@@ -2,13 +2,17 @@ use core::u8;
 // use micromath::F32;
 use tudelft_quadrupel::fixed::types::I16F16;
 
-use super::SensorData;
+use super::{
+    kalman::{KalmanFilter, LowPassOne},
+    SensorData,
+};
 
 pub struct GeneralController {
     pub yaw_control: YawController,
     pub pitch_control: PitchController,
     pub roll_control: RollController,
     pub height_control: HeightController,
+    pub raw_control: RawController,
 }
 
 impl GeneralController {
@@ -17,12 +21,14 @@ impl GeneralController {
         pitch_control: PitchController,
         roll_control: RollController,
         height_control: HeightController,
+        raw_control: RawController,
     ) -> GeneralController {
         GeneralController {
             yaw_control,
             pitch_control,
             roll_control,
             height_control,
+            raw_control,
         }
     }
 }
@@ -263,6 +269,10 @@ impl PitchController {
         self.theta = sensor_data.ypr.pitch;
     }
 
+    pub fn update_theta_raw(&mut self, sensor_data: &SensorData) {
+        self.theta = sensor_data.ypr_filter.pitch;
+    }
+
     pub fn update_prev_theta(&mut self) {
         self.prev_theta = self.theta;
     }
@@ -304,6 +314,18 @@ impl PitchController {
     pub fn go_through_process(&mut self, command: I16F16, sensor_data: &SensorData) {
         self.update_pitch(command);
         self.update_theta(sensor_data);
+        self.update_dt(sensor_data);
+        self.error();
+        self.update_proportional1();
+        self.update_proportional2();
+        self.update_new_pitch();
+        self.update_prev_theta();
+        self.update_prev_error();
+    }
+
+    pub fn go_through_process_raw(&mut self, command: I16F16, sensor_data: &SensorData) {
+        self.update_pitch(command);
+        self.update_theta_raw(sensor_data);
         self.update_dt(sensor_data);
         self.error();
         self.update_proportional1();
@@ -378,6 +400,10 @@ impl RollController {
         self.psi = sensor_data.ypr.roll;
     }
 
+    pub fn update_psi_raw(&mut self, sensor_data: &SensorData) {
+        self.psi = sensor_data.ypr_filter.roll;
+    }
+
     pub fn update_prev_psi(&mut self) {
         self.prev_psi = self.psi;
     }
@@ -419,6 +445,18 @@ impl RollController {
     pub fn go_through_process(&mut self, command: I16F16, sensor_data: &SensorData) {
         self.update_roll(command);
         self.update_psi(sensor_data);
+        self.update_dt(sensor_data);
+        self.error();
+        self.update_proportional1();
+        self.update_prev_error();
+        self.update_proportional2();
+        self.update_new_roll();
+        self.update_prev_psi();
+    }
+
+    pub fn go_through_process_raw(&mut self, command: I16F16, sensor_data: &SensorData) {
+        self.update_roll(command);
+        self.update_psi_raw(sensor_data);
         self.update_dt(sensor_data);
         self.error();
         self.update_proportional1();
@@ -568,4 +606,18 @@ pub fn map_p2_to_fixed(p: u8) -> I16F16 {
     let p_old: I16F16 = I16F16::from_num(p);
 
     (max_new - min_new) / (max_old - min_old) * (p_old - min_old) + min_new
+}
+
+pub struct RawController {
+    pub low_pass_filter: LowPassOne,
+    pub kalman_filter: KalmanFilter,
+}
+
+impl RawController {
+    pub fn new(lp: LowPassOne, kf: KalmanFilter) -> Self {
+        Self {
+            low_pass_filter: lp,
+            kalman_filter: kf,
+        }
+    }
 }

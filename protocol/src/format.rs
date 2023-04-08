@@ -27,10 +27,11 @@ pub struct DeviceProtocol {
     start_flag: u8, // By default, this would be set to 0b01111011 = 0x7b, in ASCII, it is "{"
 
     // Payload
-    mode: u8,         // Two bytes to represent 9 modes
-    duration: u16,    // This is the duration of the tramision, 16 bytes
-    motor: [u16; 4],  // This is the data of the 4 motors on the drone, each motor has 2 bytes
+    mode: u8,                // Two bytes to represent 9 modes
+    duration: u16,           // This is the duration of the tramision, 16 bytes
+    motor: [u16; 4], // This is the data of the 4 motors on the drone, each motor has 2 bytes
     ypr: [I16F16; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
+    ypr_filter: [I16F16; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
     acc: [i16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
     bat: u16,      // This is the data of the battery of the drone, 2 bytes
     pres: i32,     // This is the data of the pressure of the drone, 4 bytes
@@ -273,6 +274,7 @@ impl DeviceProtocol {
         duration: u16,
         motor: [u16; 4],
         ypr: [I16F16; 3],
+        ypr_filter: [I16F16; 3],
         acc: [i16; 3],
         bat: u16,
         pres: i32,
@@ -284,6 +286,7 @@ impl DeviceProtocol {
             mode,
             motor,
             ypr,
+            ypr_filter,
             acc,
             bat,
             pres,
@@ -305,6 +308,9 @@ impl DeviceProtocol {
         message.extend_from_slice(&self.ypr[0].to_be_bytes());
         message.extend_from_slice(&self.ypr[1].to_be_bytes());
         message.extend_from_slice(&self.ypr[2].to_be_bytes());
+        message.extend_from_slice(&self.ypr_filter[0].to_be_bytes());
+        message.extend_from_slice(&self.ypr_filter[1].to_be_bytes());
+        message.extend_from_slice(&self.ypr_filter[2].to_be_bytes());
         message.extend_from_slice(&self.acc[0].to_be_bytes());
         message.extend_from_slice(&self.acc[1].to_be_bytes());
         message.extend_from_slice(&self.acc[2].to_be_bytes());
@@ -317,8 +323,17 @@ impl DeviceProtocol {
     }
 
     pub fn format_message(message: &mut [u8]) -> DeviceProtocol {
-        let mut format_message =
-            DeviceProtocol::new(0, 0, [0; 4], [I16F16::from_num(0); 3], [0; 3], 0, 0, 0);
+        let mut format_message = DeviceProtocol::new(
+            0,
+            0,
+            [0; 4],
+            [I16F16::from_num(0); 3],
+            [I16F16::from_num(0); 3],
+            [0; 3],
+            0,
+            0,
+            0,
+        );
         format_message.set_start_flag(message[0]);
         format_message.set_mode(message[1]);
         format_message.set_duration(u16::from_be_bytes([message[2], message[3]]));
@@ -333,21 +348,26 @@ impl DeviceProtocol {
             I16F16::from_be_bytes([message[16], message[17], message[18], message[19]]),
             I16F16::from_be_bytes([message[20], message[21], message[22], message[23]]),
         ]);
-        format_message.set_acc([
-            i16::from_be_bytes([message[24], message[25]]),
-            i16::from_be_bytes([message[26], message[27]]),
-            i16::from_be_bytes([message[28], message[29]]),
+        format_message.set_ypr_filter([
+            I16F16::from_be_bytes([message[24], message[25], message[26], message[27]]),
+            I16F16::from_be_bytes([message[28], message[29], message[30], message[31]]),
+            I16F16::from_be_bytes([message[32], message[33], message[34], message[35]]),
         ]);
-        format_message.set_bat(u16::from_be_bytes([message[30], message[31]]));
+        format_message.set_acc([
+            i16::from_be_bytes([message[36], message[37]]),
+            i16::from_be_bytes([message[38], message[39]]),
+            i16::from_be_bytes([message[40], message[41]]),
+        ]);
+        format_message.set_bat(u16::from_be_bytes([message[42], message[43]]));
         format_message.set_pres(i32::from_be_bytes([
-            message[32],
-            message[33],
-            message[34],
-            message[35],
+            message[44],
+            message[45],
+            message[46],
+            message[47],
         ]));
-        format_message.set_ack(message[36]);
-        format_message.set_crc(u16::from_be_bytes([message[37], message[38]]));
-        format_message.set_end_flag(message[39]);
+        format_message.set_ack(message[48]);
+        format_message.set_crc(u16::from_be_bytes([message[49], message[50]]));
+        format_message.set_end_flag(message[51]);
         format_message
     }
 
@@ -360,6 +380,9 @@ impl DeviceProtocol {
         }
         for ypr in self.ypr.iter() {
             state.update(&ypr.to_be_bytes());
+        }
+        for ypr_filter in self.ypr_filter.iter() {
+            state.update(&ypr_filter.to_be_bytes());
         }
         for acc in self.acc.iter() {
             state.update(&acc.to_be_bytes());
@@ -379,6 +402,9 @@ impl DeviceProtocol {
         }
         for ypr in self.ypr.iter() {
             crc.digest(&ypr.to_be_bytes());
+        }
+        for ypr_filter in self.ypr_filter.iter() {
+            crc.digest(&ypr_filter.to_be_bytes());
         }
         for acc in self.acc.iter() {
             crc.digest(&acc.to_be_bytes());
@@ -403,6 +429,10 @@ impl DeviceProtocol {
 
     pub fn set_ypr(&mut self, ypr: [I16F16; 3]) {
         self.ypr = ypr;
+    }
+
+    pub fn set_ypr_filter(&mut self, ypr: [I16F16; 3]) {
+        self.ypr_filter = ypr;
     }
 
     pub fn set_acc(&mut self, acc: [i16; 3]) {
@@ -451,6 +481,10 @@ impl DeviceProtocol {
 
     pub fn get_ypr(&self) -> [I16F16; 3] {
         self.ypr
+    }
+
+    pub fn get_ypr_filter(&self) -> [I16F16; 3] {
+        self.ypr_filter
     }
 
     pub fn get_acc(&self) -> [i16; 3] {
