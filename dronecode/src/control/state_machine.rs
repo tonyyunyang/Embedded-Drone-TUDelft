@@ -568,6 +568,45 @@ fn raw_mode(command: &JoystickControl, general_controllers: &mut GeneralControll
     let (acc, gyro) = general_controllers.raw_control.low_pass_filter.low_pass_one(offseted_gyro, offseted_acc);
     let kf_ypr = general_controllers.raw_control.kalman_filter.get_kalman_data(acc, gyro, &sensor_data_offset);
     sensor_data.update_ypr_filtered(kf_ypr);
+
+    // directly map the lift to the motor speeds
+    let lift: i16 = map_lift_command_control(command.get_lift()); // this should be the value that keeps the drone in the air stable
+    let yaw: i16 = map_yaw_command_manual(command.get_yaw());
+    let yaw_rate: I16F16 = map_yaw_command(command.get_yaw());
+    let pitch: i16 = map_pitch_command_manual(command.get_pitch());
+    let roll: i16 = map_roll_command_manual(command.get_roll());
+    let pitch_angle: I16F16 = map_pitch_command(command.get_pitch());
+    let roll_angle: I16F16 = map_roll_command(command.get_roll());
+
+    general_controllers
+        .yaw_control
+        .go_through_process(yaw_rate, sensor_data);
+    let yaw_compensate: i16 =
+        determine_yaw_compensate(yaw_rate, general_controllers.yaw_control.new_yaw);
+    // let yaw_compensate: i16 = 0;
+
+    general_controllers
+        .pitch_control
+        .go_through_process(pitch_angle, sensor_data);
+    let pitch_compensate: i16 =
+        determine_pitch_compensate(pitch_angle, general_controllers.raw_control.kalman_filter.new_ypr.pitch);
+
+    general_controllers
+        .roll_control
+        .go_through_process(roll_angle, sensor_data);
+    let roll_compensate: i16 =
+        determine_roll_compensate(roll_angle, general_controllers.raw_control.kalman_filter.new_ypr.roll);
+    // let roll_compensate: i16 = 0;
+
+    set_motor_speeds_full(
+        lift,
+        yaw,
+        pitch,
+        roll,
+        yaw_compensate,
+        pitch_compensate,
+        roll_compensate,
+    );
 }
 
 #[allow(unused_variables)]
