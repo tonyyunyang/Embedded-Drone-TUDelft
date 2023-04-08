@@ -2,13 +2,14 @@ use core::u8;
 // use micromath::F32;
 use tudelft_quadrupel::fixed::types::I16F16;
 
-use super::SensorData;
+use super::{SensorData, kalman::{LowPassOne, KalmanFilter}};
 
 pub struct GeneralController {
     pub yaw_control: YawController,
     pub pitch_control: PitchController,
     pub roll_control: RollController,
     pub height_control: HeightController,
+    pub raw_control: RawController,
 }
 
 impl GeneralController {
@@ -17,12 +18,14 @@ impl GeneralController {
         pitch_control: PitchController,
         roll_control: RollController,
         height_control: HeightController,
+        raw_control: RawController,
     ) -> GeneralController {
         GeneralController {
             yaw_control,
             pitch_control,
             roll_control,
             height_control,
+            raw_control,
         }
     }
 }
@@ -568,4 +571,19 @@ pub fn map_p2_to_fixed(p: u8) -> I16F16 {
     let p_old: I16F16 = I16F16::from_num(p);
 
     (max_new - min_new) / (max_old - min_old) * (p_old - min_old) + min_new
+}
+
+
+pub struct RawController {
+    pub low_pass_filter: LowPassOne,
+    pub kalman_filter: KalmanFilter,
+}
+
+impl RawController {
+    pub fn new(lp: LowPassOne, kf: KalmanFilter) -> Self {
+        Self {
+            low_pass_filter: lp,
+            kalman_filter: kf,
+        }
+    }
 }

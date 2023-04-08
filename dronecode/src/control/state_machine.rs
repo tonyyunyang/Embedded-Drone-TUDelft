@@ -429,7 +429,8 @@ pub fn execute_state_function(
     current_state: &State,
     command: &JoystickControl,
     general_controllers: &mut GeneralController,
-    sensor_data: &SensorData,
+    sensor_data: &mut SensorData,
+    sensor_data_offset: &SensorOffset
 ) {
     match current_state {
         State::Safety => {
@@ -448,12 +449,7 @@ pub fn execute_state_function(
             full_mode(command, general_controllers, sensor_data);
         }
         State::Raw => {
-            raw_mode(
-                command.get_lift(),
-                command.get_yaw(),
-                command.get_pitch(),
-                command.get_roll(),
-            );
+            raw_mode(command, general_controllers, sensor_data, sensor_data_offset);
         }
         State::Height => {
             height_mode(command, general_controllers, sensor_data);
@@ -491,6 +487,8 @@ fn calibrate_mode(sensor_data_offset: &mut SensorOffset, sensor_data: &mut Senso
     sensor_data_offset.update_pitch_offset(sensor_data.get_ypr().pitch);
     sensor_data_offset.update_roll_offset(sensor_data.get_ypr().roll);
     sensor_data_offset.update_lift_offset(sensor_data.get_pres());
+    sensor_data_offset.update_gyro_offset(sensor_data.get_gyro_data());
+    sensor_data_offset.update_acc_offset(sensor_data.get_accel_data());
     true
 }
 
@@ -558,8 +556,18 @@ fn full_mode(
 }
 
 #[allow(unused_variables)]
-fn raw_mode(lift: u8, yaw: u8, pitch: u8, roll: u8) {
-    // TODO
+fn raw_mode(command: &JoystickControl, general_controllers: &mut GeneralController, sensor_data: &mut SensorData, sensor_data_offset: &SensorOffset) {
+    let offseted_gyro = [I16F16::from_num(sensor_data.get_gyro_data()[0].saturating_sub(sensor_data_offset.gyro_offset[0] as i16)),
+    I16F16::from_num(sensor_data.get_gyro_data()[1].saturating_sub(sensor_data_offset.gyro_offset[1] as i16)),
+    I16F16::from_num(sensor_data.get_gyro_data()[2].saturating_sub(sensor_data_offset.gyro_offset[2] as i16))];
+
+    let offseted_acc = [I16F16::from_num(sensor_data.get_accel_data()[0].saturating_sub(sensor_data_offset.acc_offset[0] as i16)),
+    I16F16::from_num(sensor_data.get_accel_data()[1].saturating_sub(sensor_data_offset.acc_offset[1] as i16)),
+    I16F16::from_num(sensor_data.get_accel_data()[2].saturating_sub(sensor_data_offset.acc_offset[2] as i16))];
+
+    let (acc, gyro) = general_controllers.raw_control.low_pass_filter.low_pass_one(offseted_gyro, offseted_acc);
+    let kf_ypr = general_controllers.raw_control.kalman_filter.get_kalman_data(acc, gyro, &sensor_data_offset);
+    sensor_data.update_ypr_filtered(kf_ypr);
 }
 
 #[allow(unused_variables)]

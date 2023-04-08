@@ -103,23 +103,23 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack:
                             message_buffer.push(received_byte);
                             received_bytes_count += 1;
                         }
-                        if received_bytes_count < 40 {
+                        if received_bytes_count < 52 {
                             continue 'inner;
                         }
-                        if message_buffer.len() < 40 && !repeat_flag {
+                        if message_buffer.len() < 52 && !repeat_flag {
                             repeat_flag = true;
                             continue 'outer;
                         }
 
                         // when it reaches here, the bytes recieved is already >= 40
                         if received_byte == 0x7d && start_receiving {
-                            if received_bytes_count != 40 {
+                            if received_bytes_count != 52 {
                                 message_buffer.clear();
                                 received_bytes_count = 0;
                                 start_receiving = false;
                                 repeat_flag = false;
                                 continue 'outer;
-                            } else if received_bytes_count == 40 {
+                            } else if received_bytes_count == 52 {
                                 // send the ready state and the message to the uart handler
                                 // // format the message
                                 let nice_received_message =
@@ -1118,6 +1118,12 @@ fn print_verified_message(message: &DeviceProtocol) -> bool {
         message.get_ypr()[0],
         message.get_ypr()[1],
         message.get_ypr()[2]
+    );
+    println!(
+        "YPR Filtered {} {} {}\r",
+        message.get_ypr_filter()[0],
+        message.get_ypr_filter()[1],
+        message.get_ypr_filter()[2]
     );
     println!(
         "ACC {} {} {}\r",
