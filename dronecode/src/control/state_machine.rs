@@ -578,6 +578,8 @@ fn raw_mode(command: &JoystickControl, general_controllers: &mut GeneralControll
     let pitch_angle: I16F16 = map_pitch_command(command.get_pitch());
     let roll_angle: I16F16 = map_roll_command(command.get_roll());
 
+    // TODO: Everything below this is not correct, please change it.
+
     general_controllers
         .yaw_control
         .go_through_process(yaw_rate, sensor_data);
