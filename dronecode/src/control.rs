@@ -377,6 +377,66 @@ impl HeightMovingAverageFilter {
     }
 }
 
+const BUFFER_SIZE2: usize = 20;
+pub struct YprMovingAverageFilter {
+    pub buffer: [(I16F16, I16F16, I16F16); BUFFER_SIZE2], // buffer to store the last n samples
+    pub index: usize, // index to keep track of the oldest sample in the buffer
+    pub sum: (I16F16, I16F16, I16F16), // sum of the last n samples
+    pub count: usize, // number of samples in the sum
+    pub filter_ypr: [I16F16; 3], // filtered ypr
+}
+
+impl YprMovingAverageFilter {
+    pub fn new() -> Self {
+        YprMovingAverageFilter {
+            buffer: [(
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+            ); BUFFER_SIZE2],
+            index: 0,
+            sum: (
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+            ),
+            count: 0,
+            filter_ypr: [
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+                I16F16::from_num(0),
+            ],
+        }
+    }
+
+    pub fn update(&mut self, yaw: I16F16, pitch: I16F16, roll: I16F16) -> [I16F16; 3] {
+        // Update the buffer with the new sample
+        self.sum.0 -= self.buffer[self.index].0;
+        self.sum.1 -= self.buffer[self.index].1;
+        self.sum.2 -= self.buffer[self.index].2;
+        self.buffer[self.index] = (yaw, pitch, roll);
+        self.sum.0 += yaw;
+        self.sum.1 += pitch;
+        self.sum.2 += roll;
+
+        // Increment the count of the number of samples in the buffer
+        if self.count < BUFFER_SIZE2 {
+            self.count += 1;
+        }
+
+        // Compute the moving average of the last n samples
+        self.filter_ypr[0] = self.sum.0 / I16F16::from_num(self.count as i32);
+        self.filter_ypr[1] = self.sum.1 / I16F16::from_num(self.count as i32);
+        self.filter_ypr[2] = self.sum.2 / I16F16::from_num(self.count as i32);
+
+        // Increment the index to keep track of the oldest sample in the buffer
+        self.index = (self.index + 1) % BUFFER_SIZE2;
+
+        // Return the filtered yaw, pitch, and roll values
+        self.filter_ypr
+    }
+}
+
 pub struct SensorData {
     motors: [u16; 4],
     quaternion: Quaternion,
@@ -392,6 +452,7 @@ pub struct SensorData {
     now: Instant,
     dt: Duration,
     height_filter: HeightMovingAverageFilter,
+    ypr_filtered_moving: YprMovingAverageFilter,
 }
 
 #[allow(dead_code)]
@@ -424,6 +485,7 @@ impl SensorData {
         let now = Instant::now();
         let dt = Duration::from_secs(0);
         let height_filter = HeightMovingAverageFilter::new();
+        let ypr_filtered_moving = YprMovingAverageFilter::new();
         SensorData {
             motors,
             quaternion,
@@ -439,6 +501,7 @@ impl SensorData {
             now,
             dt,
             height_filter,
+            ypr_filtered_moving,
         }
     }
 
@@ -492,6 +555,14 @@ impl SensorData {
 
     pub fn update_height_filter(&mut self) {
         self.height_filter.update(I16F16::from_num(self.pres));
+    }
+
+    pub fn update_ypr_filtered_moving_filter(&mut self) {
+        self.ypr_filtered_moving.update(
+            self.ypr_filter.yaw,
+            self.ypr_filter.pitch,
+            self.ypr_filter.roll,
+        );
     }
 
     pub fn get_dt(&self) -> Duration {
@@ -565,6 +636,7 @@ impl SensorData {
         if sensor_data_offset.get_sample_count() != 0 {
             self.update_height_filter();
         }
+        self.update_ypr_filtered_moving_filter();
     }
 
     pub fn resume_non_offset(&mut self) {
