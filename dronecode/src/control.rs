@@ -162,7 +162,7 @@ pub fn control_loop() -> ! {
             }
         }
 
-        if i % 30 == 0 {
+        if i % 100 == 0 {
             // Create an instance of the Drone Protocol struct
             let mut pressure: i32 = 0;
             if sensor_data_calibration_offset.get_sample_count() != 0 {
