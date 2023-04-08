@@ -487,8 +487,8 @@ fn calibrate_mode(sensor_data_offset: &mut SensorOffset, sensor_data: &mut Senso
     sensor_data_offset.update_pitch_offset(sensor_data.get_ypr().pitch);
     sensor_data_offset.update_roll_offset(sensor_data.get_ypr().roll);
     sensor_data_offset.update_lift_offset(sensor_data.get_pres());
-    sensor_data_offset.update_gyro_offset(sensor_data.get_gyro_data());
-    sensor_data_offset.update_acc_offset(sensor_data.get_accel_data());
+    // sensor_data_offset.update_gyro_offset(sensor_data.get_gyro_data());
+    // sensor_data_offset.update_acc_offset(sensor_data.get_accel_data());
     true
 }
 

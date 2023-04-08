@@ -278,7 +278,7 @@ pub struct KalmanFilter {
         self.out_rate[1] = gyro[1]*I16F16::from_num(PI/180); // pitch vel
         self.out_rate[2] = gyro[0]*I16F16::from_num(PI/180); //roll vel
         
-        self.out_angle.yaw = (self.out_angle.yaw-(( self.out_rate[0]/ I16F16::from_num(16.4))*I16F16::from_num(0.017453)));
+        self.out_angle.yaw = (self.out_angle.yaw-(( self.out_rate[0]/ I16F16::from_num(16.4))*I16F16::from_num(0.0017453)));
         self.out_angle.pitch = self.out_angle.pitch + self.out_rate[1] * self.integration_constant;
         self.out_angle.roll = self.out_angle.roll + self.out_rate[2] * self.integration_constant;
 

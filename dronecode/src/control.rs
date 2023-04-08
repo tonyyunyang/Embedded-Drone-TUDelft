@@ -73,7 +73,7 @@ pub fn control_loop() -> ! {
         I16F16::from_num(5),
     );
     let lp = LowPassOne::new();
-    let kf = kalman::KalmanFilter::new(I16F16::from_num(1.5), I16F16::from_num(5000));
+    let kf = kalman::KalmanFilter::new(I16F16::from_num(1.1), I16F16::from_num(5000));
     let raw_control = pid_controller::RawController::new(lp, kf);
     let yaw_control = pid_controller::YawController::new(yaw_pid);
     let pitch_control = pid_controller::PitchController::new(pitch_pid);
@@ -86,11 +86,17 @@ pub fn control_loop() -> ! {
         height_control,
         raw_control
     );
-
+    let mut flag = false;
     for i in 0.. {
         // update the sensor data
-        sensor_data.update_all(&sensor_data_calibration_offset);
+        sensor_data.update_all(&mut sensor_data_calibration_offset);
 
+        if flag != true {
+            Red.on();
+            sensor_data_calibration_offset.update_gyro_offset(sensor_data.get_gyro_data());
+            sensor_data_calibration_offset.update_acc_offset(sensor_data.get_accel_data());
+            flag = true;
+        }
         // the code below is an algorithm for receiving the message from the host
         // first read 'num' bytes from the uart
         let num = receive_bytes(&mut buf);
@@ -548,7 +554,7 @@ impl SensorData {
         self.pres
     }
 
-    pub fn update_all(&mut self, sensor_data_offset: &SensorOffset) {
+    pub fn update_all(&mut self, sensor_data_offset: &mut SensorOffset) {
         self.update_dt();
         self.update_motors();
         self.update_quaternion();
@@ -629,15 +635,15 @@ impl SensorOffset {
     }
 
     pub fn update_gyro_offset(&mut self, gyro: [i16; 3]) {
-        self.gyro_offset[0] += gyro[0] as i64;
-        self.gyro_offset[1] += gyro[1] as i64;
-        self.gyro_offset[2] += gyro[2] as i64;
+        self.gyro_offset[0] = gyro[0] as i64;
+        self.gyro_offset[1] = gyro[1] as i64;
+        self.gyro_offset[2] = gyro[2] as i64;
     }
 
     pub fn update_acc_offset(&mut self, acc: [i16; 3]) {
-        self.acc_offset[0] += acc[0] as i64;
-        self.acc_offset[1] += acc[1] as i64;
-        self.acc_offset[2] += acc[2] as i64;
+        self.acc_offset[0] = acc[0] as i64;
+        self.acc_offset[1] = acc[1] as i64;
+        self.acc_offset[2] = acc[2] as i64;
     }
 
     pub fn calculate_offset(&mut self) {
@@ -645,11 +651,11 @@ impl SensorOffset {
         self.pitch_offset /= I16F16::from_num(self.sample_count);
         self.roll_offset /= I16F16::from_num(self.sample_count);
         self.lift_offset /= self.sample_count as i32;
-        self.gyro_offset[0] /= self.sample_count as i64;
-        self.gyro_offset[1] /= self.sample_count as i64;
-        self.gyro_offset[2] /= self.sample_count as i64;
-        self.acc_offset[0] /= self.sample_count as i64;
-        self.acc_offset[1] /= self.sample_count as i64;
-        self.acc_offset[2] /= self.sample_count as i64;
+        // self.gyro_offset[0] /= self.sample_count as i64;
+        // self.gyro_offset[1] /= self.sample_count as i64;
+        // self.gyro_offset[2] /= self.sample_count as i64;
+        // self.acc_offset[0] /= self.sample_count as i64;
+        // self.acc_offset[1] /= self.sample_count as i64;
+        // self.acc_offset[2] /= self.sample_count as i64;
     }
 }
