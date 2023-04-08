@@ -344,6 +344,7 @@ impl KalmanFilter {
         // self.new_ypr.roll=acc[2];
         self.new_ypr
     }
+    
     //     pub fn get_kalman_ypr(&mut self, gyro:[I16F16;3], mut acc:[I16F16;3], sd:&mut SensorData)-> YawPitchRoll
     //     {
     //         acc[0]=acc[0]*I16F16::from_num(PI/180);
