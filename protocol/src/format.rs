@@ -27,9 +27,9 @@ pub struct DeviceProtocol {
     start_flag: u8, // By default, this would be set to 0b01111011 = 0x7b, in ASCII, it is "{"
 
     // Payload
-    mode: u8,         // Two bytes to represent 9 modes
-    duration: u16,    // This is the duration of the tramision, 16 bytes
-    motor: [u16; 4],  // This is the data of the 4 motors on the drone, each motor has 2 bytes
+    mode: u8,                // Two bytes to represent 9 modes
+    duration: u16,           // This is the duration of the tramision, 16 bytes
+    motor: [u16; 4], // This is the data of the 4 motors on the drone, each motor has 2 bytes
     ypr: [I16F16; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
     ypr_filter: [I16F16; 3], // This is the data of the yaw, pitch and roll (Keep in mind that this is originally f32, but we are using u32), each has 4 bytes
     acc: [i16; 3], // This is the data of the acceleration of the drone (x, y and z), each has 2 bytes
@@ -323,8 +323,17 @@ impl DeviceProtocol {
     }
 
     pub fn format_message(message: &mut [u8]) -> DeviceProtocol {
-        let mut format_message =
-            DeviceProtocol::new(0, 0, [0; 4], [I16F16::from_num(0); 3], [I16F16::from_num(0); 3], [0; 3], 0, 0, 0);
+        let mut format_message = DeviceProtocol::new(
+            0,
+            0,
+            [0; 4],
+            [I16F16::from_num(0); 3],
+            [I16F16::from_num(0); 3],
+            [0; 3],
+            0,
+            0,
+            0,
+        );
         format_message.set_start_flag(message[0]);
         format_message.set_mode(message[1]);
         format_message.set_duration(u16::from_be_bytes([message[2], message[3]]));

@@ -12,7 +12,7 @@ use tudelft_quadrupel::battery::read_battery;
 use tudelft_quadrupel::block;
 use tudelft_quadrupel::fixed::types::I16F16;
 use tudelft_quadrupel::fixed::{types, FixedI32};
-use tudelft_quadrupel::led::Led::{Blue, Red, Green};
+use tudelft_quadrupel::led::Led::{Blue, Red};
 use tudelft_quadrupel::led::Yellow;
 use tudelft_quadrupel::motor::get_motors;
 use tudelft_quadrupel::mpu::structs::{Accel, Gyro, Quaternion};
@@ -22,10 +22,10 @@ use tudelft_quadrupel::uart::{receive_bytes, send_bytes};
 
 use self::pid_controller::{map_p1_to_fixed, map_p2_to_fixed, GeneralController};
 use self::state_machine::State;
+mod kalman;
 mod motor_control;
 mod pid_controller;
 mod state_machine;
-mod kalman;
 
 #[allow(unused_assignments)]
 pub fn control_loop() -> ! {
@@ -84,14 +84,14 @@ pub fn control_loop() -> ! {
         pitch_control,
         roll_control,
         height_control,
-        raw_control
+        raw_control,
     );
     let mut flag = false;
     for i in 0.. {
         // update the sensor data
         sensor_data.update_all(&mut sensor_data_calibration_offset);
 
-        if flag != true {
+        if !flag {
             Red.on();
             sensor_data_calibration_offset.update_gyro_offset(sensor_data.get_gyro_data());
             sensor_data_calibration_offset.update_acc_offset(sensor_data.get_accel_data());
@@ -570,6 +570,11 @@ impl SensorData {
     pub fn resume_non_offset(&mut self) {
         self.ypr = self.non_offset_ypr;
         self.pres = self.non_offset_pres;
+        self.ypr_filter = YawPitchRoll {
+            yaw: I16F16::from_num(0.0),
+            pitch: I16F16::from_num(0.0),
+            roll: I16F16::from_num(0.0),
+        };
     }
 }
 

@@ -430,7 +430,7 @@ pub fn execute_state_function(
     command: &JoystickControl,
     general_controllers: &mut GeneralController,
     sensor_data: &mut SensorData,
-    sensor_data_offset: &SensorOffset
+    sensor_data_offset: &SensorOffset,
 ) {
     match current_state {
         State::Safety => {
@@ -449,7 +449,12 @@ pub fn execute_state_function(
             full_mode(command, general_controllers, sensor_data);
         }
         State::Raw => {
-            raw_mode(command, general_controllers, sensor_data, sensor_data_offset);
+            raw_mode(
+                command,
+                general_controllers,
+                sensor_data,
+                sensor_data_offset,
+            );
         }
         State::Height => {
             height_mode(command, general_controllers, sensor_data);
@@ -556,17 +561,44 @@ fn full_mode(
 }
 
 #[allow(unused_variables)]
-fn raw_mode(command: &JoystickControl, general_controllers: &mut GeneralController, sensor_data: &mut SensorData, sensor_data_offset: &SensorOffset) {
-    let offseted_gyro = [I16F16::from_num(sensor_data.get_gyro_data()[0].saturating_sub(sensor_data_offset.gyro_offset[0] as i16)),
-    I16F16::from_num(sensor_data.get_gyro_data()[1].saturating_sub(sensor_data_offset.gyro_offset[1] as i16)),
-    I16F16::from_num(sensor_data.get_gyro_data()[2].saturating_sub(sensor_data_offset.gyro_offset[2] as i16))];
+fn raw_mode(
+    command: &JoystickControl,
+    general_controllers: &mut GeneralController,
+    sensor_data: &mut SensorData,
+    sensor_data_offset: &SensorOffset,
+) {
+    let offseted_gyro = [
+        I16F16::from_num(
+            sensor_data.get_gyro_data()[0].saturating_sub(sensor_data_offset.gyro_offset[0] as i16),
+        ),
+        I16F16::from_num(
+            sensor_data.get_gyro_data()[1].saturating_sub(sensor_data_offset.gyro_offset[1] as i16),
+        ),
+        I16F16::from_num(
+            sensor_data.get_gyro_data()[2].saturating_sub(sensor_data_offset.gyro_offset[2] as i16),
+        ),
+    ];
 
-    let offseted_acc = [I16F16::from_num(sensor_data.get_accel_data()[0].saturating_sub(sensor_data_offset.acc_offset[0] as i16)),
-    I16F16::from_num(sensor_data.get_accel_data()[1].saturating_sub(sensor_data_offset.acc_offset[1] as i16)),
-    I16F16::from_num(sensor_data.get_accel_data()[2].saturating_sub(sensor_data_offset.acc_offset[2] as i16))];
+    let offseted_acc = [
+        I16F16::from_num(
+            sensor_data.get_accel_data()[0].saturating_sub(sensor_data_offset.acc_offset[0] as i16),
+        ),
+        I16F16::from_num(
+            sensor_data.get_accel_data()[1].saturating_sub(sensor_data_offset.acc_offset[1] as i16),
+        ),
+        I16F16::from_num(
+            sensor_data.get_accel_data()[2].saturating_sub(sensor_data_offset.acc_offset[2] as i16),
+        ),
+    ];
 
-    let (acc, gyro) = general_controllers.raw_control.low_pass_filter.low_pass_one(offseted_gyro, offseted_acc);
-    let kf_ypr = general_controllers.raw_control.kalman_filter.get_kalman_data(acc, gyro, &sensor_data_offset);
+    let (acc, gyro) = general_controllers
+        .raw_control
+        .low_pass_filter
+        .low_pass_one(offseted_gyro, offseted_acc);
+    let kf_ypr = general_controllers
+        .raw_control
+        .kalman_filter
+        .get_kalman_data(acc, gyro, sensor_data_offset);
     sensor_data.update_ypr_filtered(kf_ypr);
 
     // directly map the lift to the motor speeds
@@ -578,7 +610,7 @@ fn raw_mode(command: &JoystickControl, general_controllers: &mut GeneralControll
     let pitch_angle: I16F16 = map_pitch_command(command.get_pitch());
     let roll_angle: I16F16 = map_roll_command(command.get_roll());
 
-    // TODO: Everything below this is not correct, please change it.
+    // TODO: Everything below might not be perfectly correct
 
     general_controllers
         .yaw_control
@@ -589,15 +621,15 @@ fn raw_mode(command: &JoystickControl, general_controllers: &mut GeneralControll
 
     general_controllers
         .pitch_control
-        .go_through_process(pitch_angle, sensor_data);
+        .go_through_process_raw(pitch_angle, sensor_data);
     let pitch_compensate: i16 =
-        determine_pitch_compensate(pitch_angle, general_controllers.raw_control.kalman_filter.new_ypr.pitch);
+        determine_pitch_compensate(pitch_angle, general_controllers.pitch_control.new_pitch);
 
     general_controllers
         .roll_control
-        .go_through_process(roll_angle, sensor_data);
+        .go_through_process_raw(roll_angle, sensor_data);
     let roll_compensate: i16 =
-        determine_roll_compensate(roll_angle, general_controllers.raw_control.kalman_filter.new_ypr.roll);
+        determine_roll_compensate(roll_angle, general_controllers.roll_control.new_roll);
     // let roll_compensate: i16 = 0;
 
     set_motor_speeds_full(
