@@ -53,6 +53,7 @@ pub enum KeyboardControl {
     Mode7,
     Mode8,
     Mode9,
+    ExitTerminal,
     LiftUp,
     LiftDown,
     RollUp,
@@ -80,7 +81,7 @@ pub enum AckByteCorespondingState {
     NotDefined,
 }
 
-pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack: Sender<bool>) {
+pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack: Sender<bool>,device_data_to_gui: Sender<DeviceProtocol>) {
     let mut buf = [0u8; 255];
     let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
     let mut message_buffer = Vec::new();
@@ -129,6 +130,7 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack:
                                 if no_transition {
                                     let _tmp = ack.send(no_transition);
                                 }
+                                let _feedback_gui = device_data_to_gui.send(nice_received_message);
                                 // clean everything, initialize everything and start receiving again
                                 message_buffer.clear();
                                 received_bytes_count = 0;
@@ -190,6 +192,7 @@ pub fn user_input(
     keyboard_input: Receiver<KeyboardControl>,
     joystick_input: Receiver<JoystickControl>,
     ack: Receiver<bool>,
+    user_input_to_gui: Sender<HostProtocol>,
 ) {
     let mut mode = 0b0000_0000;
 
@@ -292,6 +295,10 @@ pub fn user_input(
                     // for now, this also leads to panic
                     // nothing yet, but leads to panic on the drone
                     mode = 0b0000_1001;
+                }
+                KeyboardControl::ExitTerminal => {
+                    // exit terminal
+                    mode = 0b1111_1110;
                 }
                 KeyboardControl::LiftUp => {
                     let temp = lift + 5;
@@ -450,8 +457,10 @@ pub fn user_input(
         //     mode = 0b0000_0001;
         // }
 
-        let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
-        let _feedback = user_input.send(protocol);
+        let protocol1 = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
+        let protocol2 = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
+        let _feedback = user_input.send(protocol1);
+        let _feedback_gui = user_input_to_gui.send(protocol2);
         // match _feedback {
         //     Ok(_) => {
         //         println!("Message sent to handler");
@@ -607,7 +616,10 @@ pub fn keyboard_monitor(keyboard_input: Sender<KeyboardControl>) {
                     roll_pitch_p2_down(keyboard_input.clone());
                 }
                 /*PLEASE READ THIS! ALWAYS REMEMBER THAT THE WAY TO EXIT IS: CTRL + Q */
-                Key::Ctrl('q') => break,
+                Key::Ctrl('q') => {
+                    switch_mode_exit_terminal(keyboard_input.clone());
+                    break;
+                }
                 _ => { //Invalid key
                 }
             }
@@ -960,6 +972,14 @@ fn switch_mode_8(keyboard_input: Sender<KeyboardControl>) {
 
 fn switch_mode_9(keyboard_input: Sender<KeyboardControl>) {
     if keyboard_input.send(KeyboardControl::Mode9).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
+fn switch_mode_exit_terminal(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::ExitTerminal).is_ok() {
         println!("Message sent to message formatter");
     } else {
         println!("Message not sent to message formatter");

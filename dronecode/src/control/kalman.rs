@@ -143,10 +143,10 @@ impl LowPassOne {
             gyro_x_out: [i16f16_zero, i16f16_zero],
             gyro_y_out: [i16f16_zero, i16f16_zero],
             gyro_z_out: [i16f16_zero, i16f16_zero],
-            // b: [I16F16::from_num(0.3625),I16F16::from_num(0.725),I16F16::from_num(0.3625)],
-            // a: [I16F16::from_num(-0.2659),I16F16::from_num(-0.1841)], //40 hz
-            b: [I16F16::from_num(0.4527), I16F16::from_num(0.4527)],
-            a: [I16F16::from_num(0.0945)],
+            // b: [I16F16::from_num(0.4527), I16F16::from_num(0.4527)],
+            // a: [I16F16::from_num(0.0945)], //sampling=100, cutoff 22
+            b: [I16F16::from_num(0.33179), I16F16::from_num(0.33179)],
+            a: [I16F16::from_num(0.33643)], //sampling=150, cutoff=22
         }
     }
     pub fn low_pass_one(
@@ -253,7 +253,7 @@ impl KalmanFilter {
                 pitch: I16F16::from_num(0.0),
                 roll: I16F16::from_num(0.0),
             },
-            integration_constant: I16F16::from_num(1 / 100), //1/frequency is time, every tick we fetch the values from MPU6050
+            integration_constant: I16F16::from_num(1 / 150), //1/frequency is time, every tick we fetch the values from MPU6050
             c1,
             c2,
             new_ypr: YawPitchRoll {

@@ -30,7 +30,7 @@ mod state_machine;
 #[allow(unused_assignments)]
 pub fn control_loop() -> ! {
     // Initialize the variables for the control loop
-    set_tick_frequency(100);
+    set_tick_frequency(150);
     let mut safety_counter = SafetyCounter::new();
     let mut sensor_data = SensorData::new();
     let mut sensor_data_calibration_offset = SensorOffset::new();
@@ -109,6 +109,7 @@ pub fn control_loop() -> ! {
             // due to the fact that the length of the message is already long enough, we can check if the first and last byte are correct
             if temp[0] != 0x7b || temp[11] != 0x7d {
                 // if the first or last byte is not correct, we directly flush out everything in the command buffer
+                Red.on();
                 command_buf.clear();
             } else {
                 // if the first and last byte are correct, we split the command buffer into two parts, the first part is the message, the second part is the rest
@@ -162,7 +163,7 @@ pub fn control_loop() -> ! {
             }
         }
 
-        if i % 100 == 0 {
+        if i % 20 == 0 {
             // Create an instance of the Drone Protocol struct
             let mut pressure: i32 = 0;
             if sensor_data_calibration_offset.get_sample_count() != 0 {
