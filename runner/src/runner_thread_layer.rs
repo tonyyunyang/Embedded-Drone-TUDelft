@@ -70,6 +70,7 @@ pub enum KeyboardControl {
     RollPitchP2Down,
 }
 
+#[allow(dead_code)]
 pub enum AckByteCorespondingState {
     Ack,                     // 0b1111_1111, 255
     Nack,                    // 0b0000_0000, 0
@@ -81,7 +82,12 @@ pub enum AckByteCorespondingState {
     NotDefined,
 }
 
-pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack: Sender<bool>,device_data_to_gui: Sender<DeviceProtocol>) {
+pub fn uart_handler(
+    serial: SerialPort,
+    user_input: Receiver<HostProtocol>,
+    ack: Sender<bool>,
+    device_data_to_gui: Sender<DeviceProtocol>,
+) {
     let mut buf = [0u8; 255];
     let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
     let mut message_buffer = Vec::new();
@@ -1123,76 +1129,72 @@ fn verify_crc(message: &DeviceProtocol) -> bool {
 }
 
 fn print_verified_message(message: &DeviceProtocol) -> bool {
-    println!("--------------------------------");
-    println!("DTT: {:?}ms\r", message.get_duration());
-    println!("MODE: {:?}\r", message.get_mode());
-    println!(
-        "MTR: {} {} {} {}\r",
-        message.get_motor()[0],
-        message.get_motor()[1],
-        message.get_motor()[2],
-        message.get_motor()[3]
-    );
-    println!(
-        "YPR {} {} {}\r",
-        message.get_ypr()[0],
-        message.get_ypr()[1],
-        message.get_ypr()[2]
-    );
-    println!(
-        "YPR Filtered {} {} {}\r",
-        message.get_ypr_filter()[0],
-        message.get_ypr_filter()[1],
-        message.get_ypr_filter()[2]
-    );
-    println!(
-        "ACC {} {} {}\r",
-        message.get_acc()[0],
-        message.get_acc()[1],
-        message.get_acc()[2]
-    );
-    println!("BAT {bat}\r", bat = message.get_bat());
-    println!("BAR {pres}\r", pres = message.get_pres());
-    print_ack(&message.get_ack());
+    // println!("--------------------------------");
+    // println!("DTT: {:?}ms\r", message.get_duration());
+    // println!("MODE: {:?}\r", message.get_mode());
+    // println!(
+    //     "MTR: {} {} {} {}\r",
+    //     message.get_motor()[0],
+    //     message.get_motor()[1],
+    //     message.get_motor()[2],
+    //     message.get_motor()[3]
+    // );
+    // println!(
+    //     "YPR {} {} {}\r",
+    //     message.get_ypr()[0],
+    //     message.get_ypr()[1],
+    //     message.get_ypr()[2]
+    // );
+    // println!(
+    //     "YPR Filtered {} {} {}\r",
+    //     message.get_ypr_filter()[0],
+    //     message.get_ypr_filter()[1],
+    //     message.get_ypr_filter()[2]
+    // );
+    // println!(
+    //     "ACC {} {} {}\r",
+    //     message.get_acc()[0],
+    //     message.get_acc()[1],
+    //     message.get_acc()[2]
+    // );
+    // println!("BAT {bat}\r", bat = message.get_bat());
+    // println!("BAR {pres}\r", pres = message.get_pres());
+    // print_ack(&message.get_ack());
     let mut proper_ack = false;
-    // match &message.get_ack() {
-    //     0b0000_1111 => proper_ack = false,
-    //     _ => {} // do nothing
-    // }
     if message.get_ack() == 0b0000_1111 {
         proper_ack = true;
     }
-    // println!("ACK {ack}", ack = message.get_ack());
-    println!("CRC {crc}\r", crc = message.get_crc());
-    println!("--------------------------------");
-    if message.get_bat() < 7 {
-        println!(
-            "
-            |--------------------------------------------------|
-            |                Drone Shutting Down               |
-            |--------------------------------------------------|
-            "
-        );
-    } else if message.get_bat() < 10 {
-        println!(
-            "
-            |--------------------------------------------------|
-            |                Battery is very low               |
-            |--------------------------------------------------|
-            "
-        );
-    } else if message.get_bat() < 15 {
-        println!(
-            "
-            |--------------------------------------------------|
-            |                Battery is low                    |
-            |--------------------------------------------------|
-            "
-        );
-    }
+    // println!("CRC {crc}\r", crc = message.get_crc());
+    // println!("--------------------------------");
+    // if message.get_bat() < 7 {
+    //     println!(
+    //         "
+    //         |--------------------------------------------------|
+    //         |                Drone Shutting Down               |
+    //         |--------------------------------------------------|
+    //         "
+    //     );
+    // } else if message.get_bat() < 10 {
+    //     println!(
+    //         "
+    //         |--------------------------------------------------|
+    //         |                Battery is very low               |
+    //         |--------------------------------------------------|
+    //         "
+    //     );
+    // } else if message.get_bat() < 15 {
+    //     println!(
+    //         "
+    //         |--------------------------------------------------|
+    //         |                Battery is low                    |
+    //         |--------------------------------------------------|
+    //         "
+    //     );
+    // }
     proper_ack
 }
 
+#[allow(dead_code)]
 fn print_ack(ack: &u8) {
     #[allow(unused_assignments)]
     let mut information = AckByteCorespondingState::NotDefined;

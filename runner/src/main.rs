@@ -1,26 +1,25 @@
 mod runner_thread_layer;
 use app::App;
 use gilrs::Gilrs;
-use protocol::format::{HostProtocol, DeviceProtocol};
+use protocol::format::{DeviceProtocol, HostProtocol};
 use runner_thread_layer::{
     joystick_monitor, keyboard_monitor, uart_handler, user_input, JoystickControl, KeyboardControl,
 };
 use serial2::SerialPort;
-use tui::Terminal;
-use tui::backend::TermionBackend;
 use std::env::args;
 use std::io;
 use std::sync::mpsc::channel;
 use std::thread::{self, sleep};
+use std::time::Duration;
 use termion::raw::IntoRawMode;
 use termion_ui::run_app;
-use std::time::Duration;
 use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
+use tui::backend::TermionBackend;
+use tui::Terminal;
 
 mod app;
 mod termion_ui;
 mod ui;
-
 
 fn main() {
     let mut gilrs = Gilrs::new().unwrap();
@@ -42,13 +41,19 @@ fn main() {
     let backend = TermionBackend::new(stdout);
     let mut terminal = Terminal::new(backend).unwrap();
     let app = App::new(" Group 5 Drone Demo!!!", true);
-    
+
     let uart_handler = thread::spawn(move || {
-        uart_handler(serial, user_input_rx, ack_tx,device_data_tx);
+        uart_handler(serial, user_input_rx, ack_tx, device_data_tx);
     });
 
     let user_input = thread::spawn(move || {
-        user_input(user_input_tx, keyboard_input_rx, joystick_input_rx, ack_rx,user_input_gui_tx);
+        user_input(
+            user_input_tx,
+            keyboard_input_rx,
+            joystick_input_rx,
+            ack_rx,
+            user_input_gui_tx,
+        );
     });
 
     let keyboard_monitor = thread::spawn(move || {

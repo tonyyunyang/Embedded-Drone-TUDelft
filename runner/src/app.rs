@@ -91,6 +91,7 @@ pub struct App<'a> {
     pub batt: u16,
     pub pres: i32,
     pub crc: u16,
+    pub ack: u8,
 }
 
 impl<'a> App<'a> {
@@ -108,7 +109,7 @@ impl<'a> App<'a> {
             //     points: sparkline_points,
             //     tick_rate: 1,
             // },
-            enhanced_graphics:true,
+            enhanced_graphics: true,
             lift: 0,
             roll: 0.0,
             pitch: 0.0,
@@ -127,6 +128,7 @@ impl<'a> App<'a> {
             pres: 0,
             mode_sent: 0,
             crc: 0,
+            ack: 0b1000_0001, // this is a redundant ack byte
         }
     }
 

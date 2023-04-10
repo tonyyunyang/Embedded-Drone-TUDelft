@@ -82,6 +82,7 @@ pub(crate) fn run_app<B: Backend>(
                 app.batt = a.get_bat();
                 app.pres = a.get_pres();
                 app.crc = a.get_crc();
+                app.ack = a.get_ack();
                 app.on_tick();
                 terminal.clear().unwrap();
             }
