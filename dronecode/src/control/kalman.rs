@@ -270,7 +270,6 @@ impl KalmanFilter {
         gyro: [I16F16; 3],
         sd: &SensorOffset,
     ) -> YawPitchRoll {
-        //todo: pass calibration offsets or pass it after offsetting ?
         //set bias as the calibration offset ?
         // self.bias = 0,0,0?? //get gyro data from sensor --> initializing out rate to this value, no need to store it separately.
         //convert input values to roll and pitch

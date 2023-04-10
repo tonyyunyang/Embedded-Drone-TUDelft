@@ -89,7 +89,7 @@ pub fn control_loop() -> ! {
     let mut flag = false;
     for i in 0.. {
         // update the sensor data
-        sensor_data.update_all(&mut sensor_data_calibration_offset);
+        sensor_data.update_all(&mut sensor_data_calibration_offset, &state_machine);
 
         if !flag {
             Red.on();
@@ -626,7 +626,11 @@ impl SensorData {
         self.pres
     }
 
-    pub fn update_all(&mut self, sensor_data_offset: &mut SensorOffset) {
+    pub fn update_all(
+        &mut self,
+        sensor_data_offset: &mut SensorOffset,
+        state_machine: &StateMachine,
+    ) {
         self.update_dt();
         self.update_motors();
         self.update_quaternion();
@@ -636,8 +640,11 @@ impl SensorData {
         self.update_pres(sensor_data_offset);
         if sensor_data_offset.get_sample_count() != 0 {
             self.update_height_filter();
+            if state_machine.state() == State::Raw {
+                self.update_ypr_filtered_moving_filter();
+            }
         }
-        self.update_ypr_filtered_moving_filter();
+        // self.update_ypr_filtered_moving_filter();
     }
 
     pub fn resume_non_offset(&mut self) {

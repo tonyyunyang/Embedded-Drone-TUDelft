@@ -200,7 +200,19 @@ impl StateMachine {
         joystick.joystick_neutral_check(self);
         if self.state() != next_state {
             match next_state {
-                State::Safety => self.transition_safe(false, sensor_data_offset),
+                State::Safety => {
+                    if self.state() != State::Manual
+                        && self.state() != State::Full
+                        && self.state() != State::Yaw
+                        && self.state() != State::Raw
+                        && self.state() != State::Height
+                        && self.state() != State::Wireless
+                    {
+                        self.transition_safe(false, sensor_data_offset)
+                    } else {
+                        (false, 0b0000_0001)
+                    }
+                }
                 State::Panic => {
                     self.transition_panic(general_controllers, sensor_data_offset, sensor_data)
                 }
@@ -611,6 +623,9 @@ fn raw_mode(
     let roll_angle: I16F16 = map_roll_command(command.get_roll());
 
     // TODO: Everything below might not be perfectly correct
+
+    // set the yaw rate from kalman to the dmp yaw value first
+    sensor_data.ypr_filter.yaw = sensor_data.ypr.yaw;
 
     general_controllers
         .yaw_control
