@@ -487,11 +487,26 @@ impl DeviceProtocol {
     }
 }
 
+/// `CsvRecordIter` is a struct that iterates over the fields of a `DeviceProtocol` instance and returns them as CSV-formatted strings.
+///
+/// # Example
+///
+/// ```
+/// let device_protocol = DeviceProtocol::new(...);
+/// let csv_iter = CsvRecordIter::new(&device_protocol);
+///
+/// for field in csv_iter {
+///     println!("{}", field);
+/// }
+/// ```
 pub struct CsvRecordIter<'a> {
     device_protocol: &'a DeviceProtocol,
     index: usize,
 }
 
+/// The implementation of the `Iterator` trait for `CsvRecordIter`, which allows iterating over the fields of a `DeviceProtocol` instance.
+///
+/// Each call to `next()` returns an `Option<String>` representing the next field value in CSV format.
 impl<'a> Iterator for CsvRecordIter<'a> {
     type Item = String;
 
