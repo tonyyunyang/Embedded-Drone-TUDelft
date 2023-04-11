@@ -10,7 +10,6 @@ use std::{
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
-
 use crate::file_writer::FileWriter;
 
 pub struct JoystickControl {
@@ -55,6 +54,7 @@ pub enum KeyboardControl {
     Mode7,
     Mode8,
     Mode9,
+    ExitTerminal,
     LiftUp,
     LiftDown,
     RollUp,
@@ -69,9 +69,10 @@ pub enum KeyboardControl {
     RollPitchP1Down,
     RollPitchP2Up,
     RollPitchP2Down,
-    ReadLogs,
+    // ReadLogs,
 }
 
+#[allow(dead_code)]
 pub enum AckByteCorespondingState {
     Ack,                     // 0b1111_1111, 255
     Nack,                    // 0b0000_0000, 0
@@ -80,22 +81,26 @@ pub enum AckByteCorespondingState {
     StateTransitionAllowed,  // 0b0011_1100, 60
     RemainingOnTheSameMode,  // 0b0000_0001, 1
     FromPanic,               // 0b0000_0010, 2
-    FromReadLogs,            // 0b0000_0011, 3
+    // FromReadLogs,            // 0b0000_0011, 3
     NotDefined,
 }
 
-pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack: Sender<bool>) {
+pub fn uart_handler(
+    serial: SerialPort,
+    user_input: Receiver<HostProtocol>,
+    ack: Sender<bool>,
+    device_data_to_gui: Sender<DeviceProtocol>,
+) {
     let mut buf = [0u8; 255];
     let mut received_bytes_count = 0; // the size of the message should be exactly 40 bytes, since we are using fixed size
     let mut message_buffer = Vec::new();
-    let mut file_writer = match FileWriter::new("log_file.csv") {
-        Ok(writer) => writer,
-        Err(e) => {
-            println!("Error creating FileWriter: {}", e);
-            return;
-        }
-    };
-
+    // let mut file_writer = match FileWriter::new("log_file.csv") {
+    //     Ok(writer) => writer,
+    //     Err(e) => {
+    //         println!("Error creating FileWriter: {}", e);
+    //         return;
+    //     }
+    // };
     let mut start_receiving = false;
     // let mut command_ready = true;
     let mut repeat_flag = false;
@@ -108,7 +113,6 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack:
                     'inner: for i in buf.iter().take(num) {
                         let received_byte = *i;
                         if received_byte == 0x7b && !start_receiving {
-                            println!("Start receiving");
                             message_buffer.clear();
                             start_receiving = true;
                         }
@@ -116,23 +120,23 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack:
                             message_buffer.push(received_byte);
                             received_bytes_count += 1;
                         }
-                        if received_bytes_count < 40 {
+                        if received_bytes_count < 52 {
                             continue 'inner;
                         }
-                        if message_buffer.len() < 40 && !repeat_flag {
+                        if message_buffer.len() < 52 && !repeat_flag {
                             repeat_flag = true;
                             continue 'outer;
                         }
 
                         // when it reaches here, the bytes recieved is already >= 40
                         if received_byte == 0x7d && start_receiving {
-                            if received_bytes_count != 40 {
+                            if received_bytes_count != 52 {
                                 message_buffer.clear();
                                 received_bytes_count = 0;
                                 start_receiving = false;
                                 repeat_flag = false;
                                 continue 'outer;
-                            } else if received_bytes_count == 40 {
+                            } else if received_bytes_count == 52 {
                                 // send the ready state and the message to the uart handler
                                 // // format the message
                                 let nice_received_message =
@@ -142,16 +146,16 @@ pub fn uart_handler(serial: SerialPort, user_input: Receiver<HostProtocol>, ack:
                                 if no_transition {
                                     let _tmp = ack.send(no_transition);
                                 }
-
-                                if nice_received_message.get_mode() >= 10 {
-                                    match file_writer
-                                        .write_record(&mut nice_received_message.to_csv_record())
-                                    {
-                                        Ok(_) => (),
-                                        Err(e) => println!("Error writing record: {}", e),
-                                    }
-                                }
-
+                                let _feedback_gui = device_data_to_gui.send(nice_received_message);
+                                // if nice_received_message.get_mode() >= 10 {
+                                //     match file_writer
+                                //         .write_record(&mut nice_received_message.to_csv_record())
+                                //     {
+                                //         Ok(_) => (),
+                                //         Err(e) => println!("Error writing record: {}", e),
+                                //     }
+                                // }
+                                // clean everything, initialize everything and start receiving again
                                 message_buffer.clear();
                                 received_bytes_count = 0;
                                 start_receiving = false;
@@ -212,6 +216,7 @@ pub fn user_input(
     keyboard_input: Receiver<KeyboardControl>,
     joystick_input: Receiver<JoystickControl>,
     ack: Receiver<bool>,
+    user_input_to_gui: Sender<HostProtocol>,
 ) {
     let mut mode = 0b0000_0000;
 
@@ -315,6 +320,10 @@ pub fn user_input(
                     // nothing yet, but leads to panic on the drone
                     mode = 0b0000_1001;
                 }
+                KeyboardControl::ExitTerminal => {
+                    // exit terminal
+                    mode = 0b1111_1110;
+                }
                 KeyboardControl::LiftUp => {
                     let temp = lift + 5;
                     if temp > 90 {
@@ -396,7 +405,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::YawPUp => {
-                    let temp = p + 1;
+                    let temp = p + 5;
                     if temp > 90 {
                         println!("Yaw P Control is at max");
                     } else if temp < 10 {
@@ -406,7 +415,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::YawPDown => {
-                    let temp = p - 1;
+                    let temp = p - 5;
                     if temp > 90 {
                         println!("Yaw P Control is at max");
                     } else if temp < 10 {
@@ -416,7 +425,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::RollPitchP1Up => {
-                    let temp = p1 + 1;
+                    let temp = p1 + 5;
                     if temp > 90 {
                         println!("Roll Pitch P1 Control is at max");
                     } else if temp < 10 {
@@ -426,7 +435,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::RollPitchP1Down => {
-                    let temp = p1 - 1;
+                    let temp = p1 - 5;
                     if temp > 90 {
                         println!("Roll Pitch P1 Control is at max");
                     } else if temp < 10 {
@@ -436,7 +445,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::RollPitchP2Up => {
-                    let temp = p2 + 1;
+                    let temp = p2 + 5;
                     if temp > 90 {
                         println!("Roll Pitch P2 Control is at max");
                     } else if temp < 10 {
@@ -446,7 +455,7 @@ pub fn user_input(
                     }
                 }
                 KeyboardControl::RollPitchP2Down => {
-                    let temp = p2 - 1;
+                    let temp = p2 - 5;
                     if temp > 90 {
                         println!("Roll Pitch P2 Control is at max");
                     } else if temp < 10 {
@@ -455,10 +464,10 @@ pub fn user_input(
                         p2 = temp;
                     }
                 }
-                KeyboardControl::ReadLogs => {
-                    // read logs
-                    mode = 0b0000_1010;
-                }
+                // KeyboardControl::ReadLogs => {
+                //     // read logs
+                //     mode = 0b0000_1010;
+                // }
             },
             Err(_) => {
                 // println!("Nothing on the keyboard pressed")
@@ -476,8 +485,10 @@ pub fn user_input(
         //     mode = 0b0000_0001;
         // }
 
-        let protocol = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
-        let _feedback = user_input.send(protocol);
+        let protocol1 = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
+        let protocol2 = HostProtocol::new(mode, lift, yaw, pitch, roll, p, p1, p2);
+        let _feedback = user_input.send(protocol1);
+        let _feedback_gui = user_input_to_gui.send(protocol2);
         // match _feedback {
         //     Ok(_) => {
         //         println!("Message sent to handler");
@@ -632,14 +643,17 @@ pub fn keyboard_monitor(keyboard_input: Sender<KeyboardControl>) {
                 Key::Char('L') => {
                     roll_pitch_p2_down(keyboard_input.clone());
                 }
-                Key::Char('b') => {
-                    read_logs(keyboard_input.clone());
-                }
-                Key::Char('B') => {
-                    read_logs(keyboard_input.clone());
-                }
+                // Key::Char('b') => {
+                //     read_logs(keyboard_input.clone());
+                // }
+                // Key::Char('B') => {
+                //     read_logs(keyboard_input.clone());
+                // }
                 /*PLEASE READ THIS! ALWAYS REMEMBER THAT THE WAY TO EXIT IS: CTRL + Q */
-                Key::Ctrl('q') => break,
+                Key::Ctrl('q') => {
+                    switch_mode_exit_terminal(keyboard_input.clone());
+                    break;
+                }
                 _ => { //Invalid key
                 }
             }
@@ -998,6 +1012,14 @@ fn switch_mode_9(keyboard_input: Sender<KeyboardControl>) {
     }
 }
 
+fn switch_mode_exit_terminal(keyboard_input: Sender<KeyboardControl>) {
+    if keyboard_input.send(KeyboardControl::ExitTerminal).is_ok() {
+        println!("Message sent to message formatter");
+    } else {
+        println!("Message not sent to message formatter");
+    }
+}
+
 fn lift_up(keyboard_input: Sender<KeyboardControl>) {
     if keyboard_input.send(KeyboardControl::LiftUp).is_ok() {
         println!("Message sent to message formatter");
@@ -1116,13 +1138,13 @@ fn roll_pitch_p2_down(keyboard_input: Sender<KeyboardControl>) {
     }
 }
 
-fn read_logs(keyboard_input: Sender<KeyboardControl>) {
-    if keyboard_input.send(KeyboardControl::ReadLogs).is_ok() {
-        println!("Message sent to message formatter");
-    } else {
-        println!("Message not sent to message formatter");
-    }
-}
+// fn read_logs(keyboard_input: Sender<KeyboardControl>) {
+//     if keyboard_input.send(KeyboardControl::ReadLogs).is_ok() {
+//         println!("Message sent to message formatter");
+//     } else {
+//         println!("Message not sent to message formatter");
+//     }
+// }
 
 fn verify_message(message: &DeviceProtocol) -> bool {
     // we check the start bit and the end bit first
@@ -1143,70 +1165,72 @@ fn verify_crc(message: &DeviceProtocol) -> bool {
 }
 
 fn print_verified_message(message: &DeviceProtocol) -> bool {
-    println!("--------------------------------");
-    println!("DTT: {:?}ms\r", message.get_duration());
-    println!("MODE: {:?}\r", message.get_mode());
-    println!(
-        "MTR: {} {} {} {}\r",
-        message.get_motor()[0],
-        message.get_motor()[1],
-        message.get_motor()[2],
-        message.get_motor()[3]
-    );
-    println!(
-        "YPR {} {} {}\r",
-        message.get_ypr()[0],
-        message.get_ypr()[1],
-        message.get_ypr()[2]
-    );
-    println!(
-        "ACC {} {} {}\r",
-        message.get_acc()[0],
-        message.get_acc()[1],
-        message.get_acc()[2]
-    );
-    println!("BAT {bat}\r", bat = message.get_bat());
-    println!("BAR {pres}\r", pres = message.get_pres());
-    print_ack(&message.get_ack());
+    // println!("--------------------------------");
+    // println!("DTT: {:?}ms\r", message.get_duration());
+    // println!("MODE: {:?}\r", message.get_mode());
+    // println!(
+    //     "MTR: {} {} {} {}\r",
+    //     message.get_motor()[0],
+    //     message.get_motor()[1],
+    //     message.get_motor()[2],
+    //     message.get_motor()[3]
+    // );
+    // println!(
+    //     "YPR {} {} {}\r",
+    //     message.get_ypr()[0],
+    //     message.get_ypr()[1],
+    //     message.get_ypr()[2]
+    // );
+    // println!(
+    //     "YPR Filtered {} {} {}\r",
+    //     message.get_ypr_filter()[0],
+    //     message.get_ypr_filter()[1],
+    //     message.get_ypr_filter()[2]
+    // );
+    // println!(
+    //     "ACC {} {} {}\r",
+    //     message.get_acc()[0],
+    //     message.get_acc()[1],
+    //     message.get_acc()[2]
+    // );
+    // println!("BAT {bat}\r", bat = message.get_bat());
+    // println!("BAR {pres}\r", pres = message.get_pres());
+    // print_ack(&message.get_ack());
     let mut proper_ack = false;
-    // match &message.get_ack() {
-    //     0b0000_1111 => proper_ack = false,
-    //     _ => {} // do nothing
-    // }
     if message.get_ack() == 0b0000_1111 {
         proper_ack = true;
     }
-    // println!("ACK {ack}", ack = message.get_ack());
-    println!("CRC {crc}\r", crc = message.get_crc());
-    println!("--------------------------------");
-    if message.get_bat() < 7 {
-        println!(
-            "
-            |--------------------------------------------------|
-            |                Drone Shutting Down               |
-            |--------------------------------------------------|
-            "
-        );
-    } else if message.get_bat() < 10 {
-        println!(
-            "
-            |--------------------------------------------------|
-            |                Battery is very low               |
-            |--------------------------------------------------|
-            "
-        );
-    } else if message.get_bat() < 15 {
-        println!(
-            "
-            |--------------------------------------------------|
-            |                Battery is low                    |
-            |--------------------------------------------------|
-            "
-        );
-    }
+    // println!("CRC {crc}\r", crc = message.get_crc());
+    // println!("--------------------------------");
+    // if message.get_bat() < 7 {
+    //     println!(
+    //         "
+    //         |--------------------------------------------------|
+    //         |                Drone Shutting Down               |
+    //         |--------------------------------------------------|
+    //         "
+    //     );
+    // } else if message.get_bat() < 10 {
+    //     println!(
+    //         "
+    //         |--------------------------------------------------|
+    //         |                Battery is very low               |
+    //         |--------------------------------------------------|
+    //         "
+    //     );
+    // } else if message.get_bat() < 15 {
+    //     println!(
+    //         "
+    //         |--------------------------------------------------|
+    //         |                Battery is low                    |
+    //         |--------------------------------------------------|
+    //         "
+    //     );
+    // }
     proper_ack
 }
 
+#[allow(dead_code)]
 fn print_ack(ack: &u8) {
     #[allow(unused_assignments)]
     let mut information = AckByteCorespondingState::NotDefined;
@@ -1218,7 +1242,7 @@ fn print_ack(ack: &u8) {
         0b0011_1100 => information = AckByteCorespondingState::StateTransitionAllowed,
         0b0000_0001 => information = AckByteCorespondingState::RemainingOnTheSameMode,
         0b0000_0010 => information = AckByteCorespondingState::FromPanic,
-        0b0000_0011 => information = AckByteCorespondingState::FromReadLogs,
+        // 0b0000_0011 => information = AckByteCorespondingState::FromReadLogs,
         _ => information = AckByteCorespondingState::NotDefined,
     }
     match information {
@@ -1236,6 +1260,6 @@ fn print_ack(ack: &u8) {
             println!("ACK: Remaining on the same mode\r")
         }
         AckByteCorespondingState::FromPanic => println!("ACK: Panicked\r"),
-        AckByteCorespondingState::FromReadLogs => println!("ACK: Read logs\r"),
+        // AckByteCorespondingState::FromReadLogs => println!("ACK: Read logs\r"),
     }
 }
