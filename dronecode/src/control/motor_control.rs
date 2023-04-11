@@ -358,39 +358,39 @@ pub fn map_yaw_command_manual(command: u8) -> i16 {
 pub fn map_pitch_command_manual(command: u8) -> i16 {
     // the mapping might be wrong, for now, I will assume the initial value is 0, pushing forward is positive, pushing backward is negative
     if command == 90 {
-        24
+        32
     } else if command == 85 {
-        21
+        28
     } else if command == 80 {
-        18
+        24
     } else if command == 75 {
-        15
+        20
     } else if command == 70 {
-        12
+        16
     } else if command == 65 {
-        9
+        12
     } else if command == 60 {
-        6
+        8
     } else if command == 55 {
-        3
+        4
     } else if command == 50 {
         0
     } else if command == 45 {
-        -3
+        -4
     } else if command == 40 {
-        -6
+        -8
     } else if command == 35 {
-        -9
-    } else if command == 30 {
         -12
+    } else if command == 30 {
+        -16
     } else if command == 25 {
-        -15
+        -20
     } else if command == 20 {
-        -18
-    } else if command == 15 {
-        -21
-    } else if command == 10 {
         -24
+    } else if command == 15 {
+        -28
+    } else if command == 10 {
+        -32
     } else {
         // not a valid command, we set motor to 0
         0

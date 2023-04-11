@@ -1062,7 +1062,7 @@ where
                 .labels(vec![
                     Span::styled("-3.14", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw("0"),
-                    Span::styled("3.4", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("3.14", Style::default().add_modifier(Modifier::BOLD)),
                 ]),
         );
     f.render_widget(chart, area);
