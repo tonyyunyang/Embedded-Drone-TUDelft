@@ -40,6 +40,9 @@ pub enum State {
 
     /// Mode 8: Wireless communication with ground station.
     Wireless,
+
+    // Mode extra: Read logs from the Flash
+    // ReadLogs,
 }
 
 // Define the state machine.
