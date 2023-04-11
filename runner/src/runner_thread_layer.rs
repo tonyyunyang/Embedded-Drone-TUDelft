@@ -10,7 +10,7 @@ use std::{
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
-use crate::file_writer::FileWriter;
+// use crate::file_writer::FileWriter;
 
 pub struct JoystickControl {
     lift: u8,
