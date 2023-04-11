@@ -273,7 +273,7 @@ where
                 .add_modifier(Modifier::BOLD),
         )
         // TODO: MIght need to change this value
-        .percent(app.batt.saturating_div(10));
+        .percent(app.batt.saturating_div(13));
     f.render_widget(gauge3, chunks[4]);
 }
 

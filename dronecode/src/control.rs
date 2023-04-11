@@ -333,7 +333,7 @@ impl SafetyCounter {
     }
 }
 
-const BUFFER_SIZE: usize = 100;
+const BUFFER_SIZE: usize = 20;
 pub struct HeightMovingAverageFilter {
     pub buffer: [I16F16; BUFFER_SIZE], // buffer to store the last n samples
     pub index: usize,                  // index to keep track of the oldest sample in the buffer
