@@ -141,7 +141,7 @@ fn match_corres_ack(ack: u8) -> String {
         0b0000_1111 => String::from("TRANSITION DECLINED"),
         0b0011_1100 => String::from("TRANSITION ALLOWED"),
         0b0000_0001 => String::from("REMAINING SAME MODE"),
-        0b0000_0010 => String::from("TO SAFE FROM PANIC"),
+        0b0000_0010 => String::from("PANIC TO SAFE"),
         _ => String::from("   "),
     }
 }
@@ -160,6 +160,43 @@ fn match_mode_to_string(mode: u8) -> String {
         _ => String::from("Not Defined"),
     }
 }
+
+fn map_p_value(value: f32) -> String{
+    let max_new: f32 = 10.0;
+    let min_new: f32 = 5.0;
+    let max_old: f32 = 90.0;
+    let min_old: f32 = 10.0;
+    let p_old: f32 = value;
+
+    let result = (max_new - min_new) / (max_old - min_old) * (p_old - min_old) + min_new;
+
+    result.to_string()
+}
+
+fn map_p1_value(value: f32) -> String{
+    let max_new: f32 = 10.0;
+    let min_new: f32 = 5.0;
+    let max_old: f32 = 90.0;
+    let min_old: f32 = 10.0;
+    let p_old: f32 = value;
+
+    let result = (max_new - min_new) / (max_old - min_old) * (p_old - min_old) + min_new;
+
+    result.to_string()
+}
+
+fn map_p2_value(value: f32) -> String{
+    let max_new: f32 = 60.0;
+    let min_new: f32 = 1.0;
+    let max_old: f32 = 90.0;
+    let min_old: f32 = 10.0;
+    let p_old: f32 = value;
+
+    let result = (max_new - min_new) / (max_old - min_old) * (p_old - min_old) + min_new;
+
+    result.to_string()
+}
+
 fn draw_gauges<B>(f: &mut Frame<B>, app: &mut App, area: Rect)
 where
     B: Backend,
@@ -330,16 +367,16 @@ where
     let str_roll;
     let str_yaw;
     let mut str_lift = app.lift.to_string();
-    let str_p = app.p.to_string();
-    let str_p1 = app.p1.to_string();
-    let str_p2 = app.p2.to_string();
+    let str_p = map_p_value(app.p);
+    let str_p1 = map_p1_value(app.p1);
+    let str_p2 = map_p2_value(app.p2);
     let mut str_mode = app.mode_sent.to_string();
     match app.mode {
         0 => {
             str_mode = "Safe".to_string();
         }
         1 => {
-            str_mode = "Safe through Panic".to_string();
+            str_mode = "Panic To Safe".to_string();
         }
         2 => {
             str_mode = "Manual".to_string();
