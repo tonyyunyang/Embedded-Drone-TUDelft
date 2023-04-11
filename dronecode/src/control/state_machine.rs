@@ -218,6 +218,7 @@ impl StateMachine {
                 }
                 State::Manual => self.transition_manual(),
                 State::Calibrate => self.transition_calibrate(sensor_data_offset, sensor_data),
+                // State::ReadLogs => self.transition_read_logs(),
                 State::Yaw | State::Full | State::Raw | State::Height | State::Wireless => {
                     self.transition_operation(next_state)
                 } // | State::Manual => self.transition_operation(next_state, joystick),
@@ -454,6 +455,9 @@ pub fn execute_state_function(
         // State::Calibrate => {
         //     calibrate_mode(sensor_data_offset);
         // }
+        // State::ReadLogs => {
+        //     read_logs_mode();
+        // }
         State::Yaw => {
             yaw_mode(command, general_controllers, sensor_data);
         }
@@ -478,7 +482,29 @@ pub fn execute_state_function(
             // mode such as Panic is dealt during transition
         }
     }
+
+    // fn transition_read_logs(&mut self) -> (bool, u8) {
+    //     // Can only go into read logs mode from safe mode.
+    //     // Return back to safe mode after reading logs.
+    //     if self.state == State::Safety {
+    //         self.state = State::ReadLogs;
+    //         self.permissions.controller = false;
+    //         self.permissions.calibration = false;
+    //         self.permissions.yaw_control = false;
+    //         self.permissions.pitch_roll_control = false;
+    //         self.permissions.height_control = false;
+    //         self.permissions.wireless = false;
+    //         self.permissions.sensors = false;
+    //         (true, 0b0011_1100)
+    //     } else {
+    //         (false, 0b0000_1111)
+    //     }
+    // }
 }
+
+// fn read_logs_mode() {
+//     // log_sending = true;
+// }
 
 #[allow(unused_variables)]
 fn safety_mode() {
