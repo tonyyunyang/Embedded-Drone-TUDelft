@@ -161,7 +161,7 @@ fn match_mode_to_string(mode: u8) -> String {
     }
 }
 
-fn map_p_value(value: f32) -> String{
+fn map_p_value(value: f32) -> String {
     let max_new: f32 = 10.0;
     let min_new: f32 = 5.0;
     let max_old: f32 = 90.0;
@@ -173,7 +173,7 @@ fn map_p_value(value: f32) -> String{
     result.to_string()
 }
 
-fn map_p1_value(value: f32) -> String{
+fn map_p1_value(value: f32) -> String {
     let max_new: f32 = 10.0;
     let min_new: f32 = 5.0;
     let max_old: f32 = 90.0;
@@ -185,7 +185,7 @@ fn map_p1_value(value: f32) -> String{
     result.to_string()
 }
 
-fn map_p2_value(value: f32) -> String{
+fn map_p2_value(value: f32) -> String {
     let max_new: f32 = 60.0;
     let min_new: f32 = 1.0;
     let max_old: f32 = 90.0;

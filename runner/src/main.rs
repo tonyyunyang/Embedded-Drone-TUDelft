@@ -17,8 +17,8 @@ use tudelft_serial_upload::{upload_file_or_stop, PortSelector};
 use tui::backend::TermionBackend;
 use tui::Terminal;
 
-mod file_writer;
 mod app;
+mod file_writer;
 mod termion_ui;
 mod ui;
 

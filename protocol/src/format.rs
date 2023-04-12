@@ -1,8 +1,8 @@
-use crc16::{State, XMODEM};
-use crc_any::CRCu8;
 use crate::alloc::string::ToString;
 use alloc::string::String;
 use alloc::vec::Vec as OtherVec;
+use crc16::{State, XMODEM};
+use crc_any::CRCu8;
 use fixed::types::I16F16;
 
 use alloc::vec::{self};
@@ -323,12 +323,12 @@ impl DeviceProtocol {
         message.push(self.end_flag);
     }
 
-    // pub fn to_csv_record(&self) -> CsvRecordIter {
-    //     CsvRecordIter {
-    //         device_protocol: self,
-    //         index: 0,
-    //     }
-    // }
+    pub fn to_csv_record(&self) -> CsvRecordIter {
+        CsvRecordIter {
+            device_protocol: self,
+            index: 0,
+        }
+    }
 
     pub fn format_message(message: &mut [u8]) -> DeviceProtocol {
         let mut format_message = DeviceProtocol::new(
@@ -520,74 +520,80 @@ impl DeviceProtocol {
     }
 }
 
-// pub struct CsvRecordIter<'a> {
-//     device_protocol: &'a DeviceProtocol,
-//     index: usize,
-// }
+pub struct CsvRecordIter<'a> {
+    device_protocol: &'a DeviceProtocol,
+    index: usize,
+}
 
 // The implementation of the `Iterator` trait for `CsvRecordIter`, which allows iterating over the fields of a `DeviceProtocol` instance.
 
-// impl<'a> Iterator for CsvRecordIter<'a> {
-//     type Item = String;
-//     fn next(&mut self) -> Option<Self::Item> {
-//         let dp = &self.device_protocol;
+impl<'a> Iterator for CsvRecordIter<'a> {
+    type Item = String;
+    fn next(&mut self) -> Option<Self::Item> {
+        let dp = &self.device_protocol;
 
-//         match self.index {
-//             0 => {
-//                 // start_flag
-//                 self.index += 1;
-//                 Some(dp.start_flag.to_string())
-//             }
-//             1 => {
-//                 // mode
-//                 self.index += 1;
-//                 Some(dp.mode.to_string())
-//             }
-//             2 => {
-//                 // duration
-//                 self.index += 1;
-//                 Some(dp.duration.to_string())
-//             }
-//             3..=6 => {
-//                 // motor 1-4
-//                 let value = dp.motor[self.index - 3].to_string();
-//                 self.index += 1;
-//                 Some(value)
-//             }
-//             7..=9 => {
-//                 // ypr 1-3
-//                 let value = dp.ypr[self.index - 7].to_string();
-//                 self.index += 1;
-//                 Some(value)
-//             }
-//             10..=12 => {
-//                 // acc 1-3
-//                 let value = dp.acc[self.index - 10].to_string();
-//                 self.index += 1;
-//                 Some(value)
-//             }
-//             13 => {
-//                 // bat
-//                 self.index += 1;
-//                 Some(dp.bat.to_string())
-//             }
-//             14 => {
-//                 self.index += 1;
-//                 Some(dp.pres.to_string())
-//             }
-//             15 => {
-//                 self.index += 1;
-//                 Some(dp.ack.to_string())
-//             }
-//             16 => {
-//                 self.index += 1;
-//                 Some(dp.crc.to_string())
-//             }
-//             17 => {
-//                 self.index += 1;
-//                 Some(dp.end_flag.to_string())
-//             }
-//             _ => None,
-//         }
-//     }
-// }
+        match self.index {
+            0 => {
+                // start_flag
+                self.index += 1;
+                Some(dp.start_flag.to_string())
+            }
+            1 => {
+                // mode
+                self.index += 1;
+                Some(dp.mode.to_string())
+            }
+            2 => {
+                // duration
+                self.index += 1;
+                Some(dp.duration.to_string())
+            }
+            3..=6 => {
+                // motor 1-4
+                let value = dp.motor[self.index - 3].to_string();
+                self.index += 1;
+                Some(value)
+            }
+            7..=9 => {
+                // ypr 1-3
+                let value = dp.ypr[self.index - 7].to_string();
+                self.index += 1;
+                Some(value)
+            }
+            10..=12 => {
+                // ypr_filtered 1-3
+                let value = dp.ypr_filter[self.index - 10].to_string();
+                self.index += 1;
+                Some(value)
+            }
+            13..=15 => {
+                // acc 1-3
+                let value = dp.acc[self.index - 13].to_string();
+                self.index += 1;
+                Some(value)
+            }
+            16 => {
+                // bat
+                self.index += 1;
+                Some(dp.bat.to_string())
+            }
+            17 => {
+                self.index += 1;
+                Some(dp.pres.to_string())
+            }
+            18 => {
+                self.index += 1;
+                Some(dp.ack.to_string())
+            }
+            19 => {
+                self.index += 1;
+                Some(dp.crc.to_string())
+            }
+            20 => {
+                self.index += 1;
+                Some(dp.end_flag.to_string())
+            }
+            _ => None,
+        }
+    }
+}
