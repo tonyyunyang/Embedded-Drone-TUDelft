@@ -3,8 +3,13 @@ use core::time::Duration;
 use crate::control::kalman::LowPassOne;
 use crate::control::pid_controller::{map_p_to_fixed, PIDController};
 use crate::control::state_machine::{execute_state_function, JoystickControl, StateMachine};
+use crate::storage::Storage;
 use crate::yaw_pitch_roll::YawPitchRoll;
+use alloc::vec;
+use tudelft_quadrupel::led::Green;
+
 use alloc::vec::Vec;
+use tudelft_quadrupel::flash::FlashError;
 // use heapless::Vec as HVec;
 use protocol::format::{DeviceProtocol, HostProtocol};
 use tudelft_quadrupel::barometer::read_pressure;
@@ -86,11 +91,11 @@ pub fn control_loop() -> ! {
         height_control,
         raw_control,
     );
-    // let mut log_data = LogData::new();
-    // Green.on();
-    // if log_data.storage.erase_flash().is_ok() {
-    //     Green.off();
-    // }
+    let mut log_data = LogData::new();
+    Green.on();
+    if log_data.storage.erase_flash().is_ok() {
+        Green.off();
+    }
     let mut flag = false;
     for i in 0.. {
         // update the sensor data
@@ -169,76 +174,57 @@ pub fn control_loop() -> ! {
         }
 
         if i % 20 == 0 {
-            // Create an instance of the Drone Protocol struct
-            let mut pressure: i32 = 0;
-            if sensor_data_calibration_offset.get_sample_count() != 0 {
-                pressure = I16F16::to_num(sensor_data.height_filter.filter_height);
-            } else {
-                pressure = sensor_data.get_pres();
-            }
-            let message_to_host = DeviceProtocol::new(
-                mode,
-                sensor_data.get_dt().as_millis() as u16,
-                sensor_data.get_motors(),
-                sensor_data.get_ypr_data(),
-                sensor_data.get_ypr_filtered_data(),
-                sensor_data.get_accel_data(),
-                sensor_data.get_bat(),
-                pressure,
-                ack,
-            );
-            // Form the message waiting to be sent to the host
-            let mut message: Vec<u8> = Vec::new();
-            message_to_host.form_message(&mut message);
-            send_bytes(&message);
-
-
-
             // 5 Hz
-            // if mode < 10 {
-            //     // Create an instance of the Drone Protocol struct
-            //     let message_to_host = DeviceProtocol::new(
-            //         mode,
-            //         sensor_data.get_dt().as_millis() as u16,
-            //         sensor_data.get_motors(),
-            //         sensor_data.get_ypr_data(),
-            //         sensor_data.get_ypr_filtered_data(),
-            //         sensor_data.get_accel_data(),
-            //         sensor_data.get_bat(),
-            //         pressure,
-            //         ack,
-            //     );
+            if mode < 10 {
+                // Create an instance of the Drone Protocol struct
+                let mut pressure: i32 = 0;
+                if sensor_data_calibration_offset.get_sample_count() != 0 {
+                    pressure = I16F16::to_num(sensor_data.height_filter.filter_height);
+                } else {
+                    pressure = sensor_data.get_pres();
+                }
+                let message_to_host = DeviceProtocol::new(
+                    mode,
+                    sensor_data.get_dt().as_millis() as u16,
+                    sensor_data.get_motors(),
+                    sensor_data.get_ypr_data(),
+                    sensor_data.get_ypr_filtered_data(),
+                    sensor_data.get_accel_data(),
+                    sensor_data.get_bat(),
+                    pressure,
+                    ack,
+                );
+                // Form the message waiting to be sent to the host
+                let mut message: Vec<u8> = Vec::new();
+                message_to_host.form_message(&mut message);
 
-            //     let message_to_log = DeviceProtocol::new(
-            //         mode + 10,
-            //         sensor_data.get_dt().as_millis() as u16,
-            //         sensor_data.get_motors(),
-            //         sensor_data.get_ypr_data(),
-            //         sensor_data.get_ypr_filtered_data(),
-            //         sensor_data.get_accel_data(),
-            //         sensor_data.get_bat(),
-            //         pressure,
-            //         ack,
-            //     );
+                let message_to_log = DeviceProtocol::new(
+                    mode + 10,
+                    sensor_data.get_dt().as_millis() as u16,
+                    sensor_data.get_motors(),
+                    sensor_data.get_ypr_data(),
+                    sensor_data.get_ypr_filtered_data(),
+                    sensor_data.get_accel_data(),
+                    sensor_data.get_bat(),
+                    pressure,
+                    ack,
+                );
 
-            //     let mut message: Vec<u8> = Vec::new();
-            //     message_to_host.form_message(&mut message);
-
-            //     let mut log_message: Vec<u8> = Vec::new();
-            //     message_to_log.form_message(&mut log_message);
-            //     Green.on();
-            //     if log_data.save_data(&log_message).is_ok() {
-            //         Green.off();
-            //     }
-            //     send_bytes(&message);
-            // } else {
-            //     Green.on();
-            //     let data = log_data.load_data();
-            //     if let Ok(data) = data {
-            //         send_bytes(&data);
-            //         Green.off();
-            //     }
-            // }
+                let mut log_message: Vec<u8> = Vec::new();
+                message_to_log.form_message(&mut log_message);
+                Green.on();
+                if log_data.save_data(&log_message).is_ok() {
+                    Green.off();
+                }
+                send_bytes(&message);
+            } else {
+                Green.on();
+                let data = log_data.load_data();
+                if let Ok(data) = data {
+                    send_bytes(&data);
+                    Green.off();
+                }
+            }
         }
 
         // safety checks
@@ -256,21 +242,24 @@ pub fn control_loop() -> ! {
             // Reset the timeout counter, since it's going to go back to safe mode.
             safety_counter.reset_command_timeout();
         }
-        // Check if battery level is low, if positive then go to panic state.
-        if sensor_data.get_bat() < 120 {
-            safety_counter.increment_battery_danger();
-        }
-        if safety_counter.is_battery_danger() {
-            state_machine.transition(
-                State::Panic,
-                &mut joystick_control,
-                &mut general_controllers,
-                &mut sensor_data_calibration_offset,
-                &mut sensor_data,
-            );
-            // then end the function
-            panic!();
-        }
+
+        // Uncomment this when you are using a battery.
+
+        // // Check if battery level is low, if positive then go to panic state.
+        // if sensor_data.get_bat() < 120 {
+        //     safety_counter.increment_battery_danger();
+        // }
+        // if safety_counter.is_battery_danger() {
+        //     state_machine.transition(
+        //         State::Panic,
+        //         &mut joystick_control,
+        //         &mut general_controllers,
+        //         &mut sensor_data_calibration_offset,
+        //         &mut sensor_data,
+        //     );
+        //     // then end the function
+        //     panic!();
+        // }
         Red.off();
         Blue.off();
         Yellow.off();
@@ -333,7 +322,7 @@ fn map_to_state(mode_received: u8) -> State {
         0b0000_0110 => State::Raw,
         0b0000_0111 => State::Height,
         0b0000_1000 => State::Wireless,
-        // 0b0000_1010 => State::ReadLogs,
+        0b0000_1010 => State::ReadLogs,
         _ => State::Panic,
     }
 }
@@ -350,7 +339,7 @@ fn map_to_mode(current_state: &State) -> u8 {
         State::Raw => 0b0000_0110,
         State::Height => 0b0000_0111,
         State::Wireless => 0b0000_1000,
-        // State::ReadLogs => 0b0000_1010,
+        State::ReadLogs => 0b0000_1010,
     }
 }
 
@@ -374,7 +363,7 @@ impl SafetyCounter {
     pub fn increment_command_timeout(&mut self) {
         self.command_timeout += 1;
     }
-
+    #[allow(dead_code)]
     pub fn increment_battery_danger(&mut self) {
         self.battery_danger += 1;
     }
@@ -382,7 +371,7 @@ impl SafetyCounter {
     pub fn is_command_timeout(&self) -> bool {
         self.command_timeout > 100
     }
-
+    #[allow(dead_code)]
     pub fn is_battery_danger(&self) -> bool {
         self.battery_danger > 100
     }
@@ -800,29 +789,29 @@ impl SensorOffset {
     }
 }
 
-// pub struct LogData {
-//     storage: Storage,
-// }
+pub struct LogData {
+    storage: Storage,
+}
 
-// impl LogData {
-//     pub fn new() -> Self {
-//         LogData {
-//             storage: Storage::new(0x000000, 0x01FFFF),
-//         }
-//     }
+impl LogData {
+    pub fn new() -> Self {
+        LogData {
+            storage: Storage::new(0x000000, 0x01FFFF),
+        }
+    }
 
-//     pub fn save_data(&mut self, message: &[u8]) -> Result<(), FlashError> {
-//         self.storage.write(message)
-//     }
+    pub fn save_data(&mut self, message: &[u8]) -> Result<(), FlashError> {
+        self.storage.write(message)
+    }
 
-//     pub fn load_data(&mut self) -> Result<Vec<u8>, FlashError> {
-//         let mut message: Vec<u8> = vec![0; 40]; // Pre-allocate the buffer with an arbitrary size
-//         match self.storage.read(&mut message) {
-//             Ok(_bytes_read) => {
-//                 // message.truncate(bytes_read);
-//                 Ok(message)
-//             }
-//             Err(e) => Err(e),
-//         }
-//     }
-// }
+    pub fn load_data(&mut self) -> Result<Vec<u8>, FlashError> {
+        let mut message: Vec<u8> = vec![0; 52]; // Pre-allocate the buffer with an arbitrary size
+        match self.storage.read(&mut message) {
+            Ok(_bytes_read) => {
+                // message.truncate(bytes_read);
+                Ok(message)
+            }
+            Err(e) => Err(e),
+        }
+    }
+}
