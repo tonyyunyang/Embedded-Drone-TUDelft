@@ -527,72 +527,83 @@ pub struct CsvRecordIter<'a> {
 
 // The implementation of the `Iterator` trait for `CsvRecordIter`, which allows iterating over the fields of a `DeviceProtocol` instance.
 
+// Implement the Iterator trait for CsvRecordIter with a lifetime parameter 'a'
 impl<'a> Iterator for CsvRecordIter<'a> {
+    // Define the type of items returned by the iterator as String
     type Item = String;
+
+    // Implement the next method to return the next item in the iterator
     fn next(&mut self) -> Option<Self::Item> {
+        // Access the device_protocol field from the struct
         let dp = &self.device_protocol;
 
+        // Match on the current index to determine which field to return
         match self.index {
+            // If index is 0, return start_flag
             0 => {
-                // start_flag
                 self.index += 1;
                 Some(dp.start_flag.to_string())
             }
+            // If index is 1, return mode
             1 => {
-                // mode
                 self.index += 1;
                 Some(dp.mode.to_string())
             }
+            // If index is 2, return duration
             2 => {
-                // duration
                 self.index += 1;
                 Some(dp.duration.to_string())
             }
+            // If index is between 3 and 6 (inclusive), return motor values
             3..=6 => {
-                // motor 1-4
                 let value = dp.motor[self.index - 3].to_string();
                 self.index += 1;
                 Some(value)
             }
+            // If index is between 7 and 9 (inclusive), return ypr values
             7..=9 => {
-                // ypr 1-3
                 let value = dp.ypr[self.index - 7].to_string();
                 self.index += 1;
                 Some(value)
             }
+            // If index is between 10 and 12 (inclusive), return ypr_filtered values
             10..=12 => {
-                // ypr_filtered 1-3
                 let value = dp.ypr_filter[self.index - 10].to_string();
                 self.index += 1;
                 Some(value)
             }
+            // If index is between 13 and 15 (inclusive), return acc values
             13..=15 => {
-                // acc 1-3
                 let value = dp.acc[self.index - 13].to_string();
                 self.index += 1;
                 Some(value)
             }
+            // If index is 16, return bat value
             16 => {
-                // bat
                 self.index += 1;
                 Some(dp.bat.to_string())
             }
+            // If index is 17, return pres value
             17 => {
                 self.index += 1;
                 Some(dp.pres.to_string())
             }
+            // If index is 18, return ack value
             18 => {
                 self.index += 1;
                 Some(dp.ack.to_string())
             }
+            // If index is 19, return crc value
             19 => {
                 self.index += 1;
                 Some(dp.crc.to_string())
             }
+            // If index is 20, return end_flag value
             20 => {
                 self.index += 1;
                 Some(dp.end_flag.to_string())
             }
+            // If index is out of range, return None to signal the end of the iterator
             _ => None,
         }
     }
